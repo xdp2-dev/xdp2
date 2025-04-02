@@ -15,7 +15,7 @@ $(SUBDIRS):
 
 INCDIR=$(INSTALLDIR)$(HDRDIR)/xdp2
 
-TARGETS =
+TARGETS = compiler_helpers.h
 
 clean:
 
