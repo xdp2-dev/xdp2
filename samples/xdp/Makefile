@@ -6,7 +6,7 @@
 
 TOPTARGETS := all clean install
 
-SUBDIRS = flow_tracker_combo flow_tracker_simple
+SUBDIRS = flow_tracker_combo flow_tracker_simple flow_tracker_tlvs
 
 $(TOPTARGETS) : $(SUBDIRS)
 
