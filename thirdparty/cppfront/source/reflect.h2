@@ -1,0 +1,1337 @@
+
+//  Copyright (c) Herb Sutter
+//  SPDX-License-Identifier: CC-BY-NC-ND-4.0
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+
+//===========================================================================
+//  Reflection and meta
+//===========================================================================
+
+#include "parse.h"
+
+cpp2: namespace = {
+
+meta: namespace = {
+
+
+//-----------------------------------------------------------------------
+//
+//  Compiler services
+//
+//-----------------------------------------------------------------------
+//
+
+compiler_services: @polymorphic_base @copyable type =
+{
+    errors               : *std::vector<error_entry>;
+    errors_original_size : int;
+    generated_tokens     : *std::deque<token>;
+    parser               : cpp2::parser;
+    metafunction_name    : std::string = ();
+    metafunction_args    : std::vector<std::string> = ();
+    metafunctions_used   : bool = false;
+
+    operator=: (
+        out this,
+        errors_          : *std::vector<error_entry>,
+        generated_tokens_: *std::deque<token>
+    )
+    = {
+        errors = errors_;
+        errors_original_size = cpp2::unsafe_narrow<int>(std::ssize(errors*));
+        generated_tokens = generated_tokens_;
+        parser = errors*;
+    }
+
+    set_metafunction_name: (inout this, name: std::string_view, args: std::vector<std::string>) = {
+        metafunction_name  = name;
+        metafunction_args  = args;
+        metafunctions_used = args.empty();
+    }
+
+    get_metafunction_name: (this) -> std::string_view = metafunction_name;
+
+    get_argument: (inout this, index: int) -> std::string = {
+        metafunctions_used = true;
+        if (0 <= index < metafunction_args.ssize()) {
+            return metafunction_args[index];
+        }
+        return "";
+    }
+
+    arguments_were_used: (this) -> bool = metafunctions_used;
+
+    protected parse_statement: (
+        inout this,
+        copy source: std::string_view
+    )
+        -> std::unique_ptr<statement_node>
+    = {
+        generated_lines.push_back( std::vector<source_line>() );
+        lines := generated_lines.back()&;
+
+        add_line := :(s: std::string_view) = {
+            _ = lines$*.emplace_back( s, source_line::category::cpp2 );
+        };
+
+        //  First split this string into source_lines
+        //
+        (copy newline_pos := source.find('\n')) 
+        if  source.ssize() > 1
+            && newline_pos != source.npos
+        {
+            while newline_pos != std::string_view::npos
+            {
+                add_line( source.substr(0, newline_pos) );
+                source.remove_prefix( newline_pos+1 );
+                newline_pos = source.find('\n');
+            }
+        }
+
+        if !source.empty() {
+            add_line( source );
+        }
+
+        //  Now lex this source fragment to generate
+        //  a single grammar_map entry, whose .second
+        //  is the vector of tokens
+        _ = generated_lexers.emplace_back( errors* );
+        tokens := generated_lexers.back()&;
+        tokens*.lex( lines*, true );
+
+        assert( std::ssize(tokens* .get_map()) == 1 );
+
+        //  Now parse this single declaration from
+        //  the lexed tokens
+        return parser.parse_one_declaration(
+            tokens*.get_map().begin()*.second,
+            generated_tokens*
+        );
+    }
+
+    position: (virtual this)
+        -> source_position
+    = {
+        return ();
+    }
+
+    require:(
+        this,
+        b: bool,
+        msg: std::string_view
+    )
+    = {
+        if !b {
+            error( msg );
+        }
+    }
+
+    error: (this, msg: std::string_view)
+    = {
+        message := msg as std::string;
+        if !metafunction_name.empty() {
+            message = "while applying @" + metafunction_name + " - " + message;
+        }
+        _ = errors*.emplace_back( position(), message);
+    }
+}
+
+/*
+//-----------------------------------------------------------------------
+//
+//  Type IDs
+//
+//-----------------------------------------------------------------------
+//
+
+//  All type_ids are wrappers around a pointer to node
+//
+type_id: @polymorphic_base @copyable type =
+{
+    this: compiler_services = ();
+
+    n: *type_id_node;
+
+    protected operator=: (
+        out this,
+        n_: *type_id_node,
+        s : compiler_services
+    )
+    = {
+        compiler_services = s;
+        n = n_;
+        assert( n, "a meta::type_id must point to a valid type_id_node, not null" );
+    }
+
+    is_wildcard         : (this) -> bool        = n*.is_wildcard();
+    is_pointer_qualified: (this) -> bool        = n*.is_pointer_qualified();
+    template_args_count : (this) -> int         = n*.template_arguments().ssize();
+    to_string           : (this) -> std::string = n*.to_string();
+
+    position: (override this) -> source_position = n*.position();
+}
+*/
+
+
+//-----------------------------------------------------------------------
+//
+//  Declarations
+//
+//-----------------------------------------------------------------------
+//
+
+//  All declarations are wrappers around a pointer to node
+//
+declaration_base: @polymorphic_base @copyable type =
+{
+    this: compiler_services = ();
+
+    protected n: *declaration_node;
+
+    protected operator=: (
+        out this,
+        n_: *declaration_node,
+        s : compiler_services
+    )
+    = {
+        compiler_services = s;
+        n = n_;
+        assert( n, "a meta::declaration must point to a valid declaration_node, not null" );
+    }
+
+    position: (override this) -> source_position = n*.position();
+
+    print: (this) -> std::string = n*.pretty_print_visualize(0);
+}
+
+
+//-----------------------------------------------------------------------
+//  All declarations
+//
+declaration: @polymorphic_base @copyable type =
+{
+    this: declaration_base = ();
+
+    operator=: (
+        out this,
+        n_: *declaration_node,
+        s : compiler_services
+    )
+    = {
+        declaration_base = (n_, s);
+    }
+
+    is_public        : (this) -> bool = n*.is_public();
+    is_protected     : (this) -> bool = n*.is_protected();
+    is_private       : (this) -> bool = n*.is_private();
+    is_default_access: (this) -> bool = n*.is_default_access();
+
+    default_to_public   : (inout this) = _ = n*.make_public();
+    default_to_protected: (inout this) = _ = n*.make_protected();
+    default_to_private  : (inout this) = _ = n*.make_private();
+
+    make_public      : (inout this) -> bool = n*.make_public();
+    make_protected   : (inout this) -> bool = n*.make_protected();
+    make_private     : (inout this) -> bool = n*.make_private();
+
+    has_name         : (this)                      -> bool = n*.has_name();
+    has_name         : (this, s: std::string_view) -> bool = n*.has_name(s);
+
+    name: (this) -> std::string_view = {
+        if has_name() { return n*.name()*.as_string_view(); }
+        else          { return ""; }
+    }
+
+    has_initializer: (this) -> bool = n*.has_initializer();
+
+    is_global        : (this) -> bool = n*.is_global();
+    is_function      : (this) -> bool = n*.is_function();
+    is_object        : (this) -> bool = n*.is_object();
+    is_base_object   : (this) -> bool = n*.is_base_object();
+    is_member_object : (this) -> bool = n*.is_member_object();
+    is_type          : (this) -> bool = n*.is_type();
+    is_namespace     : (this) -> bool = n*.is_namespace();
+    is_alias         : (this) -> bool = n*.is_alias();
+
+    is_type_alias      : (this) -> bool = n*.is_type_alias();
+    is_namespace_alias : (this) -> bool = n*.is_namespace_alias();
+    is_object_alias    : (this) -> bool = n*.is_object_alias();
+
+    is_function_expression : (this) -> bool = n*.is_function_expression();
+
+    as_function : (this) -> function_declaration = function_declaration(n, this);
+    as_object   : (this) -> object_declaration   = object_declaration(n, this);
+    as_type     : (this) -> type_declaration     = type_declaration(n, this);
+    as_alias    : (this) -> alias_declaration    = alias_declaration(n, this);
+
+    get_parent  : (this) -> declaration          = declaration(n, this);
+
+    parent_is_function   : (this) -> bool = n*.parent_is_function();
+    parent_is_object     : (this) -> bool = n*.parent_is_object();
+    parent_is_type       : (this) -> bool = n*.parent_is_type();
+    parent_is_namespace  : (this) -> bool = n*.parent_is_namespace();
+    parent_is_alias      : (this) -> bool = n*.parent_is_alias();
+    parent_is_polymorphic: (this) -> bool = n*.parent_is_polymorphic();
+
+    mark_for_removal_from_enclosing_type: (inout this) 
+        pre<Type>( parent_is_type() )               // this precondition should be sufficient ...
+    = {
+        test := n*.type_member_mark_for_removal();
+        assert( test );                             // ... to ensure this assert is true
+    }
+}
+
+
+//-----------------------------------------------------------------------
+//  Function declarations
+//
+function_declaration: @copyable type =
+{
+    this: declaration = ();
+
+    operator=: (
+        out this,
+        n_: *declaration_node,
+        s : compiler_services
+    ) =
+    {
+        declaration = (n_, s);
+        assert( n*.is_function() );
+    }
+
+    index_of_parameter_named     : (this, s: std::string_view) -> int  = n*.index_of_parameter_named(s);
+    has_parameter_named          : (this, s: std::string_view) -> bool = n*.has_parameter_named(s);
+    has_in_parameter_named       : (this, s: std::string_view) -> bool = n*.has_in_parameter_named(s);
+    has_out_parameter_named      : (this, s: std::string_view) -> bool = n*.has_out_parameter_named(s);
+    has_move_parameter_named     : (this, s: std::string_view) -> bool = n*.has_move_parameter_named(s);
+
+    has_parameter_with_name_and_pass: (this, s: std::string_view, pass: passing_style) -> bool
+                                                  = n*.has_parameter_with_name_and_pass(s, pass);
+    is_function_with_this        : (this) -> bool = n*.is_function_with_this();
+    is_virtual                   : (this) -> bool = n*.is_virtual_function();
+    is_defaultable               : (this) -> bool = n*.is_defaultable_function();
+    is_constructor               : (this) -> bool = n*.is_constructor();
+    is_default_constructor       : (this) -> bool = n*.is_default_constructor();
+    is_move                      : (this) -> bool = n*.is_move();
+    is_swap                      : (this) -> bool = n*.is_swap();
+    is_constructor_with_that     : (this) -> bool = n*.is_constructor_with_that();
+    is_constructor_with_in_that  : (this) -> bool = n*.is_constructor_with_in_that();
+    is_constructor_with_move_that: (this) -> bool = n*.is_constructor_with_move_that();
+    is_assignment                : (this) -> bool = n*.is_assignment();
+    is_assignment_with_that      : (this) -> bool = n*.is_assignment_with_that();
+    is_assignment_with_in_that   : (this) -> bool = n*.is_assignment_with_in_that();
+    is_assignment_with_move_that : (this) -> bool = n*.is_assignment_with_move_that();
+    is_destructor                : (this) -> bool = n*.is_destructor();
+
+    is_copy_or_move              : (this) -> bool = is_constructor_with_that() || is_assignment_with_that();
+
+    has_declared_return_type     : (this) -> bool = n*.has_declared_return_type();
+    has_bool_return_type         : (this) -> bool = n*.has_bool_return_type();
+    has_non_void_return_type     : (this) -> bool = n*.has_non_void_return_type();
+
+    unnamed_return_type          : (this) -> std::string = n*.unnamed_return_type_to_string();
+
+    is_binary_comparison_function: (this) -> bool = n*.is_binary_comparison_function();
+
+    default_to_virtual           : (inout this) = _ = n*.make_function_virtual();
+
+    make_virtual                 : (inout this) -> bool = n*.make_function_virtual();
+}
+
+
+//-----------------------------------------------------------------------
+//  Object declarations
+//
+object_declaration: @copyable type =
+{
+    this: declaration = ();
+
+    operator=: (
+        out this,
+        n_: *declaration_node,
+        s : compiler_services
+    ) =
+    {
+        declaration = (n_, s);
+        assert( n*.is_object() );
+    }
+
+    is_const         : (this) -> bool = n*.is_const();
+    has_wildcard_type: (this) -> bool = n*.has_wildcard_type();
+
+    type: (this) -> std::string = {
+        ret := n*.object_type();
+        require( !contains(ret, "(*ERROR*)"),
+                 "cannot to_string this type: " + ret);
+        return ret;
+    }
+
+    initializer: (this) -> std::string = {
+        ret := n*.object_initializer();
+        require( !contains(ret, "(*ERROR*)"),
+                 "cannot to_string this initializer: " + ret);
+        return ret;
+    }
+}
+
+
+//-----------------------------------------------------------------------
+//  Type declarations
+//
+type_declaration: @copyable type =
+{
+    this: declaration = ();
+
+    operator=: (
+        out this,
+        n_: *declaration_node,
+        s : compiler_services
+    ) =
+    {
+        declaration = (n_, s);
+        assert( n*.is_type() );
+    }
+
+    reserve_names: (this, name: std::string_view, forward etc...) = 
+    {                           // etc is not declared ':string_view' for compatibility with GCC 10.x
+        for get_members()
+        do  (m) {
+            m.require( !m.has_name( name ),
+                       "in a '(get_metafunction_name())$' type, the name '(name)$' is reserved for use by the '(get_metafunction_name())$' implementation");
+        }
+        if constexpr !CPP2_PACK_EMPTY(etc) {
+            reserve_names( etc... );
+        }
+    }
+
+    is_polymorphic: (this)       -> bool = n*.is_polymorphic();
+    is_final      : (this)       -> bool = n*.is_type_final();
+    make_final    : (inout this) -> bool = n*.make_type_final();
+
+    get_member_functions: (this)
+        -> std::vector<function_declaration>
+    = {
+        ret: std::vector<function_declaration> = ();
+        for n*.get_type_scope_declarations(declaration_node::functions) do (d) {
+            _ = ret.emplace_back( d, this );
+        }
+        return ret;
+    }
+
+    get_member_objects: (this)
+        -> std::vector<object_declaration>
+    = {
+        ret: std::vector<object_declaration> = ();
+        for n*.get_type_scope_declarations(declaration_node::objects) do (d) {
+            _ = ret.emplace_back( d, this );
+        }
+        return ret;
+    }
+
+    get_member_types: (this)
+        -> std::vector<type_declaration>
+    = {
+        ret: std::vector<type_declaration> = ();
+        for n*.get_type_scope_declarations(declaration_node::types) do (d) {
+            _ = ret.emplace_back( d, this );
+        }
+        return ret;
+    }
+
+    get_member_aliases: (this)
+        -> std::vector<alias_declaration>
+    = {
+        ret: std::vector<alias_declaration> = ();
+        for n*.get_type_scope_declarations(declaration_node::aliases) do (d) {
+            _ = ret.emplace_back( d, this );
+        }
+        return ret;
+    }
+
+    get_members: (this)
+        -> std::vector<declaration>
+    = {
+        ret: std::vector<declaration> = ();
+        for n*.get_type_scope_declarations(declaration_node::all) do (d) {
+            _ = ret.emplace_back( d, this );
+        }
+        return ret;
+    }
+
+    query_declared_value_set_functions: (this)
+        -> (
+            out_this_in_that     : bool,
+            out_this_move_that   : bool,
+            inout_this_in_that   : bool,
+            inout_this_move_that : bool
+            )
+    = {
+        declared := n*.find_declared_value_set_functions();
+        out_this_in_that     = declared.out_this_in_that     != nullptr;
+        out_this_move_that   = declared.out_this_move_that   != nullptr;
+        inout_this_in_that   = declared.inout_this_in_that   != nullptr;
+        inout_this_move_that = declared.inout_this_move_that != nullptr;
+    }
+
+    add_member: (inout this, source: std::string_view)
+    = {
+        decl := parse_statement(source);
+        if !decl || !n*.add_type_member(decl) {
+            error( std::string("error attempting to add member:\n") + source );
+        }
+    }
+
+    remove_marked_members: (inout this) = n*.type_remove_marked_members();
+    remove_all_members   : (inout this) = n*.type_remove_all_members();
+
+    disable_member_function_generation: (inout this) = n*.type_disable_member_function_generation();
+}
+
+
+//-----------------------------------------------------------------------
+//  Alias declarations
+//
+alias_declaration: @copyable type =
+{
+    this: declaration = ();
+
+    operator=: (
+        out this,
+        n_: *declaration_node,
+        s : compiler_services
+    ) =
+    {
+        declaration = (n_, s);
+        assert( n*.is_alias() );
+    }
+}
+
+
+//-----------------------------------------------------------------------
+//
+//  Metafunctions - these are hardwired for now until we get to the
+//  step of writing a Cpp2 interpreter to run inside the compiler
+//
+//-----------------------------------------------------------------------
+//
+
+//-----------------------------------------------------------------------
+//  Some common metafunction helpers (metafunctions are just functions,
+//  so they can be factored as usual)
+//
+add_virtual_destructor: (inout t: meta::type_declaration) =
+{
+    t.add_member( "operator=: (virtual move this) = { }");
+}
+
+
+//-----------------------------------------------------------------------
+//
+//      "... an abstract base class defines an interface ..."
+//
+//          -- Stroustrup (The Design and Evolution of C++, 12.3.1)
+//
+//-----------------------------------------------------------------------
+//
+//  interface
+//
+//  an abstract base class having only pure virtual functions
+//
+interface: (inout t: meta::type_declaration) =
+{
+    has_dtor := false;
+
+    for t.get_members() do (inout m)
+    {
+        m.require( !m.is_object(),
+                   "interfaces may not contain data objects");
+        if m.is_function() {
+            mf := m.as_function();
+            mf.require( !mf.is_copy_or_move(),
+                        "interfaces may not copy or move; consider a virtual clone() instead");
+            mf.require( !mf.has_initializer(),
+                        "interface functions must not have a function body; remove the '=' initializer");
+            mf.require( mf.make_public(),
+                        "interface functions must be public");
+            mf.default_to_virtual();
+            has_dtor |= mf.is_destructor();
+        }
+    }
+
+    if !has_dtor {
+        t.add_virtual_destructor();
+    }
+}
+
+
+//-----------------------------------------------------------------------
+//
+//     "C.35: A base class destructor should be either public and
+//      virtual, or protected and non-virtual."
+//
+//     "[C.43] ... a base class should not be copyable, and so does not
+//      necessarily need a default constructor."
+//
+//          -- Stroustrup, Sutter, et al. (C++ Core Guidelines)
+//
+//-----------------------------------------------------------------------
+//
+//  polymorphic_base
+//
+//  A pure polymorphic base type that is not copyable, and whose
+//  destructor is either public and virtual or protected and nonvirtual.
+//
+//  Unlike an interface, it can have nonpublic and nonvirtual functions.
+//
+polymorphic_base: (inout t: meta::type_declaration) =
+{
+    has_dtor := false;
+
+    for t.get_member_functions() do (inout mf)
+    {
+        if mf.is_default_access() {
+            mf.default_to_public();
+        }
+        mf.require( !mf.is_copy_or_move(),
+                    "polymorphic base types may not copy or move; consider a virtual clone() instead");
+        if mf.is_destructor() {
+            has_dtor = true;
+            mf.require( ((mf.is_public() || mf.is_default_access()) && mf.is_virtual())
+                        || (mf.is_protected() && !mf.is_virtual()),
+                        "a polymorphic base type destructor must be public and virtual, or protected and nonvirtual");
+        }
+    }
+
+    if !has_dtor {
+        t.add_virtual_destructor();
+    }
+}
+
+
+//-----------------------------------------------------------------------
+//
+//     "... A totally ordered type ... requires operator<=> that
+//      returns std::strong_ordering. If the function is not
+//      user-written, a lexicographical memberwise implementation
+//      is generated by default..."
+//
+//          -- P0707R4, section 3
+//
+//      Note: This feature derived from Cpp2 was already adopted
+//            into Standard C++ via paper P0515, so most of the
+//            heavy lifting is done by the Cpp1 C++20/23 compiler,
+//            including the memberwise default semantics
+//            (In contrast, cppfront has to do the work itself for
+//            default memberwise semantics for operator= assignment
+//            as those aren't yet part of Standard C++)
+//
+//-----------------------------------------------------------------------
+//
+
+ordered_impl: (
+    inout t:  meta::type_declaration,
+    ordering: std::string_view  // must be "strong_ordering" etc.
+) =
+{
+    has_spaceship := false;
+
+    for t.get_member_functions() do (inout mf)
+    {
+        if mf.has_name("operator<=>") {
+            has_spaceship = true;
+            return_name := mf.unnamed_return_type();
+            if return_name.find(ordering) == return_name.npos
+            {
+                mf.error( "operator<=> must return std::" + ordering as std::string );
+            }
+        }
+    }
+
+    if !has_spaceship {
+        t.add_member( "operator<=>: (this, that) -> std::" + (ordering as std::string) + ";" );
+    }
+}
+
+//-----------------------------------------------------------------------
+//  ordered - a totally ordered type
+//
+//  Note: the ordering that should be encouraged as default gets the nice name
+//
+ordered: (inout t: meta::type_declaration) =
+{
+    ordered_impl( t, "strong_ordering" );
+}
+
+//-----------------------------------------------------------------------
+//  weakly_ordered - a weakly ordered type
+//
+weakly_ordered: (inout t: meta::type_declaration) =
+{
+    ordered_impl( t, "weak_ordering" );
+}
+
+//-----------------------------------------------------------------------
+//  partially_ordered - a partially ordered type
+//
+partially_ordered: (inout t: meta::type_declaration) =
+{
+    ordered_impl( t, "partial_ordering" );
+}
+
+
+//-----------------------------------------------------------------------
+//
+//     "A value is ... a regular type. It must have all public
+//      default construction, copy/move construction/assignment,
+//      and destruction, all of which are generated by default
+//      if not user-written; and it must not have any protected
+//      or virtual functions (including the destructor)."
+//
+//          -- P0707R4, section 3
+//
+//-----------------------------------------------------------------------
+//
+//  copyable
+//
+//  A type with (copy and move) x (construction and assignment)
+//
+copyable: (inout t: meta::type_declaration) =
+{
+    //  If the user explicitly wrote any of the copy/move functions,
+    //  they must also have written the most general one - we can't
+    //  assume we can safely generate it for them since they've opted
+    //  into customized semantics
+    smfs := t.query_declared_value_set_functions();
+    if  !smfs.out_this_in_that
+        && (
+            smfs.out_this_move_that
+            || smfs.inout_this_in_that
+            || smfs.inout_this_move_that
+        )
+    {
+        t.error( "this type is partially copyable/movable - when you provide any of the more-specific operator= signatures, you must also provide the one with the general signature (out this, that); alternatively, consider removing all the operator= functions and let them all be generated for you with default memberwise semantics" );
+    }
+    else if !smfs.out_this_in_that {
+        t.add_member( "operator=: (out this, that) = { }");
+    }
+}
+
+//-----------------------------------------------------------------------
+//
+//  basic_value
+//
+//  A regular type: copyable, plus has public default construction
+//  and no protected or virtual functions
+//
+basic_value: (inout t: meta::type_declaration) =
+{
+    t.copyable();
+
+    has_default_ctor := false;
+    for t.get_member_functions() do (inout mf) {
+        has_default_ctor |= mf.is_default_constructor();
+        mf.require( !mf.is_protected() && !mf.is_virtual(),
+                    "a value type may not have a protected or virtual function");
+        mf.require( !mf.is_destructor() || mf.is_public() || mf.is_default_access(),
+                    "a value type may not have a non-public destructor");
+    }
+
+    if !has_default_ctor {
+        t.add_member( "operator=: (out this) = { }");
+    }
+}
+
+//-----------------------------------------------------------------------
+//
+//     "A 'value' is a totally ordered basic_value..."
+// 
+//          -- P0707R4, section 3
+//
+//  value - a value type that is totally ordered
+//
+//  Note: the ordering that should be encouraged as default gets the nice name
+//
+value: (inout t: meta::type_declaration) =
+{
+    t.ordered();
+    t.basic_value();
+}
+
+weakly_ordered_value: (inout t: meta::type_declaration) =
+{
+    t.weakly_ordered();
+    t.basic_value();
+}
+
+partially_ordered_value: (inout t: meta::type_declaration) =
+{
+    t.partially_ordered();
+    t.basic_value();
+}
+
+
+//-----------------------------------------------------------------------
+//
+//     "By definition, a `struct` is a `class` in which members
+//      are by default `public`; that is,
+//
+//      	struct s { ...
+//
+//      is simply shorthand for
+//
+//          class s { public: ...
+//
+//      ... Which style you use depends on circumstances and taste.
+//      I usually prefer to use `struct` for classes that have all
+//      data `public`."
+//
+//          -- Stroustrup (The C++ Programming Language, 3rd ed., p. 234)
+//
+//-----------------------------------------------------------------------
+//
+//  struct
+//
+//  a type with only public bases, objects, and functions,
+//  no virtual functions, and no user-defined constructors
+//  (i.e., no invariants) or assignment or destructors.
+//
+struct: (inout t: meta::type_declaration) =
+{
+    for t.get_members() do (inout m)
+    {
+        m.require( m.make_public(),
+                   "all struct members must be public");
+        if m.is_function() {
+            mf := m.as_function();
+            t.require( !mf.is_virtual(),
+                       "a struct may not have a virtual function");
+            t.require( !mf.has_name("operator="),
+                       "a struct may not have a user-defined operator=");
+        }
+    }
+    t.disable_member_function_generation();
+}
+
+
+//-----------------------------------------------------------------------
+//
+//     "C enumerations constitute a curiously half-baked concept. ...
+//      the cleanest way out was to deem each enumeration a separate type."
+//
+//          -- Stroustrup (The Design and Evolution of C++, 11.7)
+//
+//     "An enumeration is a distinct type ... with named constants"
+//
+//          -- ISO C++ Standard
+//
+//-----------------------------------------------------------------------
+//
+//  basic_enum
+//
+//  a type together with named constants that are its possible values
+//
+value_member_info: @struct type = {
+    name  : std::string;
+    type  : std::string;
+    value : std::string;
+}
+
+basic_enum: (
+    inout t : meta::type_declaration,
+    nextval ,
+    bitwise : bool
+    )
+= {
+    enumerators     : std::vector<value_member_info> = ();
+    min_value       : i64                            = ();
+    max_value       : i64                            = ();
+    underlying_type : std::string;
+
+    t.reserve_names( "operator=", "operator<=>" );
+    if bitwise {
+        t.reserve_names( "has", "set", "clear", "to_string", "get_raw_value", "none" );
+    }
+
+    //  1. Gather: The names of all the user-written members, and find/compute the type
+
+    underlying_type = t.get_argument(0);    // use the first template argument, if there was one
+
+    found_non_numeric := false;
+
+    (copy value: std::string = "-1")
+    for  t.get_members()
+    do   (m)
+    if   m.is_member_object()
+    {
+        m.require( m.is_public() || m.is_default_access(),
+                    "an enumerator cannot be protected or private");
+
+        mo := m.as_object();
+        if !mo.has_wildcard_type() {
+            mo.error( "an explicit underlying type should be specified as a template argument to the metafunction - try 'enum<u16>' or 'flag_enum<u64>'");
+        }
+
+        init := mo.initializer();
+
+        is_default_or_numeric := is_empty_or_a_decimal_number(init);
+        found_non_numeric |= !init.empty() && !is_default_or_numeric;
+        m.require( !is_default_or_numeric || !found_non_numeric || mo.has_name("none"),
+            "(mo.name())$: enumerators with non-numeric values must come after all default and numeric values");
+
+        nextval( value, init );
+
+        v := std::strtoll(value[0]&, nullptr, 10);  // for non-numeric values we'll just get 0 which is okay for now
+        if v < min_value {
+            min_value = v;
+        }
+        if v > max_value {
+            max_value = v;
+        }
+
+        //  Adding local variable 'e' to work around a Clang warning
+        e: value_member_info = ( mo.name() as std::string, "", value );
+        enumerators.push_back( e );
+
+        mo.mark_for_removal_from_enclosing_type();
+    }
+
+    //  Compute the default underlying type, if it wasn't explicitly specified
+    if underlying_type == "" 
+    {
+        t.require( !found_non_numeric,
+            "if you write an enumerator with a non-numeric-literal value, you must specify the enumeration's underlying type");
+
+        if !bitwise {
+            if min_value >= std::numeric_limits<i8>::min() && max_value <= std::numeric_limits<i8>::max() {
+                underlying_type = "i8";
+            }
+            else if min_value >= std::numeric_limits<i16>::min() && max_value <= std::numeric_limits<i16>::max() {
+                underlying_type = "i16";
+            }
+            else if min_value >= std::numeric_limits<i32>::min() && max_value <= std::numeric_limits<i32>::max() {
+                underlying_type = "i32";
+            }
+            else if min_value >= std::numeric_limits<i64>::min() && max_value <= std::numeric_limits<i64>::max() {
+                underlying_type = "i64";
+            }
+            else {
+                t.error( "values are outside the range representable by the largest supported underlying signed type (i64)" );
+            }
+        }
+        else {
+            umax := max_value * 2 as u64;
+            if umax <= std::numeric_limits<u8>::max() {
+                underlying_type = "u8";
+            }
+            else if umax <= std::numeric_limits<u16>::max() {
+                underlying_type = "u16";
+            }
+            else if umax <= std::numeric_limits<u32>::max() {
+                underlying_type = "u32";
+            }
+            else {
+                underlying_type = "u64";
+            }
+        }
+    }
+
+
+    //  2. Replace: Erase the contents and replace with modified contents
+    //
+    //  Note that most values and functions are declared as '==' compile-time values, i.e. Cpp1 'constexpr'
+
+    t.remove_marked_members();
+
+    //  Generate all the common material: value and common functions
+    t.add_member( "    _value            : (underlying_type)$;");
+    t.add_member( "    private operator= : (implicit out this, _val: i64) == _value = cpp2::unsafe_narrow<(underlying_type)$>(_val);");
+    t.add_member( "    get_raw_value     : (this) -> (underlying_type)$ == _value;");
+    t.add_member( "    operator=         : (out this, that) == { }");
+    t.add_member( "    operator<=>       : (this, that) -> std::strong_ordering;");
+
+    //  Generate the bitwise operations and 'none' value, if appropriate
+    if bitwise {
+        e: value_member_info = ( "none", "", "0");
+        enumerators.push_back( e );
+
+        t.add_member( "    operator|=: ( inout this, that )                 == _value |= that._value;");
+        t.add_member( "    operator&=: ( inout this, that )                 == _value &= that._value;");
+        t.add_member( "    operator^=: ( inout this, that )                 == _value ^= that._value;");
+        t.add_member( "    operator| : (       this, that ) -> (t.name())$  == _value |  that._value;");
+        t.add_member( "    operator& : (       this, that ) -> (t.name())$  == _value &  that._value;");
+        t.add_member( "    operator^ : (       this, that ) -> (t.name())$  == _value ^  that._value;");
+        t.add_member( "    has       : ( inout this, that ) -> bool         == _value &  that._value;");
+        t.add_member( "    set       : ( inout this, that )                 == _value |= that._value;");
+        t.add_member( "    clear     : ( inout this, that )                 == _value &= that._value~;");
+    }
+
+    //  Add the enumerators
+    for enumerators do (e) {
+        t.add_member( "    (e.name)$ : (t.name())$ == (e.value)$;");
+    }
+
+    //  Provide a 'to_string' function to print enumerator name(s)
+    (copy to_string: std::string = "    to_string: (this) -> std::string = { \n")
+    {
+        if bitwise {
+            to_string += "    _ret   : std::string = \"(\";\n";
+            to_string += "    _comma : std::string = ();\n";
+            to_string += "    if this == none { return \"(none)\"; }\n";
+        }
+
+        for  enumerators  
+        do   (e) {
+            if e.name != "_" {  // ignore unnamed values
+                if bitwise {
+                    if e.name != "none" {
+                        to_string += "    if (this & (e.name)$) == (e.name)$ { _ret += _comma + \"(e.name)$\"; _comma = \", \"; }\n";
+                    }
+                }
+                else {
+                    to_string += "    if this == (e.name)$ { return \"(e.name)$\"; }\n";
+                }
+            }
+        }
+
+        if bitwise {
+            to_string += "    return _ret+\")\";\n}\n";
+        }
+        else {
+            to_string += "    return \"invalid (t.name())$ value\";\n}\n";
+        }
+
+        t.add_member( to_string );
+    }
+}
+
+
+//-----------------------------------------------------------------------
+//
+//    "An enum[...] is a totally ordered value type that stores a
+//     value of its enumerators's type, and otherwise has only public
+//     member variables of its enumerator's type, all of which are
+//     naturally scoped because they are members of a type."
+// 
+//          -- P0707R4, section 3
+//
+enum: (inout t: meta::type_declaration) =
+{
+    //  Let basic_enum do its thing, with an incrementing value generator
+    t.basic_enum(
+        :(inout value: std::string, specified_value: std::string) = {
+            if !specified_value.empty() {
+                value = specified_value;
+            } else {
+                v := std::strtoll(value[0]&, nullptr, 10);
+                value = (v + 1) as std::string;
+            }
+        },
+        false   // disable bitwise operations
+    );
+}
+
+
+//-----------------------------------------------------------------------
+//
+//     "flag_enum expresses an enumeration that stores values 
+//      corresponding to bitwise-or'd enumerators. The enumerators must
+//      be powers of two, and are automatically generated [...] A none
+//      value is provided [...] Operators | and & are provided to
+//      combine and extract values."
+// 
+//          -- P0707R4, section 3
+//
+flag_enum: (inout t: meta::type_declaration) =
+{
+    //  Let basic_enum do its thing, with a power-of-two value generator
+    t.basic_enum(
+        :(inout value: std::string, specified_value: std::string) = {
+            if !specified_value.empty() {
+                value = specified_value;
+            } else {
+                v := std::strtoll(value[0]&, nullptr, 10);
+                if v < 1 {
+                    value = "1";
+                }
+                else {
+                    value = (v * 2) as std::string;
+                }
+            }
+        },
+        true    // enable bitwise operations
+    );
+}
+
+
+//-----------------------------------------------------------------------
+//
+//     "As with void*, programmers should know that unions [...] are
+//      inherently dangerous, should be avoided wherever possible,
+//      and should be handled with special care when actually needed."
+//
+//          -- Stroustrup (The Design and Evolution of C++, 14.3.4.1)
+//
+//     "C++17 needs a type-safe union... The implications of the 
+//      consensus `variant` design are well understood and have been 
+//      explored over several LEWG discussions, over a thousand emails, 
+//      a joint LEWG/EWG session, and not to mention 12 years of 
+//      experience with Boost and other libraries."
+//
+//          -- Axel Naumann, in P0088 (wg21.link/p0088),
+//             the adopted proposal for C++17 std::variant
+//
+//-----------------------------------------------------------------------
+//
+//  union
+// 
+//  a type that contains exactly one of a fixed set of values at a time
+// 
+
+union: (inout t : meta::type_declaration)
+= {
+    alternatives : std::vector<value_member_info> = ();
+
+    //  1. Gather: All the user-written members, and find/compute the max size
+
+    (copy value := 0)
+    for   t.get_members()
+    next  value++
+    do    (m)
+    if    m.is_member_object()
+    {
+        m.require( m.is_public() || m.is_default_access(),
+                   "a union alternative cannot be protected or private");
+
+        m.require( !m.name().starts_with("is_")
+                   && !m.name().starts_with("set_"),
+                   "a union alternative's name cannot start with 'is_' or 'set_' - that could cause user confusion with the 'is_alternative' and 'set_alternative' generated functions");
+
+        mo := m.as_object();
+        mo.require( mo.initializer().empty(),
+                    "a union alternative cannot have an initializer");
+
+        //  Adding local variable 'e' to work around a Clang warning
+        e: value_member_info = ( mo.name() as std::string, mo.type(), value as std::string );
+        alternatives.push_back( e );
+
+        mo.mark_for_removal_from_enclosing_type();
+    }
+
+    discriminator_type: std::string = ();
+    if alternatives.ssize() < std::numeric_limits<i8>::max() {
+        discriminator_type = "i8";
+    }
+    else if alternatives.ssize() < std::numeric_limits<i16>::max() {
+        discriminator_type = "i16";
+    }
+    else if alternatives.ssize() < std::numeric_limits<i32>::max() {
+        discriminator_type = "i32";
+    }
+    else {
+        discriminator_type = "i64";
+    }
+
+
+    //  2. Replace: Erase the contents and replace with modified contents
+
+    t.remove_marked_members();
+
+    //  Provide storage
+    (copy storage: std::string = "    _storage: std::aligned_storage_t<cpp2::max( ")
+    {
+        (copy comma: std::string = "")
+        for  alternatives  
+        next comma = ", "  
+        do   (e) {
+            storage += comma + "sizeof((e.type)$)";
+        }
+
+        storage += " )> = ();\n";
+        t.add_member( storage );
+    }
+
+    //  Provide discriminator
+    t.add_member( "    _discriminator: (discriminator_type)$ = -1;\n");
+
+    //  Add the alternatives: is_alternative, get_alternative, and set_alternative
+    for alternatives 
+    do  (a)
+    {
+        t.add_member( "    is_(a.name)$: (this) -> bool = _discriminator == (a.value)$;\n");
+
+        t.add_member( "    (a.name)$: (this) -> forward (a.type)$ pre(is_(a.name)$()) = reinterpret_cast<* const (a.type)$>(_storage&)*;\n");
+
+        t.add_member( "    (a.name)$: (inout this) -> forward (a.type)$ pre(is_(a.name)$()) = reinterpret_cast<*(a.type)$>(_storage&)*;\n");
+
+        t.add_member( "    set_(a.name)$: (inout this, _value: (a.type)$) = { if !is_(a.name)$() { _destroy(); std::construct_at( reinterpret_cast<*(a.type)$>(_storage&), _value); } else { reinterpret_cast<*(a.type)$>(_storage&)* = _value; } _discriminator = (a.value)$; }\n");
+
+        t.add_member( "    set_(a.name)$: (inout this, forward _args...: _) = { if !is_(a.name)$() { _destroy(); std::construct_at( reinterpret_cast<*(a.type)$>(_storage&), _args...); } else { reinterpret_cast<*(a.type)$>(_storage&)* = :(a.type)$ = (_args...); } _discriminator = (a.value)$; }\n");
+    }
+
+    //  Add destroy
+    (copy destroy: std::string = "    private _destroy: (inout this) = {\n")
+    {
+        for  alternatives
+        do   (a) {
+            destroy += "        if _discriminator == (a.value)$ { std::destroy_at( reinterpret_cast<*(a.type)$>(_storage&) ); }\n";
+        }
+
+        destroy += "        _discriminator = -1;\n";
+        destroy += "    }\n";
+        t.add_member( destroy );
+    }
+
+    //  Add the destructor
+    t.add_member( "    operator=: (move this) = { _destroy(); }" );
+
+    //  Add default constructor
+    t.add_member( "    operator=: (out this) = { }" );
+
+    //  Add copy/move construction and assignment
+    (copy value_set: std::string = "")
+    {
+        for  alternatives
+        do   (a) {
+            value_set += "        if that.is_(a.name)$() { set_(a.name)$( that.(a.name)$() ); }\n";
+        }
+        value_set += "    }\n";
+
+        t.add_member( std::string("    operator=: (out this, that) = {\n")
+                    + "        _storage = ();\n"
+                    + "        _discriminator = -1;\n"
+                    + value_set
+                    );
+        t.add_member( std::string("    operator=: (inout this, that) = {\n")
+                    + "        _storage = _;\n"
+                    + "        _discriminator = _;\n"
+                    + value_set
+                    );
+    }
+}
+
+
+//-----------------------------------------------------------------------
+//
+//  print - output a pretty-printed visualization of t
+//
+print: (t: meta::type_declaration) =
+{
+    std::cout << t.print() << "\n";
+}
+
+
+//-----------------------------------------------------------------------
+//
+//  apply_metafunctions
+//
+apply_metafunctions: (
+    inout n     : declaration_node,
+    inout rtype : type_declaration,
+    error
+    )
+    -> bool
+= {
+    assert( n.is_type() );
+
+    //  Check for _names reserved for the metafunction implementation
+    for  rtype.get_members()
+    do   (m)
+    {
+        m.require( !m.name().starts_with("_") || m.name().ssize() > 1,
+                    "a type that applies a metafunction cannot have a body that declares a name that starts with '_' - those names are reserved for the metafunction implementation");
+    }
+
+    //  For each metafunction, apply it
+    for n.metafunctions
+    do  (meta)
+    {
+        //  Convert the name and any template arguments to strings
+        //  and record that in rtype
+        name := meta*.to_string();
+        name = name.substr(0, name.find('<'));
+
+        args: std::vector<std::string> = ();
+        for meta*.template_arguments()
+        do  (arg) 
+            args.push_back( arg.to_string() );
+
+        rtype.set_metafunction_name( name, args );
+
+        //  Dispatch
+        //
+        if name == "interface" {
+            interface( rtype );
+        }
+        else if name == "polymorphic_base" {
+            polymorphic_base( rtype );
+        }
+        else if name == "ordered" {
+            ordered( rtype );
+        }
+        else if name == "weakly_ordered" {
+            weakly_ordered( rtype );
+        }
+        else if name == "partially_ordered" {
+            partially_ordered( rtype );
+        }
+        else if name == "copyable" {
+            copyable( rtype );
+        }
+        else if name == "basic_value" {
+            basic_value( rtype );
+        }
+        else if name == "value" {
+            value( rtype );
+        }
+        else if name == "weakly_ordered_value" {
+            weakly_ordered_value( rtype );
+        }
+        else if name == "partially_ordered_value" {
+            partially_ordered_value( rtype );
+        }
+        else if name == "struct" {
+            cpp2_struct( rtype );
+        }
+        else if name == "enum" {
+            cpp2_enum( rtype );
+        }
+        else if name == "flag_enum" {
+            flag_enum( rtype );
+        }
+        else if name == "union" {
+            cpp2_union( rtype );
+        }
+        else if name == "print" {
+            print( rtype );
+        }
+        else {
+            error( "unrecognized metafunction name: " + name );
+            error( "(temporary alpha limitation) currently the supported names are: interface, polymorphic_base, ordered, weakly_ordered, partially_ordered, copyable, basic_value, value, weakly_ordered_value, partially_ordered_value, struct, enum, flag_enum, union, print" );
+            return false;
+        }
+
+        if (
+            !args.empty() 
+            && !rtype.arguments_were_used()
+            ) 
+        {
+            error( name + " did not use its template arguments - did you mean to write '" + name + " <" + args[0] + "> type' (with the spaces)?");
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+}
+
+}
