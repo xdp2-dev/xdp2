@@ -1,0 +1,6 @@
+# List of template files (.template.c files). Use '#' to comment.
+# Each line is expected to contain the file name without the '.template.c'
+# extension.
+c_def
+xdp_def
+common_parser
