@@ -1,6 +1,6 @@
 TOPTARGETS := all clean install
 
-SUBDIRS = dpdk kmod
+SUBDIRS = cls
 
 $(TOPTARGETS) : $(SUBDIRS)
 
