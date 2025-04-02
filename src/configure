@@ -1,0 +1,514 @@
+#!/bin/bash
+# configure based on on from iproute2
+#
+# This is not an autoconf generated configure
+#
+INCLUDE=${1:-"$PWD/include"}
+
+# Output file which is input to Makefile
+CONFIG=config.mk
+# Make a temp directory in build tree.
+TMPDIR=$(mktemp -d config.XXXXXX)
+trap 'status=$?; rm -rf $TMPDIR; exit $status' EXIT HUP INT QUIT TERM
+
+PYTHON_VER=3
+check_prog()
+{
+    echo -n "$2"
+    command -v $1 >/dev/null 2>&1 && (echo "$3:=y" >> $CONFIG; echo "yes") ||
+					(echo "no"; return 1)
+}
+
+check_libpcap()
+{
+	cat >$TMPDIR/pcaptest.c <<EOF
+#include <pcap.h>
+int main(int argc, char **argv)
+{
+	pcap_t *p;
+	char errbuf[PCAP_ERRBUF_SIZE];
+
+	p = pcap_open_offline("foo", &errbuf[0]);
+	pcap_close(p);
+	return (0);
+}
+EOF
+	$CC_GCC -o $TMPDIR/pcaptest $TMPDIR/pcaptest.c 	\
+				-lpcap > /dev/null 2>$TMPDIR/pcaplog
+
+	case $? in
+		0)	;;
+		*)	echo libpcap missing or broken\! 1>&2
+			echo ERROR LOG:
+			cat $TMPDIR/pcaplog
+			exit 1
+			;;
+	esac
+	rm -f $TMPDIR/pcaptest.c $TMPDIR/pcaptest
+}
+
+check_boostwave()
+{
+	cat >$TMPDIR/wavetest.cpp <<EOF
+#include <boost/wave.hpp>
+
+struct test : boost::wave::context_policies::default_preprocessing_hooks {
+};
+
+int main(int argc, char **argv)
+{
+	return (0);
+}
+EOF
+        $HOST_CXX -o $TMPDIR/wavetest $TMPDIR/wavetest.cpp 		\
+						-lboost_system -lboost_wave
+	case $? in
+		0)	;;
+		*)	echo Boost.Wave missing or broken\! 1>&2
+			exit 1
+			;;
+	esac
+	rm -f $TMPDIR/wavetest.cpp $TMPDIR/wavetest
+}
+
+check_boostthread()
+{
+	cat >$TMPDIR/threadtest.cpp <<EOF
+#include <boost/thread.hpp>
+
+int main(int argc, char **argv)
+{
+	{
+		boost::mutex m;
+	}
+	return (0);
+}
+EOF
+	$HOST_CXX -o $TMPDIR/threadtest $TMPDIR/threadtest.cpp		\
+			-lboost_thread   -lboost_system >/dev/null 2>&1
+	case $? in
+		0)	;;
+		*)	echo Boost.Thread missing or broken\! 1>&2
+			exit 1
+			;;
+	esac
+	rm -f $TMPDIR/threadtest.cpp $TMPDIR/threadtest
+}
+
+check_boostsystem()
+{
+	cat >$TMPDIR/systemtest.cpp <<EOF
+#include <boost/system/error_code.hpp>
+
+int main(int argc, char **argv)
+{
+	{
+		boost::system::error_code ec;
+	}
+	return (0);
+}
+EOF
+	$HOST_CXX -o $TMPDIR/systemtest $TMPDIR/systemtest.cpp		\
+					-lboost_system > /dev/null 2>&1
+	case $? in
+		0)	;;
+		*)	echo Boost.System missing or broken\! 1>&2
+			exit 1
+			;;
+	esac
+	rm -f $TMPDIR/systemtest.cpp $TMPDIR/systemtest
+}
+
+check_boostfilesystem()
+{
+	cat >$TMPDIR/filesystemtest.cpp <<EOF
+#include <boost/filesystem/path.hpp>
+
+int main(int argc, char **argv)
+{
+	{
+		boost::filesystem::path p;
+	}
+	return (0);
+}
+EOF
+	$HOST_CXX -o $TMPDIR/filesystemtest $TMPDIR/filesystemtest.cpp	\
+			-lboost_system -lboost_filesystem > /dev/null 2>&1
+	case $? in
+		0)	;;
+		*)	echo Boost.Filesystem missing or broken\! 1>&2
+			exit 1
+			;;
+	esac
+	rm -f $TMPDIR/filesystemtest.cpp $TMPDIR/filesystemtest
+}
+
+check_clang_lib()
+{
+	cat >$TMPDIR/clang_lib.cpp <<EOF
+#include <clang/Frontend/CompilerInstance.h>
+#include "clang/Frontend/FrontendActions.h"
+#include "clang/Tooling/CommonOptionsParser.h"
+#include "clang/Tooling/Tooling.h"
+#include "llvm/Support/CommandLine.h"
+#include "clang/Lex/PreprocessorOptions.h"
+
+static llvm::cl::OptionCategory MyToolCategory("my-tool options");
+
+int main(int argc, const char **argv)
+{
+  llvm::Expected<clang::tooling::CommonOptionsParser> OptionsParser = clang::tooling::CommonOptionsParser::create(argc, argv, MyToolCategory);
+return 0;
+}
+EOF
+	$HOST_CXX -o $TMPDIR/clang_lib $TMPDIR/clang_lib.cpp	\
+			 `$HOST_LLVM_CONFIG --ldflags --cxxflags` -lclang -lLLVM -lclang-cpp > /dev/null 2>&1
+	case $? in
+		0)	;;
+		*)	echo Clang library missing or broken\! 1>&2
+			exit 1
+			;;
+	esac
+	rm -f $TMPDIR/clang_lib.cpp $TMPDIR/clang
+}
+
+check_python()
+{
+	cat >$TMPDIR/check_python.cpp <<EOF
+#include <Python.h>
+
+int main(int argc, char **argv)
+{
+	return (0);
+}
+EOF
+        $HOST_CXX -o $TMPDIR/check_python $TMPDIR/check_python.cpp	\
+			`$PKG_CONFIG --cflags --libs python$PYTHON_VER-embed`
+	case $? in
+		0)	;;
+		*)	echo Python missing or broken\! 1>&2
+			exit 1
+			;;
+	esac
+	rm -f $TMPDIR/check_python.cpp $TMPDIR/check_python
+}
+
+check_cross_compiler_environment()
+{
+	if [ ! -d $DEF_CC_ENV_LOC ]; then
+		echo "$DEF_CC_ENV_LOC is not found!"
+		exit -1
+	fi
+
+	if [ ! -d $SYSROOT_LOC ]; then
+		echo "$SYSROOT_LOC is not found!"
+		exit -1
+	fi
+
+	if [ ! -d $CC_ENV_TOOLCHAIN ]; then
+		echo "$CC_ENV_TOOLCHAIN is not found!"
+		exit -1
+	fi
+}
+
+quiet_config()
+{
+	cat <<EOF
+# user can control verbosity similar to kernel builds (e.g., V=1)
+ifeq ("\$(origin V)", "command line")
+	VERBOSE = \$(V)
+endif
+ifndef VERBOSE
+	VERBOSE = 0
+endif
+ifeq (\$(VERBOSE),1)
+	Q =
+else
+	Q = @
+endif
+
+ifeq (\$(VERBOSE), 0)
+	QUIET_EMBED    = @echo '    EMBED    '\$@;
+	QUIET_CC       = @echo '    CC       '\$@;
+	QUIET_CXX      = @echo '    CXX      '\$@;
+	QUIET_AR       = @echo '    AR       '\$@;
+	QUIET_ASM      = @echo '    ASM      '\$@;
+	QUIET_XDP2    = @echo '    XDP2    '\$@;
+	QUIET_LINK     = @echo '    LINK     '\$@;
+	QUIET_INSTALL  = @echo '    INSTALL  '\$(TARGETS);
+endif
+EOF
+}
+
+usage_platforms()
+{
+	echo "Usage $0 [--platform { $1 } ] [ <platform_paramters> ]"
+}
+
+PLATFORMS=($(ls ../platforms))
+
+PLATFORM="default"
+
+if [ "$1" == "--platform" ]; then
+	PLATFORM=$2
+	PLATFORM_TEXT=$2
+	shift 2
+fi
+
+for i in ${PLATFORMS[@]}; do
+	if [ "$PLATFORM" == "$i" ]; then
+		FOUND_PLAT="true"
+	fi
+done
+
+if [ "$FOUND_PLAT" != "true" ]; then
+	usage_platforms "${PLATFORMS[*]}"
+	exit
+fi
+
+usage()
+{
+        echo -n "Usage: $0"
+	if [ -n "$PLATFORM_TEXT" ]; then
+		echo -n " --platform $PLATFORM_TEXT"
+	fi
+
+        echo " [--python-ver <version>]"
+	echo " [--pkg-config-path <path>] [--ccarch <arch>]"
+	echo " [--arch <arch>] [--installdir <dir>]"
+        echo " [--compiler <compiler>] [--build-opt-parser]"
+        echo " [--llvm-config <llvm-config>]"
+
+	platform_usage
+
+        exit 1
+}
+
+source ../platforms/$PLATFORM/src/configure
+
+init_platform
+
+PROGNAME=$0
+COMPILER="gcc"
+
+while [ -n "$1" ]; do
+	case $1 in
+		"--python-ver") PYTHON_VER=$2; shift;;
+		"--pkg-config-path") MY_PKG_CONFIG_PATH=$2; shift;;
+		"--ccarch") TARGET_ARCH=$2; shift;;
+		"--arch") ARCH=$2; shift;;
+		"--installdir") INSTALLDIR=$2; shift;;
+		"--installtarname") INSTALLTARNAME=$2; shift;;
+		"--compiler") COMPILER=$2; shift;;
+		"--llvm-config") HOST_LLVM_CONFIG=$2; shift;;
+		"--build-opt-parser") BUILD_OPT_PARSER="y";;
+		*) parse_platform_opts $1;;
+	esac
+	shift
+done
+
+if [ -n "$MY_PKG_CONFIG_PATH" ]; then
+	if [ -n "$PKG_CONFIG_PATH" ]; then
+		export PKG_CONFIG_PATH="$MY_PKG_CONFIG_PATH:$PKG_CONFIG_PATH"
+	else
+		export PKG_CONFIG_PATH="$MY_PKG_CONFIG_PATH"
+	fi
+fi
+
+echo "# Generated config based on" $INCLUDE >$CONFIG
+echo "ifneq (\$(TOP_LEVEL_MAKE),y)" >> $CONFIG
+quiet_config >> $CONFIG
+
+echo "PYTHON_VER:=$PYTHON_VER" >> $CONFIG
+if [ -n "$PKG_CONFIG_PATH" ]; then
+	echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $CONFIG
+	echo "PATH_ARG=\"--with-path=$PKG_CONFIG_PATH\"" >> $CONFIG
+else
+	echo "PATH_ARG=\"\"" >> $CONFIG
+fi
+
+echo -n 'CFLAGS_PYTHON=`$(PKG_CONFIG) $(PATH_ARG)' >> $CONFIG
+echo ' --cflags python$(PYTHON_VER)-embed`' >> $CONFIG
+echo -n 'LDFLAGS_PYTHON=`$(PKG_CONFIG) $(PATH_ARG) --libs' >> $CONFIG
+echo ' python$(PYTHON_VER)-embed`' >> $CONFIG
+echo 'CAT=cat' >> $CONFIG
+
+# Set up architecture variables
+LLVM_CONFIG="llvm-config"
+CC_GCC="gcc"
+if [ "$COMPILER" == "clang" ]; then
+	CC_GCC="clang"
+fi
+CC_CXX="g++"
+CC_AR="ar"
+CFLAGS_N=""
+LIBS_N=""
+LIBS_NL=""
+
+if [ -z "$ARCH" ]; then
+	# Architecture was not set from command line, try to determine
+
+	if [ -n "$TARGET_ARCH" ]; then
+		ARCH="$TARGET_ARCH"
+	else
+		ARCH="`uname -m`"
+	fi
+fi
+
+set_platform_opts
+
+: ${PKG_CONFIG:=pkg-config}
+: ${AR:="$CC_AR"}
+: ${HOST_CC:=gcc}
+: ${HOST_CXX:=g++}
+: ${LDLIBS:="$LIBS_N $LIBS_NL"}
+
+echo "CC_ISA_EXT_FLAGS := $CC_ISA_EXT_FLAGS" >> $CONFIG
+echo "ASM_ISA_EXT_FLAGS := $ASM_ISA_EXT_FLAGS" >> $CONFIG
+echo "C_MARCH_FLAGS := $C_MARCH_FLAGS" >>$CONFIG
+echo "ASM_MARCH_FLAGS := $ASM_MARCH_FLAGS" >>$CONFIG
+echo "HOST_CC := gcc" >> $CONFIG
+echo "HOST_CXX := g++" >> $CONFIG
+echo "CC_ELF := $CC_ELF" >> $CONFIG
+echo "LDLIBS = $LDLIBS" >> $CONFIG
+echo "LDLIBS += \$(LDLIBS_LOCAL) -ldl" >> $CONFIG
+echo "LDLIBS_STATIC = $LIBS_N" >> $CONFIG
+echo "LDLIBS_STATIC += \$(LDLIBS_LOCAL) -ldl" >> $CONFIG
+echo "TEST_TARGET_STATIC = \$(TEST_TARGET:%=%_static)" >> $CONFIG
+echo "OBJ = \$(TEST_TARGET:%=%.o)" >> $CONFIG
+echo "STATIC_OBJ = \$(TEST_TARGET_STATIC:%=%.o)" >> $CONFIG
+echo "TARGETS = \$(TEST_TARGET)" >> $CONFIG
+echo "PKG_CONFIG := $PKG_CONFIG" >> $CONFIG
+echo "TARGET_ARCH := $TARGET_ARCH" >> $CONFIG
+
+
+if [ -z "$INSTALLDIR" ]; then
+	INSTALLDIR=$PWD/../../install/$ARCH
+fi
+
+if [ -z "$INSTALLTARNAME" ]; then
+	INSTALLTARNAME=install.tgz
+fi
+
+echo "XDP2_ARCH := $ARCH" >> $CONFIG
+echo "XDP2_CFLAGS += -DARCH_$ARCH" >> $CONFIG
+
+if [ -n "$TARGET_ARCH" ]; then
+	echo "CFLAGS += -DTARGET_ARCH_$TARGET_ARCH" >> $CONFIG
+fi
+
+if [ "$SOFT_FLOAT_BUILD" == "yes" ]; then
+    echo "XDP2_CFLAGS += -DFPGA_SOFT_FLAG" >> $CONFIG
+fi
+
+echo >> $CONFIG
+
+echo "Platform is $PLATFORM"
+
+unlink ../platform 2>/dev/null
+ln -s platforms/$PLATFORM ../platform
+
+echo "Architecture is $ARCH"
+
+unlink ./include/arch 2>/dev/null
+
+if [ -d ../platform/src/include/arch/arch_$ARCH ]; then
+	ln -s ../../platform/src/include/arch/arch_$ARCH ./include/arch
+	echo "Architecture includes are ./include/arch_$ARCH"
+	CFLAGS_N+=" -fcommon"
+else
+	ln -s ../../platform/src/include/arch/arch_generic ./include/arch
+	echo "Architecture includes for $ARCH not found, using generic"
+fi
+
+echo "Target Architecture is $TARGET_ARCH"
+
+echo "COMPILER is $COMPILER"
+
+: ${CC:="$CC_GCC $CFLAGS_N"}
+: ${CXX:="$CC_CXX $CFLAGS_N"}
+: ${LD:="$LD_GCC"}
+
+if [ -z "$HOST_LLVM_CONFIG" ]; then
+	: ${HOST_LLVM_CONFIG:="/usr/bin/llvm-config"}
+fi
+
+: ${LLVM_CONFIG:="$LLVM_CONFIG"}
+echo "CC := $CC" >> $CONFIG
+echo "LD := $LD" >> $CONFIG
+echo "CXX := $CXX" >> $CONFIG
+echo "HOST_LLVM_CONFIG := $HOST_LLVM_CONFIG" >> $CONFIG
+echo "LLVM_CONFIG := $LLVM_CONFIG" >> $CONFIG
+echo "LDFLAGS := $LDFLAGS" >> $CONFIG
+
+
+# If we didn't get an architecture from the command line set it base
+# on the running host
+
+
+check_libpcap
+check_boostsystem
+check_boostwave
+check_boostthread
+check_boostfilesystem
+check_clang_lib
+check_python
+
+echo "ifneq (\$(USE_HOST_TOOLS),y)" >> $CONFIG
+
+echo "%.o: %.c" >> $CONFIG
+echo '	$(QUIET_CC)$(CC) $(CFLAGS) $(XDP2_CFLAGS) $(EXTRA_CFLAGS) $(C_MARCH_FLAGS)\
+					-c -o $@ $<' >> $CONFIG
+
+echo "%_static.o: %.c" >> $CONFIG
+echo '	$(QUIET_CC)$(CC) $(CFLAGS) $(XDP2_CFLAGS) $(EXTRA_CFLAGS) -DXDP2_NO_DYNAMIC $(C_MARCH_FLAGS)\
+					-c -o $@ $<' >> $CONFIG
+
+echo "%.o: %.cpp" >> $CONFIG
+echo '	$(QUIET_CXX)$(CXX) $(CXXFLAGS) $(EXTRA_CXXFLAGS) $(C_MARCH_FLAGS)\
+						-c -o $@ $<' >> $CONFIG
+
+echo "%.o: %.s" >> $CONFIG
+echo '	$(QUIET_ASM)$(CC) $(ASM_MARCH_FLAGS)\
+					-c -o $@ $<' >> $CONFIG
+
+echo "else" >> $CONFIG
+
+echo "%.o: %.c" >> $CONFIG
+echo '	$(QUIET_CC)$(HOST_CC) $(CFLAGS) $(XDP2_CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<' >> $CONFIG
+
+echo "%.o: %.cpp" >> $CONFIG
+echo '	$(QUIET_CXX)$(HOST_CXX) $(XDP2_CXXFLAGS) $(CXXFLAGS) $(EXTRA_CXXFLAGS)		\
+						-c -o $@ $<' >> $CONFIG
+
+echo "endif" >> $CONFIG
+
+echo >> $CONFIG
+if [ -f ${HOST_LLVM_CONFIG} ]; then
+XDP2_CLANG_VERSION=`${HOST_LLVM_CONFIG} --version`
+else
+XDP2_CLANG_VERSION=`/usr/bin/llvm-config --version`
+fi
+
+echo "XDP2_CLANG_VERSION=${XDP2_CLANG_VERSION}"
+echo "XDP2_CLANG_VERSION=${XDP2_CLANG_VERSION}" >> $CONFIG
+XDP2_CLANG_RESOURCE_PATH="`${HOST_LLVM_CONFIG} --libdir`/clang/`echo ${XDP2_CLANG_VERSION} | cut -d'.' -f1`"
+XDP2_C_INCLUDE_PATH="`${HOST_LLVM_CONFIG} --libdir`/clang/`echo ${XDP2_CLANG_VERSION} | cut -d'.' -f1`/include"
+echo "XDP2_C_INCLUDE_PATH=${XDP2_C_INCLUDE_PATH}"
+echo "XDP2_C_INCLUDE_PATH=${XDP2_C_INCLUDE_PATH}" >> $CONFIG
+echo "XDP2_CLANG_RESOURCE_PATH=${XDP2_CLANG_RESOURCE_PATH}"
+echo "XDP2_CLANG_RESOURCE_PATH=${XDP2_CLANG_RESOURCE_PATH}" >> $CONFIG
+echo >> $CONFIG
+
+output_platform_config
+
+# TBD
+#OPTIMIZE_PARSER- may have to be enhanced with commandline options
+#
+
+echo >> $CONFIG
+echo "endif # !TOP_LEVEL_MAKE" >> $CONFIG
+echo >> $CONFIG
+echo "INSTALLDIR ?= $INSTALLDIR" >> $CONFIG
+echo "INSTALLTARNAME ?= $INSTALLTARNAME" >> $CONFIG
+echo "BUILD_OPT_PARSER ?= $BUILD_OPT_PARSER" >> $CONFIG
