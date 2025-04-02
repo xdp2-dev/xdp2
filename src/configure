@@ -1,0 +1,272 @@
+#! /bin/bash
+# configure based on from iproute2
+#
+# This is not an autoconf generated configure
+#
+INCLUDE=${1:-"$PWD/include"}
+
+# Output file which is input to Makefile
+CONFIG=config.mk
+
+# Make a temp directory in build tree.
+TMPDIR=$(mktemp -d config.XXXXXX)
+trap 'status=$?; rm -rf $TMPDIR; exit $status' EXIT HUP INT QUIT TERM
+
+PYTHON_VER=3
+
+check_prog()
+{
+    echo -n "$2"
+    command -v $1 >/dev/null 2>&1 && (echo "$3:=y" >> $CONFIG; echo "yes") || (echo "no"; return 1)
+}
+
+#check_docs()
+#{
+#    if check_prog latex " latex: " HAVE_LATEX; then
+#        check_prog pdflatex " pdflatex: " HAVE_PDFLATEX || echo " WARNING: no PDF docs can be built from LaTeX files"
+#        check_prog sgml2latex " sgml2latex: " HAVE_SGML2LATEX || echo " WARNING: no LaTeX files can be build from SGML files"
+#    else
+#        echo " WARNING: no docs can be built from LaTeX files"
+#    fi
+#
+#    check_prog sgml2html " sgml2html: " HAVE_SGML2HTML || echo " WARNING: no HTML docs can be built from SGML"
+#}
+
+check_toolchain()
+{
+    : ${PKG_CONFIG:=pkg-config}
+    : ${AR=ar}
+    : ${CC=gcc}
+    : ${CXX=g++}
+    echo "PKG_CONFIG:=${PKG_CONFIG}" >>$CONFIG
+    echo "AR:=${AR}" >>$CONFIG
+    echo "CC:=${CC}" >>$CONFIG
+    echo "CXX:=${CXX}" >>$CONFIG
+    echo "HOST_CC := gcc" >> $CONFIG
+    echo "PYTHON := python3" >> $CONFIG
+}
+
+check_libpcap()
+{
+	cat >$TMPDIR/pcaptest.c <<EOF
+#include <pcap.h>
+int main(int, char **);
+int main(int argc, char **argv)
+{
+	pcap_t *p;
+	char errbuf[PCAP_ERRBUF_SIZE];
+
+	p = pcap_open_offline("foo", &errbuf[0]);
+	pcap_close(p);
+	return (0);
+}
+EOF
+	$CC -I$INCLUDE -o $TMPDIR/pcaptest $TMPDIR/pcaptest.c -lpcap >/dev/null 2>&1
+	case $? in
+		0)	;;
+		*)	echo libcap missing or broken\! 1>&2
+			exit 1
+			;;
+	esac
+	rm -f $TMPDIR/pcaptest.c $TMPDIR/pcaptest
+}
+
+check_boostwave()
+{
+	cat >$TMPDIR/wavetest.cpp <<EOF
+#include <boost/wave.hpp>
+
+struct test : boost::wave::context_policies::default_preprocessing_hooks {
+};
+
+int main(int argc, char **argv)
+{
+	return (0);
+}
+EOF
+        $CXX -I$INCLUDE -o $TMPDIR/wavetest $TMPDIR/wavetest.cpp  -lboost_system -lboost_wave
+	case $? in
+		0)	;;
+		*)	echo Boost.Wave missing or broken\! 1>&2
+			exit 1
+			;;
+	esac
+	#rm -f $TMPDIR/wavetest.cpp $TMPDIR/wavetest
+}
+
+check_boostthread()
+{
+	cat >$TMPDIR/threadtest.cpp <<EOF
+#include <boost/thread.hpp>
+
+int main(int argc, char **argv)
+{
+	{
+		boost::mutex m;
+	}
+	return (0);
+}
+EOF
+	$CXX -I$INCLUDE -o $TMPDIR/threadtest $TMPDIR/threadtest.cpp -lboost_thread   -lboost_system >/dev/null 2>&1
+	case $? in
+		0)	;;
+		*)	echo Boost.Thread missing or broken\! 1>&2
+			exit 1
+			;;
+	esac
+	rm -f $TMPDIR/threadtest.cpp $TMPDIR/threadtest
+}
+
+check_boostsystem()
+{
+	cat >$TMPDIR/systemtest.cpp <<EOF
+#include <boost/system/error_code.hpp>
+
+int main(int argc, char **argv)
+{
+	{
+		boost::system::error_code ec;
+	}
+	return (0);
+}
+EOF
+	$CXX -I$INCLUDE -o $TMPDIR/systemtest $TMPDIR/systemtest.cpp -lboost_system >/dev/null 2>&1
+	case $? in
+		0)	;;
+		*)	echo Boost.System missing or broken\! 1>&2
+			exit 1
+			;;
+	esac
+	rm -f $TMPDIR/systemtest.cpp $TMPDIR/systemtest
+}
+
+check_boostfilesystem()
+{
+	cat >$TMPDIR/filesystemtest.cpp <<EOF
+#include <boost/filesystem/path.hpp>
+
+int main(int argc, char **argv)
+{
+	{
+		boost::filesystem::path p;
+	}
+	return (0);
+}
+EOF
+	$CXX -I$INCLUDE -o $TMPDIR/filesystemtest $TMPDIR/filesystemtest.cpp -lboost_system -lboost_filesystem >/dev/null 2>&1
+	case $? in
+		0)	;;
+		*)	echo Boost.Filesystem missing or broken\! 1>&2
+			exit 1
+			;;
+	esac
+	rm -f $TMPDIR/filesystemtest.cpp $TMPDIR/filesystemtest
+}
+
+check_python()
+{
+	cat >$TMPDIR/check_python.cpp <<EOF
+#include <Python.h>
+
+int main(int argc, char **argv)
+{
+	return (0);
+}
+EOF
+        $CXX -I$INCLUDE -o $TMPDIR/check_python $TMPDIR/check_python.cpp  `$PKG_CONFIG --cflags --libs python$PYTHON_VER-embed`
+	case $? in
+		0)	;;
+		*)	echo Python missing or broken\! 1>&2
+			exit 1
+			;;
+	esac
+	rm -f $TMPDIR/check_python.cpp $TMPDIR/check_python
+}
+
+quiet_config()
+{
+	cat <<EOF
+# user can control verbosity similar to kernel builds (e.g., V=1)
+ifeq ("\$(origin V)", "command line")
+  VERBOSE = \$(V)
+endif
+ifndef VERBOSE
+  VERBOSE = 0
+endif
+ifeq (\$(VERBOSE),1)
+  Q =
+else
+  Q = @
+endif
+
+ifeq (\$(VERBOSE), 0)
+    QUIET_EMBED    = @echo '    EMBED    '$@;
+    QUIET_CC       = @echo '    CC       '\$@;
+    QUIET_CXX      = @echo '    CXX      '\$@;
+    QUIET_HOST_CC  = @echo '    HOST_CC  '\$@;
+    QUIET_AR       = @echo '    AR       '\$@;
+    QUIET_LINK     = @echo '    LINK     '\$@;
+    QUIET_PYTHON   = @echo '    PYTHON   '\$@;
+    QUIET_INSTALL  = @echo '    INSTALL  '\$(TARGETS);
+endif
+EOF
+}
+
+usage()
+{
+	echo "Usage: $0 [--python-ver <version>] [--pkg-config-path <path>]"
+	exit 1
+}
+
+PROGNAME=$0
+
+while [ -n "$1" ]; do
+	case $1 in
+		"--python-ver") PYTHON_VER=$2; shift;;
+		"--pkg-config-path") MY_PKG_CONFIG_PATH=$2; shift;;
+		*) usage $PROGNAME >&2; exit 1;;
+	esac
+	shift
+done
+
+if [ -n "$MY_PKG_CONFIG_PATH" ]; then
+	if [ -n "$PKG_CONFIG_PATH" ]; then
+		export PKG_CONFIG_PATH="$MY_PKG_CONFIG_PATH:$PKG_CONFIG_PATH"
+	else
+		export PKG_CONFIG_PATH="$MY_PKG_CONFIG_PATH"
+	fi
+fi
+
+echo "# Generated config based on" $INCLUDE >$CONFIG
+quiet_config >> $CONFIG
+
+check_toolchain
+
+check_libpcap
+check_boostsystem
+check_boostwave
+check_boostthread
+check_boostfilesystem
+check_python
+
+#echo
+#echo -n "docs:"
+#check_docs
+#echo
+
+echo "PYTHON_VER:=$PYTHON_VER" >> $CONFIG
+if [ -n "$PKG_CONFIG_PATH" ]; then
+	echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $CONFIG
+	echo "PATH_ARG=\"--with-path=$PKG_CONFIG_PATH\"" >> $CONFIG
+else
+	echo "PATH_ARG=\"\"" >> $CONFIG
+fi
+
+echo 'CFLAGS_PYTHON=`$(PKG_CONFIG) $(PATH_ARG) --cflags python$(PYTHON_VER)-embed`' >> $CONFIG
+echo 'LDFLAGS_PYTHON=`$(PKG_CONFIG) $(PATH_ARG) --libs python$(PYTHON_VER)-embed`' >> $CONFIG
+echo 'CAT=cat' >> $CONFIG
+echo >> $CONFIG
+echo "%.o: %.c" >> $CONFIG
+echo '	$(QUIET_CC)$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<' >> $CONFIG
+echo "%.o: %.cpp" >> $CONFIG
+echo '	$(QUIET_CXX)$(CXX) $(CXXFLAGS) $(EXTRA_CXXFLAGS) -c -o $@ $<' >> $CONFIG
