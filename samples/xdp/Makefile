@@ -1,4 +1,4 @@
-# Makefile for building samples
+# Makefile for building xdp samples
 #
 # Set XDP2DIR to the install directory for XDP2 like
 #	make XDP2DIR=~/xdp2/install
@@ -6,7 +6,7 @@
 
 TOPTARGETS := all clean install
 
-SUBDIRS = parser xdp
+SUBDIRS =
 
 $(TOPTARGETS) : $(SUBDIRS)
 
