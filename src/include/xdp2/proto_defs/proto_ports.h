@@ -24,25 +24,36 @@
  * SUCH DAMAGE.
  */
 
-/* Include for all defined proto nodes */
+#ifndef __XDP2_PROTO_PORTS_H__
+#define __XDP2_PROTO_PORTS_H__
 
-/* Don't use header file guard here */
+#include "xdp2/parser.h"
 
-#include "xdp2/proto_defs/proto_arp_rarp.h"
-#include "xdp2/proto_defs/proto_batman.h"
-#include "xdp2/proto_defs/proto_ether.h"
-#include "xdp2/proto_defs/proto_fcoe.h"
-#include "xdp2/proto_defs/proto_gre.h"
-#include "xdp2/proto_defs/proto_icmp.h"
-#include "xdp2/proto_defs/proto_igmp.h"
-#include "xdp2/proto_defs/proto_ip.h"
-#include "xdp2/proto_defs/proto_ipv4.h"
-#include "xdp2/proto_defs/proto_ipv4ip.h"
-#include "xdp2/proto_defs/proto_ipv6.h"
-#include "xdp2/proto_defs/proto_ipv6_eh.h"
-#include "xdp2/proto_defs/proto_ipv6ip.h"
-#include "xdp2/proto_defs/proto_ipv6_nd.h"
-#include "xdp2/proto_defs/proto_l2tp.h"
-#include "xdp2/proto_defs/proto_l2tp_v0.h"
-#include "xdp2/proto_defs/proto_mpls.h"
-#include "xdp2/proto_defs/proto_ports.h"
+/* Transport protocol with ports definition */
+
+struct port_hdr {
+	union {
+		__be32   ports;
+		struct {
+			__be16 sport;
+			__be16 dport;
+		};
+	};
+};
+
+#endif /* __XDP2_PROTO_PORTS_H__ */
+
+#ifdef XDP2_DEFINE_PARSE_NODE
+
+/* Generic XDP2 definitions for transport protocols that contain port
+ * numbers canonical location
+ *
+ * Transport header starts with sixteen bit source and destination port
+ * numbers. Applicable protocols include TCP, UDP, SCTP, etc.
+ */
+static const struct xdp2_proto_def xdp2_parse_ports __unused() = {
+	.name = "Transport with ports",
+	.min_len = sizeof(struct port_hdr),
+};
+
+#endif /* XDP2_DEFINE_PARSE_NODE */
