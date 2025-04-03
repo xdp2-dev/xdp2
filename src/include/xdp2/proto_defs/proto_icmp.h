@@ -24,13 +24,67 @@
  * SUCH DAMAGE.
  */
 
-/* Include for all defined proto nodes */
+#ifndef __XDP2_PROTO_ICMP_H__
+#define __XDP2_PROTO_ICMP_H__
 
-/* Don't use header file guard here */
+/* Generic ICMP protocol definitions */
 
-#include "xdp2/proto_defs/proto_arp_rarp.h"
-#include "xdp2/proto_defs/proto_batman.h"
-#include "xdp2/proto_defs/proto_ether.h"
-#include "xdp2/proto_defs/proto_fcoe.h"
-#include "xdp2/proto_defs/proto_gre.h"
-#include "xdp2/proto_defs/proto_icmp.h"
+#include <linux/icmp.h>
+#include <linux/icmpv6.h>
+
+#include "xdp2/parser.h"
+
+static inline bool icmp_has_id(__u8 type)
+{
+	switch (type) {
+	case ICMP_ECHO:
+	case ICMP_ECHOREPLY:
+	case ICMP_TIMESTAMP:
+	case ICMP_TIMESTAMPREPLY:
+	case ICMPV6_ECHO_REQUEST:
+	case ICMPV6_ECHO_REPLY:
+		return true;
+	}
+
+	return false;
+}
+
+#endif /* __XDP2_PROTO_ICMP_H__ */
+
+#ifdef XDP2_DEFINE_PARSE_NODE
+
+static inline int icmp_get_type(const void *vicmp)
+{
+	return ((struct icmphdr *)vicmp)->type;
+}
+
+static inline ssize_t icmp_all_len(const void *v, size_t max_len)
+{
+	return max_len;
+}
+
+/* xdp2_parse_icmpv4 protocol definition
+ *
+ * Parse ICMPv4 header
+ */
+static const struct xdp2_proto_def xdp2_parse_icmpv4 __unused() = {
+	.name = "ICMPv4",
+	.min_len = sizeof(struct icmphdr),
+	.overlay = true,
+	.ops.next_proto = icmp_get_type,
+	.ops.len_maxlen = icmp_all_len,
+};
+
+/* xdp2_parse_icmpv6 protocol definition
+ *
+ * Parse ICMPv6 header
+ */
+static const struct xdp2_proto_def xdp2_parse_icmpv6 __unused() = {
+	.name = "ICMPv6",
+	.min_len = sizeof(struct icmp6hdr),
+	.overlay = true,
+	.ops.next_proto = icmp_get_type,
+	.ops.len_maxlen = icmp_all_len,
+};
+
+#endif /* XDP2_DEFINE_PARSE_NODE */
