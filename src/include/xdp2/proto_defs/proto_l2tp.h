@@ -24,22 +24,42 @@
  * SUCH DAMAGE.
  */
 
-/* Include for all defined proto nodes */
+#ifndef __XDP2_PROTO_L2TP_H__
+#define __XDP2_PROTO_L2TP_H__
 
-/* Don't use header file guard here */
+/* L2Tp protocol definitions */
 
-#include "xdp2/proto_defs/proto_arp_rarp.h"
-#include "xdp2/proto_defs/proto_batman.h"
-#include "xdp2/proto_defs/proto_ether.h"
-#include "xdp2/proto_defs/proto_fcoe.h"
-#include "xdp2/proto_defs/proto_gre.h"
-#include "xdp2/proto_defs/proto_icmp.h"
-#include "xdp2/proto_defs/proto_igmp.h"
-#include "xdp2/proto_defs/proto_ip.h"
-#include "xdp2/proto_defs/proto_ipv4.h"
-#include "xdp2/proto_defs/proto_ipv4ip.h"
-#include "xdp2/proto_defs/proto_ipv6.h"
-#include "xdp2/proto_defs/proto_ipv6_eh.h"
-#include "xdp2/proto_defs/proto_ipv6ip.h"
-#include "xdp2/proto_defs/proto_ipv6_nd.h"
-#include "xdp2/proto_defs/proto_l2tp.h"
+#ifndef IPPROTO_L2TP
+#define IPPROTO_L2TP 115
+#endif
+
+static inline int l2tp_proto_version(const void *vl2tp)
+{
+	return ((__u8 *)vl2tp)[1] & 0xf;
+}
+
+#endif /* __XDP2_PROTO_L2TP_H__ */
+
+#ifdef XDP2_DEFINE_PARSE_NODE
+
+/* xdp2_parse_l2tp_base protocol definition
+ *
+ * Parse base L2TP header as an overlay to determine L2TP version
+ *
+ * Next protocol operation returns L2TP version number (i.e. 0, 1, or 3).
+ */
+
+
+/* xdp2_parse_l2tp protocol definition
+ *
+ * Parse  header
+ */
+static const struct xdp2_proto_def xdp2_parse_l2tp_base __unused() = {
+	.name = "L2TP base",
+	.min_len = 2,
+	.ops.next_proto = l2tp_proto_version,
+	.overlay = true,
+	.encap = true,
+};
+
+#endif /* XDP2_DEFINE_PARSE_NODE */
