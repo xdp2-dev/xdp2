@@ -36,3 +36,4 @@
 #include "xdp2/proto_defs/proto_icmp.h"
 #include "xdp2/proto_defs/proto_igmp.h"
 #include "xdp2/proto_defs/proto_ip.h"
+#include "xdp2/proto_defs/proto_ipv4.h"
