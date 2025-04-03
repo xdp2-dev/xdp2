@@ -3,7 +3,7 @@ include $(SRCDIR)/config.mk
 
 TOPTARGETS := all clean install
 
-SUBDIRS = cli
+SUBDIRS = cli siphash
 
 $(TOPTARGETS) : $(SUBDIRS)
 
