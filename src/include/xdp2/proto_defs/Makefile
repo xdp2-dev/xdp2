@@ -2,7 +2,7 @@ include ../../../config.mk
 
 INCDIR=$(INSTALLDIR)$(HDRDIR)/xdp2/proto_defs
 
-TARGETS =
+TARGETS = proto_arp_rarp.h
 
 .PHONY: all
 all: $(TARGETS)
