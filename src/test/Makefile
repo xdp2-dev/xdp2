@@ -2,7 +2,7 @@ include ../config.mk
 
 TOPTARGETS := all clean install
 
-SUBDIRS = vstructs switch
+SUBDIRS = vstructs switch tables
 
 $(TOPTARGETS) : $(SUBDIRS)
 
