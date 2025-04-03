@@ -4,7 +4,7 @@ include $(SRCDIR)/config.mk
 
 TOPTARGETS := all clean install
 
-SUBDIRS = proto_defs
+SUBDIRS = proto_defs parsers
 
 $(TOPTARGETS) : $(SUBDIRS)
 

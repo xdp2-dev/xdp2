@@ -2,4 +2,4 @@
 # add parser_foo.c to proto_nodes subdirectory, and add parser_foo.o to this
 # list
 
-PARSEROBJS +=
+PARSEROBJS += parser_big.o
