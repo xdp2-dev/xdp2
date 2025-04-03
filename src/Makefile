@@ -63,7 +63,7 @@ YACCFLAGS = -d -t -v
 LDFLAGS += -L$(CURRDIR)/lib/siphash -L$(CURRDIR)/lib/flowdis
 LDFLAGS += -L$(CURRDIR)/lib/xdp2 -L$(CURRDIR)/lib/parselite
 
-SUBDIRS=
+SUBDIRS= tools
 
 all: config.mk $(EXTRA_TARGETS)
 	@set -e; \
