@@ -39,3 +39,4 @@
 #include "xdp2/proto_defs/proto_ipv4.h"
 #include "xdp2/proto_defs/proto_ipv4ip.h"
 #include "xdp2/proto_defs/proto_ipv6.h"
+#include "xdp2/proto_defs/proto_ipv6_eh.h"
