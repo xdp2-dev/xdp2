@@ -29,3 +29,4 @@
 /* Don't use header file guard here */
 
 #include "xdp2/proto_defs/proto_arp_rarp.h"
+#include "xdp2/proto_defs/proto_batman.h"
