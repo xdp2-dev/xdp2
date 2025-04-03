@@ -24,14 +24,26 @@
  * SUCH DAMAGE.
  */
 
-/* Include for all defined proto nodes */
+#ifndef __XDP2_PROTO_IGMP_H__
+#define __XDP2_PROTO_IGMP_H__
 
-/* Don't use header file guard here */
+/* XDP2 protocol definition for IGMP */
 
-#include "xdp2/proto_defs/proto_arp_rarp.h"
-#include "xdp2/proto_defs/proto_batman.h"
-#include "xdp2/proto_defs/proto_ether.h"
-#include "xdp2/proto_defs/proto_fcoe.h"
-#include "xdp2/proto_defs/proto_gre.h"
-#include "xdp2/proto_defs/proto_icmp.h"
-#include "xdp2/proto_defs/proto_igmp.h"
+#include <linux/igmp.h>
+
+#include "xdp2/parser.h"
+
+#endif /* __XDP2_PROTO_IGMP_H__ */
+
+#ifdef XDP2_DEFINE_PARSE_NODE
+
+/* xdp2_parse_igmp protocol definition
+ *
+ * Parse IGMP header
+ */
+static const struct xdp2_proto_def xdp2_parse_igmp __unused() = {
+	.name = "IGMP",
+	.min_len = sizeof(struct igmphdr),
+};
+
+#endif /* XDP2_DEFINE_PARSE_NODE */
