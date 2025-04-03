@@ -24,8 +24,65 @@
  * SUCH DAMAGE.
  */
 
-/* Include for all defined proto nodes */
+#ifndef __XDP2_PROTO_ARP_RARP_H__
+#define __XDP2_PROTO_ARP_RARP_H__
 
-/* Don't use header file guard here */
+#ifndef __KERNEL__
+#include <arpa/inet.h>
+#endif
 
-#include "xdp2/proto_defs/proto_arp_rarp.h"
+#include <netinet/ether.h>
+
+#include "xdp2/parser.h"
+
+/* ARP and RARP protocol definitions */
+
+struct earphdr {
+	struct arphdr arp;
+	__u8 ar_sha[ETH_ALEN];
+	__u8 ar_sip[4];
+	__u8 ar_tha[ETH_ALEN];
+	__u8 ar_tip[4];
+};
+
+static inline ssize_t arp_len_check(const void *vearp)
+{
+	const struct earphdr *earp = vearp;
+	const struct arphdr *arp = &earp->arp;
+
+	if (arp->ar_hrd != htons(ARPHRD_ETHER) ||
+	    arp->ar_pro != htons(ETH_P_IP) ||
+	    arp->ar_hln != ETH_ALEN ||
+	    arp->ar_pln != 4 ||
+	    (arp->ar_op != htons(ARPOP_REPLY) &&
+	     arp->ar_op != htons(ARPOP_REQUEST)))
+		return XDP2_STOP_FAIL;
+
+	return sizeof(struct earphdr);
+}
+
+#endif /* __XDP2_PROTO_ARP_RARP_H__ */
+
+#ifdef XDP2_DEFINE_PARSE_NODE
+
+/* xdp2_parse_arp protocol definition
+ *
+ * Parse ARP header
+ */
+static const struct xdp2_proto_def xdp2_parse_arp __unused() = {
+	.name = "ARP",
+	.min_len = sizeof(struct earphdr),
+	.ops.len = arp_len_check,
+};
+
+/* xdp2_parse_rarp protocol definition
+ *
+ * Parse RARP header
+ */
+static const struct xdp2_proto_def xdp2_parse_rarp __unused() = {
+	.name = "RARP",
+	.min_len = sizeof(struct earphdr),
+	.ops.len = arp_len_check,
+};
+
+#endif /* XDP2_DEFINE_PARSE_NODE */
