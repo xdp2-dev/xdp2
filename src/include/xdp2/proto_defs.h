@@ -48,3 +48,4 @@
 #include "xdp2/proto_defs/proto_ports.h"
 #include "xdp2/proto_defs/proto_ppp.h"
 #include "xdp2/proto_defs/proto_pppoe.h"
+#include "xdp2/proto_defs/proto_protobuf.h"
