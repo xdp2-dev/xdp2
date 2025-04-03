@@ -41,3 +41,4 @@
 #include "xdp2/proto_defs/proto_ipv6.h"
 #include "xdp2/proto_defs/proto_ipv6_eh.h"
 #include "xdp2/proto_defs/proto_ipv6ip.h"
+#include "xdp2/proto_defs/proto_ipv6_nd.h"
