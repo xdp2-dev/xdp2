@@ -24,17 +24,36 @@
  * SUCH DAMAGE.
  */
 
-/* Include for all defined proto nodes */
+#ifndef __XDP2_PROTO_IPV4IP_H__
+#define __XDP2_PROTO_IPV4IP_H__
 
-/* Don't use header file guard here */
+/* IPv4 in IP protocol definitions */
 
-#include "xdp2/proto_defs/proto_arp_rarp.h"
-#include "xdp2/proto_defs/proto_batman.h"
-#include "xdp2/proto_defs/proto_ether.h"
-#include "xdp2/proto_defs/proto_fcoe.h"
-#include "xdp2/proto_defs/proto_gre.h"
-#include "xdp2/proto_defs/proto_icmp.h"
-#include "xdp2/proto_defs/proto_igmp.h"
-#include "xdp2/proto_defs/proto_ip.h"
-#include "xdp2/proto_defs/proto_ipv4.h"
-#include "xdp2/proto_defs/proto_ipv4ip.h"
+#include <linux/ip.h>
+
+#include "xdp2/parser.h"
+
+static inline int ipv4_proto_default(const void *viph)
+{
+	return 0; /* Indicates IPv4 */
+}
+
+#endif /* __XDP2_PROTO_IPV4IP_H__ */
+
+#ifdef XDP2_DEFINE_PARSE_NODE
+
+/* parse_ipv4ip protocol definition
+ *
+ * Parses IPv4IP header
+ *
+ * Next protocol operation returns 0 indicating IPv4
+ */
+static const struct xdp2_proto_def xdp2_parse_ipv4ip __unused() = {
+	.name = "IPv4 in IP",
+	.encap = 1,
+	.overlay = 1,
+	.min_len = sizeof(struct iphdr),
+	.ops.next_proto = ipv4_proto_default,
+};
+
+#endif /* XDP2_DEFINE_PARSE_NODE */
