@@ -24,24 +24,26 @@
  * SUCH DAMAGE.
  */
 
-/* Include for all defined proto nodes */
+#ifndef __XDP2_PROTO_MPLS_H__
+#define __XDP2_PROTO_MPLS_H__
 
-/* Don't use header file guard here */
+/* MPLS protocol definitions */
 
-#include "xdp2/proto_defs/proto_arp_rarp.h"
-#include "xdp2/proto_defs/proto_batman.h"
-#include "xdp2/proto_defs/proto_ether.h"
-#include "xdp2/proto_defs/proto_fcoe.h"
-#include "xdp2/proto_defs/proto_gre.h"
-#include "xdp2/proto_defs/proto_icmp.h"
-#include "xdp2/proto_defs/proto_igmp.h"
-#include "xdp2/proto_defs/proto_ip.h"
-#include "xdp2/proto_defs/proto_ipv4.h"
-#include "xdp2/proto_defs/proto_ipv4ip.h"
-#include "xdp2/proto_defs/proto_ipv6.h"
-#include "xdp2/proto_defs/proto_ipv6_eh.h"
-#include "xdp2/proto_defs/proto_ipv6ip.h"
-#include "xdp2/proto_defs/proto_ipv6_nd.h"
-#include "xdp2/proto_defs/proto_l2tp.h"
-#include "xdp2/proto_defs/proto_l2tp_v0.h"
-#include "xdp2/proto_defs/proto_mpls.h"
+#include <linux/mpls.h>
+
+#include "xdp2/parser.h"
+
+#endif /* __XDP2_PROTO_MPLS_H__ */
+
+#ifdef XDP2_DEFINE_PARSE_NODE
+
+/* xdp2_parse_mpls protocol definition
+ *
+ * Parse MPLS header
+ */
+static const struct xdp2_proto_def xdp2_parse_mpls __unused() = {
+	.name = "MPLS",
+	.min_len = 2 * sizeof(struct mpls_label),
+};
+
+#endif /* XDP2_DEFINE_PARSE_NODE */
