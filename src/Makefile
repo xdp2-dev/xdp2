@@ -39,6 +39,10 @@ ifeq ($(BUILD_OPT_PARSER),y)
 DEFINES+= -DBUILD_OPT_PARSER
 endif
 
+ifeq ($(BUILD_OPT_PARSER),y)
+DEFINES+= -DBUILD_OPT_PARSER
+endif
+
 DEFINES+=-DCONFDIR=\"$(CONFDIR)\"
 
 CC := gcc
@@ -63,7 +67,7 @@ YACCFLAGS = -d -t -v
 LDFLAGS += -L$(CURRDIR)/lib/siphash -L$(CURRDIR)/lib/flowdis
 LDFLAGS += -L$(CURRDIR)/lib/xdp2 -L$(CURRDIR)/lib/parselite
 
-SUBDIRS= tools include lib
+SUBDIRS= tools include lib test
 
 all: config.mk $(EXTRA_TARGETS)
 	@set -e; \
