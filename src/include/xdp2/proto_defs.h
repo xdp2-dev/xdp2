@@ -43,3 +43,4 @@
 #include "xdp2/proto_defs/proto_ipv6ip.h"
 #include "xdp2/proto_defs/proto_ipv6_nd.h"
 #include "xdp2/proto_defs/proto_l2tp.h"
+#include "xdp2/proto_defs/proto_l2tp_v0.h"
