@@ -3,3 +3,4 @@
 # list
 
 PARSEROBJS += parser_big.o
+PARSEROBJS += parser_simple_hash.o
