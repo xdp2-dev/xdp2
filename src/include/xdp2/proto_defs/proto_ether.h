@@ -24,10 +24,35 @@
  * SUCH DAMAGE.
  */
 
-/* Include for all defined proto nodes */
+#ifndef __XDP2_PROTO_ETHER_H__
+#define __XDP2_PROTO_ETHER_H__
 
-/* Don't use header file guard here */
+/* Ethernet protocol definitions */
 
-#include "xdp2/proto_defs/proto_arp_rarp.h"
-#include "xdp2/proto_defs/proto_batman.h"
-#include "xdp2/proto_defs/proto_ether.h"
+#include <linux/if_ether.h>
+
+#include "xdp2/parser.h"
+
+static inline int ether_proto(const void *veth)
+{
+	return ((struct ethhdr *)veth)->h_proto;
+}
+
+#endif /* __XDP2_PROTO_ETHER_H__ */
+
+#ifdef XDP2_DEFINE_PARSE_NODE
+
+/* xdp2_parse_ether protocol definition
+ *
+ * Parses Ethernet header
+ *
+ * Next protocol operation returns Ethertype (e.g. ETH_P_IPV4)
+ */
+
+static const struct xdp2_proto_def xdp2_parse_ether __unused() = {
+	.name = "Ethernet",
+	.min_len = sizeof(struct ethhdr),
+	.ops.next_proto = ether_proto,
+};
+
+#endif /* XDP2_DEFINE_PARSE_NODE */
