@@ -4,7 +4,7 @@ include $(SRCDIR)/config.mk
 
 TOPTARGETS := all clean install
 
-SUBDIRS =
+SUBDIRS = cli
 
 $(TOPTARGETS) : $(SUBDIRS)
 
