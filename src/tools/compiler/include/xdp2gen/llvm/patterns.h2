@@ -1,0 +1,1541 @@
+// SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+/*
+ * Copyright (c) 2024 SiXDP2 Inc.
+ *
+ * Authors: Otávio Lucas Alves da Silva <otavio.silva@expertisesolutions.com.br>
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
+#include <functional>
+#include <set>
+#include <tuple>
+
+#include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/InstrTypes.h"
+#include "llvm/IR/Instructions.h"
+
+#include "xdp2gen/llvm/llvm_graph.h"
+
+using match_type = std::function<std::vector<std::vector<std::tuple<size_t, std::any>>>(xdp2gen::llvm::llvm_graph const &)>;
+/// LLVM patterns
+
+// TLV patterns
+/* The following pattern matches a calculation of a tlv parameter value that is
+ * is performed by just loading the value of a memory region at an offset of a
+ * struct pointer as the first argument of the function. The action will return
+ * an instance of 'struct
+ * xdp2gen::llvm::packet_buffer_offset_masked_multiplied' if successful.
+ * This pattern would match the following LLVM block:
+ *
+ * `%2 = getelementptr inbounds %struct.tcp_opt, ptr %0, i64 0, i32 1`
+ * `%3 = load i8, ptr %2, align 1, !tbaa !25`
+ * `%4 = zext i8 %3 to i64`
+ * `ret i64 %4`
+ */
+tlv_pattern_load_gep: match_type = match {
+    (return_)->(zext)->[0](load)->[0](get_element_ptr)->[0](argument);
+
+    (return_: {
+        return ::llvm::isa<::llvm::ReturnInst>(return_);
+    }; {
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        load_size := xdp2gen::llvm::get_integer_size(load);
+
+        return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
+            offset.getSExtValue() << 3, load_size, size_t(1ul << load_size) - 1, 0
+        );
+    });
+    (zext: {
+        return ::llvm::isa<::llvm::ZExtInst>(zext);
+    });
+    (load: { 
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (get_element_ptr: {
+        /// TODO: insert the asserts and exceptions later?
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr);
+    });
+    (argument: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument);
+        return arg && (arg*).getArgNo() == 0;
+    });
+};
+/* The following pattern matches a calculation of a tlv parameter value that is
+ * performed by just loading the value of a memory region pointed by the first
+ * argument of the function. The action will return an instance of 'struct
+ * xdp2gen::llvm::packet_buffer_load' if successful.
+ * This pattern would match the following LLVM block:
+ *
+ * `%2 = load i8, ptr %0, align 1, !tbaa !27`
+ * `%3 = zext i8 %2 to i32`
+ * `ret i32 %3`
+ */
+tlv_pattern_load: match_type = match {
+    (return_)->(zext)->[0](load)->[0](argument);
+
+    (return_: {
+        return ::llvm::isa<::llvm::ReturnInst>(return_);
+    }; {
+        return xdp2gen::llvm::packet_buffer_load(
+            xdp2gen::llvm::get_integer_size(load)
+        );
+    });
+    (zext: {
+        return ::llvm::isa<::llvm::ZExtInst>(zext);
+    });
+    (load: {
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (argument: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument);
+        return arg && (arg*).getArgNo() == 0;
+    });
+};
+/* The following pattern matches a calculation of a tlv parameter value that is
+ * performed by just returning a constant. The action will return an instance
+ * of 'struct xdp2gen::llvm::constant_value' if successful.
+ * This pattern would match the following LLVM block:
+ *
+ * `ret i64 20`
+ */
+tlv_pattern_const: match_type = match {
+    (return_)->[0](constant);
+
+    (return_: {
+        return ::llvm::isa<::llvm::ReturnInst>(return_);
+    }; {
+        v := ::llvm::dyn_cast<::llvm::Constant>(constant);
+        const_val := (v*).getUniqueInteger().getSExtValue();
+
+        return xdp2gen::llvm::constant_value(
+            const_val,
+            xdp2gen::llvm::get_integer_size(v)
+        );
+    });
+    (constant: {
+        return ::llvm::isa<::llvm::Constant>(constant);
+    });
+};
+
+// Proto patterns
+/* The following pattern matches a calculation of a "proto next" value that is
+ * performed by just loading the value of a memory region at an offset of a
+ * struct pointer as the first argument of the function. The action will return
+ * an instance of 'struct
+ * xdp2gen::llvm::packet_buffer_offset_masked_multiplied' if successful.
+ * This pattern would match the following LLVM block:
+ *
+ * `%2 = getelementptr inbounds %struct.ethhdr, ptr %0, i64 0, i32 2`
+ * `%3 = load i16, ptr %2, align 1, !tbaa !5`
+ * `%4 = zext i16 %3 to i32`
+ * `ret i32 %4`
+ */
+proto_next_pattern_load_gep: match_type = match {
+    (return_)->[0](zext)->[0](load)->[0](get_element_ptr)->[0](argument);
+
+    (return_: {
+        return ::llvm::isa<::llvm::ReturnInst>(return_);
+    }; {
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        load_size := xdp2gen::llvm::get_integer_size(load);
+
+        return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
+            offset.getSExtValue() << 3, load_size, size_t(1ul << load_size) - 1, 0, 0
+        );
+    });
+    (zext: {
+        return ::llvm::isa<::llvm::ZExtInst>(zext);
+    });
+    (load: {
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (get_element_ptr: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr);
+    });
+    (argument: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument);
+        return arg && (arg*).getArgNo() == 0;
+    });
+};
+/* The following pattern matches a calculation of a "proto next" value that is
+ * performed by loading the value of a memory region and then performing a
+ * shift operation. The pointer used in the load instruction must be the first
+ * argument of the function. The action will return an instance of 'struct
+ * xdp2gen::llvm::packet_buffer_offset_masked_multiplied' if successful.
+ * This pattern would match the following LLVM block:
+ *
+ * `%2 = load i8, ptr %0, align 1`
+ * `%3 = lshr i8 %2, 4`
+ * `%4 = zext i8 %3 to i32`
+ * `ret i32 %4`
+ */
+proto_next_pattern_shift_load: match_type = match {
+    (return_)->[0](zext)->[0](shift)->[0](load)->[0](argument);
+    (shift)->[1](shift_rhs);
+
+    (return_: {
+        return ::llvm::isa<::llvm::ReturnInst>(return_);
+    }; {
+        bit_size :size_t = xdp2gen::llvm::get_integer_size(load);
+        bit_mask :size_t = (1ul << (bit_size + 1)) - 1;
+        
+        rhs_const := ::llvm::dyn_cast<::llvm::Constant>(shift_rhs);
+        sign := 1;
+        bo := ::llvm::dyn_cast<::llvm::BinaryOperator>(shift);
+        if (bo*).getOpcode() == ::llvm::Instruction::Shl {
+            sign = -1;
+        }
+        shift_right :int64_t = (rhs_const*).getUniqueInteger().getSExtValue() * sign;
+
+        if shift_right < 0 {
+            return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
+                0, bit_size, bit_mask, 1ul << (-shift_right)
+            );
+        } else {
+            return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
+                0, bit_size, bit_mask, 1, shift_right 
+            );
+        }
+    });
+    (zext: {
+        return ::llvm::isa<::llvm::ZExtInst>(zext);
+    });
+    (shift: {
+        bo := ::llvm::dyn_cast<::llvm::BinaryOperator>(shift);
+        if !bo {
+            return false;
+        }
+        opcode := (bo*).getOpcode();
+        return opcode == ::llvm::Instruction::Shl
+            || opcode == ::llvm::Instruction::LShr;
+    });
+    (shift_rhs: {
+        return ::llvm::isa<::llvm::Constant>(shift_rhs);
+    });
+    (load: {
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (argument: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument);
+        return arg && (arg*).getArgNo() == 0;
+    });
+};
+/* The following pattern matches a calculation of a "proto next" value that is
+ * performed by just returning a constant. No action will be performed.
+ * This pattern would match the following LLVM block:
+ *
+ * `ret i32 0`
+ */
+proto_next_pattern_const: match_type = match {
+    (return_)->[0](constant);
+
+    (return_: {
+        return ::llvm::isa<::llvm::ReturnInst>(return_);
+    });
+    (constant: {
+        return ::llvm::isa<::llvm::Constant>(constant);
+    });
+};
+/* The following pattern matches a calculation of a "proto next" value in
+ * a few more steps than the previous patterns. It starts by loading a value
+ * from the memory region pointed by the first argument of the function, and
+ * then it is applied a bit mask for an integer comparison against a constant.
+ * Different constants are returned depending on the result of the comparison.
+ * The first action will return an instance of 'struct
+ * xdp2gen::llvm::packet_buffer_offset_masked_multiplied' if the match occurs.
+ * On other hand, the second action will return an instance of 'struct
+ * xdp2gen::llvm::condition', representing the condition that must be met for
+ * a successful operation.
+ * This pattern would match the following LLVM block:
+ *
+ * `%2 = load i8, ptr %0, align 1`
+ * `%3 = and i8 %2, -16`
+ * `%4 = icmp eq i8 %3, 64`
+ * `%5 = select i1 %4, i32 0, i32 -14`
+ * `ret i32 %5`
+ */
+proto_next_pattern_cond_mask_load: match_type = match {
+    (return_)->[0](select)->[0](icmp)->[0](binop_and)->[0](load)->[0](argument);
+    (select)->[1](select_lhs);
+    (select)->[2](select_rhs);
+    (icmp)->[1](icmp_rhs);
+    (binop_and)->[1](binop_and_rhs);
+
+    (return_: {
+        return ::llvm::isa<::llvm::ReturnInst>(return_);
+    }; {
+        load_size := xdp2gen::llvm::get_integer_size(load);
+
+        rhs_const := ::llvm::dyn_cast<::llvm::Constant>(binop_and_rhs);
+        rhs_const_size := xdp2gen::llvm::get_integer_size(rhs_const);
+        apint := (rhs_const*).getUniqueInteger().getSExtValue();
+        value_bit_size_mask :int64_t = (1l << rhs_const_size) - 1;
+        mask_value := apint & value_bit_size_mask;
+        corrected_mask := size_t(mask_value);
+
+        arr := std::bit_cast<std::array<std::byte, sizeof(corrected_mask)>>(corrected_mask);
+        std::reverse(arr.begin(), arr.end());
+        corrected_mask = std::bit_cast<decltype(corrected_mask)>(arr);
+
+        corrected_mask = 
+            corrected_mask >>
+                (((sizeof(corrected_mask) << 3) / rhs_const_size) - 1) *
+                    rhs_const_size;
+
+        return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
+            0, load_size, corrected_mask, 0, 0
+        );
+    });
+    (select: {
+        return ::llvm::isa<::llvm::SelectInst>(select);
+    }; {
+        cond :xdp2gen::llvm::condition = ();
+
+        icmp_inst := ::llvm::dyn_cast<::llvm::ICmpInst>(icmp);
+        cond.comparison_op = (icmp_inst*).getPredicate();
+
+        rhs_const := ::llvm::dyn_cast<::llvm::Constant>(select_rhs);
+        const_value := (rhs_const*).getUniqueInteger().getSExtValue();
+        const_bit_size := xdp2gen::llvm::get_integer_size(rhs_const);
+        cond.default_fail = xdp2gen::llvm::constant_value(const_value, const_bit_size);
+
+        rhs_const = ::llvm::dyn_cast<::llvm::Constant>(icmp_rhs);
+        const_value = (rhs_const*).getUniqueInteger().getSExtValue();
+        const_bit_size = xdp2gen::llvm::get_integer_size(rhs_const);
+        cond.rhs = xdp2gen::llvm::constant_value(const_value, const_bit_size);
+
+        load_size := xdp2gen::llvm::get_integer_size(load);
+        rhs_const = ::llvm::dyn_cast<::llvm::Constant>(binop_and_rhs);
+        rhs_const_size := xdp2gen::llvm::get_integer_size(rhs_const);
+        apint := (rhs_const*).getUniqueInteger().getSExtValue();
+        value_bit_size_mask :int64_t = (1l << rhs_const_size) - 1;
+        mask_value := apint & value_bit_size_mask;
+        corrected_mask := size_t(mask_value);
+        arr := std::bit_cast<std::array<std::byte, sizeof(corrected_mask)>>(corrected_mask);
+        std::reverse(arr.begin(), arr.end());
+        corrected_mask = std::bit_cast<decltype(corrected_mask)>(arr);
+        corrected_mask = 
+            corrected_mask >>
+                (((sizeof(corrected_mask) << 3) / rhs_const_size) - 1) *
+                    rhs_const_size;
+        cond.lhs = xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
+            0, load_size, corrected_mask, 0, 0
+        );
+
+        return cond;
+    });
+    (select_lhs: {
+        return ::llvm::isa<::llvm::Constant>(select_lhs);
+    });
+    (select_rhs: {
+        return ::llvm::isa<::llvm::Constant>(select_rhs);
+    });
+    (icmp: {
+        return ::llvm::isa<::llvm::ICmpInst>(icmp);
+    });
+    (icmp_rhs: {
+        return ::llvm::isa<::llvm::Constant>(icmp_rhs);
+    });
+    (binop_and: {
+        bo := ::llvm::dyn_cast<::llvm::BinaryOperator>(binop_and);
+        return bo && (bo*).getOpcode() == ::llvm::Instruction::And;
+    });
+    (binop_and_rhs: {
+        return ::llvm::isa<::llvm::Constant>(binop_and_rhs);
+    });
+    (load: {
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (argument: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument);
+        return arg && (arg*).getArgNo() == 0;
+    });
+};
+/* The following pattern matches a calculation of a "proto next" value that is
+ * very similar to the 'proto_next_pattern_shift_load' pattern, the difference
+ * being that a bit mask operation ('and') is performed after the 'shift'
+ * operation. It will return an instance of 'struct
+ * xdp2gen::llvm::packet_buffer_offset_masked_multiplied' if successful.
+ * This pattern would match the following LLVM block:
+ *
+ * `%2 = load i16, ptr %0, align 2, !tbaa !36`
+ * `%3 = lshr i16 %2, 8`
+ * `%4 = and i16 %3, 7`
+ * `%5 = zext i16 %4 to i32`
+ * `ret i32 %5`
+ */
+proto_next_pattern_mask_shift_load: match_type = match {
+    (return_)->[0](zext)->[0](binop_and)->[0](shift)->[0](load)->[0](argument);
+    (binop_and)->[1](binop_and_rhs);
+    (shift)->[1](shift_rhs);
+
+    (return_: {
+        return ::llvm::isa<::llvm::ReturnInst>(return_);
+    }; {
+        rhs_const := ::llvm::dyn_cast<::llvm::Constant>(binop_and_rhs);
+        bit_size :size_t = xdp2gen::llvm::get_integer_size(rhs_const);
+        apint :int64_t = (rhs_const*).getUniqueInteger().getSExtValue();
+        value_bit_size_mask :int64_t = (1ll << bit_size) - 1;
+        mask_value :int64_t = apint & value_bit_size_mask;
+
+        rhs_const = ::llvm::dyn_cast<::llvm::Constant>(shift_rhs);
+        sign := 1;
+        bo := ::llvm::dyn_cast<::llvm::BinaryOperator>(shift);
+        if (bo*).getOpcode() == ::llvm::Instruction::Shl {
+            sign = -1;
+        }
+        shift_right :int64_t = (rhs_const*).getUniqueInteger().getSExtValue() * sign;
+
+        bit_mask :size_t = 0;
+        if shift_right < 0 {
+            bit_mask = mask_value >> (-shift_right);
+        } else {
+            bit_mask = mask_value << shift_right;
+        }
+
+        corrected_mask := bit_mask;
+        size_bytes := bit_size >> 3;
+        if size_bytes > 1ul {
+            arr := std::bit_cast<std::array<std::byte, sizeof(corrected_mask)>>(corrected_mask);
+            std::reverse(arr.begin(), arr.begin() + size_bytes);
+            corrected_mask = std::bit_cast<decltype(corrected_mask)>(arr);
+        }
+        if shift_right < 0 {
+            return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
+                0, bit_size, corrected_mask, 1ul << (-shift_right)
+            );
+        } else {
+            return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
+                0, bit_size, corrected_mask, 1, shift_right
+            );
+        }
+    });
+    (zext: {
+        return ::llvm::isa<::llvm::ZExtInst>(zext);
+    });
+    (binop_and: {
+        bo := ::llvm::dyn_cast<::llvm::BinaryOperator>(binop_and);
+        return bo && (bo*).getOpcode() == ::llvm::Instruction::And;
+    });
+    (binop_and_rhs: {
+        return ::llvm::isa<::llvm::Constant>(binop_and_rhs);
+    });
+    (shift: {
+        bo := ::llvm::dyn_cast<::llvm::BinaryOperator>(shift);
+        if !bo {
+            return false;
+        }
+        opcode := (bo*).getOpcode();
+        return opcode == ::llvm::Instruction::Shl
+            || opcode == ::llvm::Instruction::LShr;
+    });
+    (shift_rhs: {
+        return ::llvm::isa<::llvm::Constant>(shift_rhs);
+    });
+    (load: {
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (argument: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument);
+        return arg && (arg*).getArgNo() == 0;
+    });
+};
+/* The following pattern matches a calculation of a "proto next" value that is
+ * very similar to the 'proto_next_pattern_mask_shift_load' pattern, the
+ * difference being that the load occurs from a pointer calculated with a 'get
+ * element ptr' operation. It will return an instance of 'struct
+ * xdp2gen::llvm::packet_buffer_offset_masked_multiplied' if successful.
+ * This pattern would match the following LLVM block:
+ *
+ * `%1 = getelementptr inbounds %struct.gre_hdr, ptr %0, i64 0, i32 1`
+ * `%2 = load i16, ptr %1, align 2, !tbaa !36`
+ * `%3 = lshr i16 %2, 8`
+ * `%4 = and i16 %3, 7`
+ * `%5 = zext i16 %4 to i32`
+ * `ret i32 %5`
+ */
+proto_next_pattern_mask_shift_gep: match_type = match {
+    (return_)->[0](zext)->[0](binop_and)->[0](shift)->[0](load)->[0](get_element_ptr)->[0](argument);
+    (binop_and)->[1](binop_and_rhs);
+    (shift)->[1](shift_rhs);
+
+    (return_: {
+        return ::llvm::isa<::llvm::ReturnInst>(return_);
+    }; {
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        bit_offset := size_t(offset.getSExtValue() << 3);
+
+        rhs_const := ::llvm::dyn_cast<::llvm::Constant>(binop_and_rhs);
+        bit_size :size_t = xdp2gen::llvm::get_integer_size(rhs_const);
+        apint :int64_t = (rhs_const*).getUniqueInteger().getSExtValue();
+        value_bit_size_mask :int64_t = (1ll << bit_size) - 1;
+        mask_value :int64_t = apint & value_bit_size_mask;
+
+        rhs_const = ::llvm::dyn_cast<::llvm::Constant>(shift_rhs);
+        sign := 1;
+        bo := ::llvm::dyn_cast<::llvm::BinaryOperator>(shift);
+        if (bo*).getOpcode() == ::llvm::Instruction::Shl {
+            sign = -1;
+        }
+        shift_right :int64_t = (rhs_const*).getUniqueInteger().getSExtValue() * sign;
+
+        bit_mask :size_t = 0;
+        if shift_right < 0 {
+            bit_mask = mask_value >> (-shift_right);
+        } else {
+            bit_mask = mask_value << shift_right;
+        }
+
+        corrected_mask := bit_mask;
+        size_bytes := bit_size >> 3;
+        if size_bytes > 1ul {
+            arr := std::bit_cast<std::array<std::byte, sizeof(corrected_mask)>>(corrected_mask);
+            std::reverse(arr.begin(), arr.begin() + size_bytes);
+            corrected_mask = std::bit_cast<decltype(corrected_mask)>(arr);
+        }
+        if shift_right < 0 {
+            return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
+                bit_offset, bit_size, corrected_mask, 1ul << (-shift_right)
+            );
+        } else {
+            return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
+                bit_offset, bit_size, corrected_mask, 1, shift_right
+            );
+        }
+    });
+    (zext: {
+        return ::llvm::isa<::llvm::ZExtInst>(zext);
+    });
+    (binop_and: {
+        bo := ::llvm::dyn_cast<::llvm::BinaryOperator>(binop_and);
+        return bo && (bo*).getOpcode() == ::llvm::Instruction::And;
+    });
+    (binop_and_rhs: {
+        return ::llvm::isa<::llvm::Constant>(binop_and_rhs);
+    });
+    (shift: {
+        bo := ::llvm::dyn_cast<::llvm::BinaryOperator>(shift);
+        if !bo {
+            return false;
+        }
+        opcode := (bo*).getOpcode();
+        return opcode == ::llvm::Instruction::Shl
+            || opcode == ::llvm::Instruction::LShr;
+    });
+    (shift_rhs: {
+        return ::llvm::isa<::llvm::Constant>(shift_rhs);
+    });
+    (load: {
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (get_element_ptr: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr);
+    });
+    (argument: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument);
+        return arg && (arg*).getArgNo() == 0;
+    });
+};
+/* The following pattern matches a calculation of a "proto next" value that is
+ * performed by just loading the value of a memory region pointed by the first
+ * argument of the function. The action will return an instance of 'struct
+ * xdp2gen::llvm::packet_buffer_offset_masked_multiplied' if successful.
+ * This pattern would match the following LLVM block:
+ *
+ * `%2 = load i16, ptr %0, align 2, !tbaa !39`
+ * `%3 = zext i16 %2 to i32`
+ * `ret i32 %4`
+ */
+proto_next_pattern_load: match_type = match {
+    (return_)->[0](zext)->[0](load)->[0](argument);
+
+    (return_: {
+        return ::llvm::isa<::llvm::ReturnInst>(return_);
+    }; {
+        bit_size :size_t = xdp2gen::llvm::get_integer_size(load);
+        bit_mask :size_t = (1ul << bit_size) - 1;
+
+        return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
+            0, bit_size, bit_mask, 0, 0
+        );
+    });
+    (zext: {
+        return ::llvm::isa<::llvm::ZExtInst>(zext);
+    });
+    (load: {
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (argument: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument);
+        return arg && (arg*).getArgNo() == 0;
+    });
+};
+/* The following pattern matches a calculation of a "proto next" value that is
+ * similar to the 'proto_next_pattern_cond_mask_load', but it takes a few steps
+ * further. It starts by loading a value from a memory region at an offset of
+ * the pointer represented by the first argument. It then applies a mask to
+ * this value and compares it against a constant. If the test is successful,
+ * a new value at an offset of the first argument is loaded and then returned,
+ * otherwise a constant is returned. This selection of which SSA value to
+ * return is performed via 'phi node' with its respective branches.
+ * This pattern would match the following LLVM blocks:
+ *
+ * `%2 = getelementptr inbounds %struct.iphdr, ptr %0, i64 0, i32 4`
+ * `%3 = load i16, ptr %2, align 2, !tbaa !23`
+ * `%4 = and i16 %3, -225`
+ * `%5 = icmp eq i16 %4, 0`
+ * `br i1 %5, label %6, label %10`
+ *
+ * `6:`
+ * `%7 = getelementptr inbounds %struct.iphdr, ptr %0, i64 0, i32 6`
+ * `%8 = load i8, ptr %7, align 1, !tbaa !14`
+ * `%9 = zext i8 %8 to i32`
+ * `br label %10`
+ *
+ * `10:`
+ * `%11 = phi i32 [ %9, %6 ], [ -4, %1 ]`
+ * `ret i32 %11`
+ */
+proto_next_pattern_branch_mask_load_gep: match_type = match {
+    (return_)->(phi);
+    (phi)->[0](branch1);
+    (phi)->[1](zext)->[0](load1)->[0](get_element_ptr1)->[0](argument);
+
+    (phi)->[2](branch2)->[0](icmp)->[0](binop_and)->(load2)->[0](get_element_ptr2)->[0](argument);
+    (icmp)->[1](icmp_rhs);
+    (binop_and)->(binop_and_rhs);
+    (phi)->[3](phi_constant);
+
+    (return_: {
+        return ::llvm::isa<::llvm::ReturnInst>(return_);
+    }; {
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr1);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        load_size := xdp2gen::llvm::get_integer_size(load1);
+
+        return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
+            offset.getSExtValue() << 3, load_size, size_t(1ul << load_size) - 1, 0, 0
+        );
+    });
+    (phi: {
+        pn := ::llvm::dyn_cast<::llvm::PHINode>(phi);
+        return pn && (pn*).getNumOperands() == 2;
+    }; {
+        cond :xdp2gen::llvm::condition = ();
+
+        icmp_inst := ::llvm::dyn_cast<::llvm::ICmpInst>(icmp);
+        cond.comparison_op = (icmp_inst*).getPredicate();
+
+        rhs_const := ::llvm::dyn_cast<::llvm::Constant>(phi_constant);
+        const_value := (rhs_const*).getUniqueInteger().getSExtValue();
+        const_bit_size := xdp2gen::llvm::get_integer_size(rhs_const);
+        cond.default_fail = xdp2gen::llvm::constant_value(const_value, const_bit_size);
+
+        rhs_const = ::llvm::dyn_cast<::llvm::Constant>(icmp_rhs);
+        const_value = (rhs_const*).getUniqueInteger().getSExtValue();
+        const_bit_size = xdp2gen::llvm::get_integer_size(rhs_const);
+        cond.rhs = xdp2gen::llvm::constant_value(const_value, const_bit_size);
+
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr2);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        bit_offset := offset.getSExtValue() << 3;
+        load_size := xdp2gen::llvm::get_integer_size(load2);
+        rhs_const = ::llvm::dyn_cast<::llvm::Constant>(binop_and_rhs);
+        rhs_const_size := xdp2gen::llvm::get_integer_size(rhs_const);
+        apint := (rhs_const*).getUniqueInteger().getSExtValue();
+        value_bit_size_mask :int64_t = (1l << rhs_const_size) - 1;
+        mask_value := apint & value_bit_size_mask;
+        corrected_mask := size_t(mask_value);
+        arr := std::bit_cast<std::array<std::byte, sizeof(corrected_mask)>>(corrected_mask);
+        std::reverse(arr.begin(), arr.end());
+        corrected_mask = std::bit_cast<decltype(corrected_mask)>(arr);
+        corrected_mask = 
+            corrected_mask >>
+                (((sizeof(corrected_mask) << 3) / rhs_const_size) - 1) *
+                    rhs_const_size;
+        cond.lhs = xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
+            bit_offset, load_size, corrected_mask, 0, 0
+        );
+
+        return cond;
+    });
+    (branch1: {
+        b := ::llvm::dyn_cast<::llvm::BranchInst>(branch1);
+        return b && (b*).isUnconditional();
+    });
+    (zext: {
+        return ::llvm::isa<::llvm::ZExtInst>(zext);
+    });
+    (load1: {
+        return ::llvm::isa<::llvm::LoadInst>(load1);
+    });
+    (get_element_ptr1: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr1);
+    });
+    (argument: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument);
+        return arg && (arg*).getArgNo() == 0;
+    });
+
+    (branch2: {
+        b := ::llvm::dyn_cast<::llvm::BranchInst>(branch2);
+        return b && (b*).isConditional();
+    });
+    (icmp: {
+        return ::llvm::isa<::llvm::ICmpInst>(icmp);
+    });
+    (icmp_rhs: {
+        return ::llvm::isa<::llvm::Constant>(icmp_rhs);
+    });
+    (binop_and: {
+        bo := ::llvm::dyn_cast<::llvm::BinaryOperator>(binop_and);
+        return bo && (bo*).getOpcode() == ::llvm::Instruction::And;
+    });
+    (binop_and_rhs: {
+        return ::llvm::isa<::llvm::Constant>(binop_and_rhs);
+    });
+    (load2: {
+        return ::llvm::isa<::llvm::LoadInst>(load2);
+    });
+    (get_element_ptr2: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr2);
+    });
+    (phi_constant: {
+        return ::llvm::isa<::llvm::Constant>(phi_constant);
+    });
+};
+
+// Metadata patterns
+// transfer
+/* The following pattern matches an operation of metadata transfer that is
+ * performed by a pair of pointer offset calculations (both source and
+ * destination), a load from the source and a store to the destination. The
+ * source pointer must be calculated from the first argument and the
+ * destination pointer must be calculated from either the fourth or fifth
+ * arguments. The action will return an instance of 'struct
+ * xdp2gen::llvm::metadata_transfer' if successful.
+ * This pattern would match the following LLVM block:
+ *
+ * `%7 = getelementptr inbounds %struct.ipv6hdr, ptr %0, i64 0, i32 3`
+ * `%8 = load i8, ptr %7, align 2, !tbaa !43`
+ * `%9 = getelementptr inbounds %struct.metadata, ptr %4, i64 0, i32 9`
+ * `store i8 %8, ptr %9, align 1, !tbaa !16`
+ */
+metadata_pattern_transfer_lhs_load_gep_rhs_gep: match_type = match {
+    (store)->[0](load)->[0](get_element_ptr1)->[0](argument1);
+    (store)->[1](get_element_ptr2)->[0](argument2);
+
+    (store: {
+        return ::llvm::isa<::llvm::StoreInst>(store);
+    }; {
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr1);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        src_bit_offset := size_t(offset.getSExtValue() << 3);
+
+        gep = ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr2);
+        offset = ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        dst_bit_offset := size_t(offset.getSExtValue() << 3);
+
+        bit_size :size_t = xdp2gen::llvm::get_integer_size(load);
+
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        is_frame := (arg*).getArgNo() == 4;
+
+        return xdp2gen::llvm::metadata_transfer(
+            src_bit_offset, dst_bit_offset, bit_size, is_frame,
+            std::nullopt, std::nullopt, std::nullopt, std::nullopt
+        );
+    });
+    (load: {
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (get_element_ptr1: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr1);
+    });
+    (argument1: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument1);
+        return arg && (arg*).getArgNo() == 0;
+    });
+    (get_element_ptr2: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr2);
+    });
+    (argument2: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        return arg && ((arg*).getArgNo() == 3 || (arg*).getArgNo() == 4);
+    });
+};
+/* The following pattern matches an operation of metadata transfer that is
+ * performed by a load from the memory region that is pointer by the first
+ * argument of the function (source) and a pointer offset calculation for the
+ * destination. A store operation is then performed. The destination pointer
+ * must be calculated from either the fourth or fifth arguments. The action
+ * will return an instance of 'struct xdp2gen::llvm::metadata_transfer' if
+ * successful.
+ * This pattern would match the following LLVM block:
+ *
+ * `%7 = load i16, ptr %0, align 2, !tbaa !24`
+ * `%8 = getelementptr inbounds %struct.metadata, ptr %4, i64 0, i32 11`
+ * `store i16 %7, ptr %8, align 4, !tbaa !18`
+ */
+metadata_pattern_transfer_lhs_load_rhs_gep: match_type = match {
+    (store)->[0](load)->[0](argument1);
+    (store)->[1](get_element_ptr)->[0](argument2);
+
+    (store: {
+        return ::llvm::isa<::llvm::StoreInst>(store);
+    }; {
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        dst_bit_offset := size_t(offset.getSExtValue() << 3);
+
+        bit_size :size_t = xdp2gen::llvm::get_integer_size(load);
+
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        is_frame := (arg*).getArgNo() == 4;
+
+        return xdp2gen::llvm::metadata_transfer(
+            0, dst_bit_offset, bit_size, is_frame,
+            std::nullopt, std::nullopt, std::nullopt, std::nullopt
+        );
+    });
+    (load: {
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (argument1: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument1);
+        return arg && (arg*).getArgNo() == 0;
+    });
+    (get_element_ptr: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr);
+    });
+    (argument2: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        return arg && ((arg*).getArgNo() == 3 || (arg*).getArgNo() == 4);
+    });
+};
+/* The following pattern matches an operation of metadata transfer that is
+ * similar to the pattern 'metadata_pattern_transfer_lhs_load_gep_rhs_gep', the
+ * difference being that a call to a byte swap intrinsic is performed and then
+ * the resulting SSA value is stored into the destination.
+ * This pattern would match the following LLVM block:
+ *
+ * `%7 = getelementptr inbounds %struct.ethhdr, ptr %0, i64 0, i32 2`
+ * `%8 = load i16, ptr %7, align 1, !tbaa !5`
+ * `%9 = tail call i16 @llvm.bswap.i16(i16 %8)`
+ * `%10 = getelementptr inbounds %struct.metadata, ptr %4, i64 0, i32 10`
+ * `store i16 %9, ptr %10, align 2, !tbaa !10`
+ */
+metadata_pattern_transfer_lhs_bswap_load_gep_rhs_gep: match_type = match {
+    (store)->[0](call)->[0](load)->[0](get_element_ptr1)->[0](argument1);
+    (store)->[1](get_element_ptr2)->[0](argument2);
+
+    (store: {
+        return ::llvm::isa<::llvm::StoreInst>(store);
+    }; {
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr1);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        src_bit_offset := size_t(offset.getSExtValue() << 3);
+
+        gep = ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr2);
+        offset = ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        dst_bit_offset := size_t(offset.getSExtValue() << 3);
+
+        bit_size :size_t = xdp2gen::llvm::get_integer_size(load);
+
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        is_frame := (arg*).getArgNo() == 4;
+
+        return xdp2gen::llvm::metadata_transfer(
+            src_bit_offset, dst_bit_offset, bit_size, is_frame,
+            std::nullopt, std::nullopt, std::nullopt, true
+        );
+    });
+    (call: {
+        c := ::llvm::dyn_cast<::llvm::CallInst>(call);
+        return c
+            && ((c*).getCalledFunction()*).getName().starts_with("llvm.bswap");
+    });
+    (load: {
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (get_element_ptr1: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr1);
+    });
+    (argument1: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument1);
+        return arg && (arg*).getArgNo() == 0;
+    });
+    (get_element_ptr2: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr2);
+    });
+    (argument2: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        return arg && ((arg*).getArgNo() == 3 || (arg*).getArgNo() == 4);
+    });
+};
+/* The following pattern matches an operation of metadata transfer that is
+ * similar to the pattern 'metadata_pattern_transfer_lhs_load_rhs_gep', the
+ * difference being that a call to a byte swap intrinsic is performed and then
+ * the resulting SSA value is stored into the destination.
+ * This pattern would match the following LLVM block:
+ *
+ * `%7 = load i32, ptr %0, align 4, !tbaa !40`
+ * `%8 = tail call i32 @llvm.bswap.i32(i32 %7)`
+ * `%9 = getelementptr inbounds %struct.anon.10, ptr %4, i64 0, i32 1`
+ * `store i32 %8, ptr %9, align 4, !tbaa !41`
+ */
+metadata_pattern_transfer_lhs_bsawp_load_rhs_gep: match_type = match {
+    (store)->[0](call)->[0](load)->[0](argument1);
+    (store)->[1](get_element_ptr)->[0](argument2);
+
+    (store: {
+        return ::llvm::isa<::llvm::StoreInst>(store);
+    }; {
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        dst_bit_offset := size_t(offset.getSExtValue() << 3);
+
+        bit_size :size_t = xdp2gen::llvm::get_integer_size(load);
+
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        is_frame := (arg*).getArgNo() == 4;
+
+        return xdp2gen::llvm::metadata_transfer(
+            0, dst_bit_offset, bit_size, is_frame,
+            std::nullopt, std::nullopt, std::nullopt, true
+        );
+    });
+    (call: {
+        c := ::llvm::dyn_cast<::llvm::CallInst>(call);
+        return c
+            && ((c*).getCalledFunction()*).getName().starts_with("llvm.bswap");
+    });
+    (load: {
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (argument1: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument1);
+        return arg && (arg*).getArgNo() == 0;
+    });
+    (get_element_ptr: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr);
+    });
+    (argument2: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        return arg && ((arg*).getArgNo() == 3 || (arg*).getArgNo() == 4);
+    });
+};
+/* The following pattern matches an operation of metadata transfer that is
+ * performed by a load from an offset of the memory region pointed by the first
+ * argument of the function. Then a byte swap intrinsic is called and the
+ * resulting SSA value is stored at a memory region pointed by either the
+ * fourth or fifth arguments. The action will return an instance of 'struct
+ * xdp2gen::llvm::metadata_transfer' if successful.
+ * This pattern would match the following LLVM block:
+ *
+ * %7 = getelementptr inbounds %struct.tcp_opt_union, ptr %0, i64 0, i32 1
+ * %8 = load i32, ptr %7, align 1, !tbaa !18
+ * %9 = tail call i32 @llvm.bswap.i32(i32 %8)
+ * store i32 %9, ptr %3, align 8, !tbaa !28
+ */
+metadata_pattern_transfer_lhs_bsawp_load_gep_rhs_arg: match_type = match {
+    (store)->[0](call)->[0](load)->[0](get_element_ptr)->[0](argument1);
+    (store)->[1](argument2);
+
+    (store: {
+        return ::llvm::isa<::llvm::StoreInst>(store);
+    }; {
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        src_bit_offset := size_t(offset.getSExtValue() << 3);
+
+        bit_size :size_t = xdp2gen::llvm::get_integer_size(load);
+
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        is_frame := (arg*).getArgNo() == 4;
+
+        return xdp2gen::llvm::metadata_transfer(
+            src_bit_offset, 0, bit_size, is_frame,
+            std::nullopt, std::nullopt, std::nullopt, true
+        );
+    });
+    (call: {
+        c := ::llvm::dyn_cast<::llvm::CallInst>(call);
+        return c
+            && ((c*).getCalledFunction()*).getName().starts_with("llvm.bswap");
+    });
+    (load: {
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (get_element_ptr: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr);
+    });
+    (argument1: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument1);
+        return arg && (arg*).getArgNo() == 0;
+    });
+    (argument2: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        return arg && ((arg*).getArgNo() == 3 || (arg*).getArgNo() == 4);
+    });
+};
+/* The following pattern matches an operation of metadata transfer that is
+ * performed by just loading a value from the memory region pointed by the
+ * first argument of the function, performing a call to a byte swap intrinsic
+ * and then storing the resulting SSA value into a memory region pointed by
+ * either the the fourth or fifth arguments. The action will return an instance
+ * of 'struct xdp2gen::llvm::metadata_transfer' if successful.
+ * This pattern would match the following LLVM block:
+ *
+ * `%7 = load i32, ptr %0, align 4, !tbaa !40`
+ * `%8 = tail call i32 @llvm.bswap.i32(i32 %7)`
+ * `store i32 %8, ptr %4, align 8, !tbaa !18`
+ */
+metadata_pattern_transfer_lhs_bswap_load_rhs_arg: match_type = match {
+    (store)->[0](call)->[0](load)->[0](argument1);
+    (store)->[1](argument2);
+
+    (store: {
+        return ::llvm::isa<::llvm::StoreInst>(store);
+    }; {
+        bit_size :size_t = xdp2gen::llvm::get_integer_size(load);
+
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        is_frame := (arg*).getArgNo() == 4;
+
+        return xdp2gen::llvm::metadata_transfer(
+            0, 0, bit_size, is_frame,
+            std::nullopt, std::nullopt, std::nullopt, true
+        );
+    });
+    (call: {
+        c := ::llvm::dyn_cast<::llvm::CallInst>(call);
+        return c
+            && ((c*).getCalledFunction()*).getName().starts_with("llvm.bswap");
+    });
+    (load: {
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (argument1: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument1);
+        return arg && (arg*).getArgNo() == 0;
+    });
+    (argument2: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        return arg && ((arg*).getArgNo() == 3 || (arg*).getArgNo() == 4);
+    });
+};
+/* The following pattern matches an operation of metadata transfer that is
+ * similar to the pattern 'metadata_pattern_transfer_lhs_load_gep_rhs_gep', the
+ * difference being that a call to a 'memcpy' intrinsic is performed instead of
+ * a store operation.
+ * This pattern would match the following LLVM block:
+ *
+ * `%11 = getelementptr inbounds %struct.metadata, ptr %4, i64 0, i32 12`
+ * `%12 = getelementptr inbounds %struct.ipv6hdr, ptr %0, i64 0, i32 5`
+ * `tail call void @llvm.memcpy.p0.p0.i64(ptr noundef nonnull align 8
+ * `  dereferenceable(16) %11, ptr noundef nonnull align 4 dereferenceable(16)
+ * `  %12, i64 16, i1 false), !tbaa.struct !45`
+ */
+metadata_pattern_transfer_memcpy_lhs_gep_rhs_gep: match_type = match {
+    (call)->[0](get_element_ptr1)->[0](argument1);
+    (call)->[1](get_element_ptr2)->[0](argument2);
+    (call)->[2](memcpy_size);
+
+    (call: {
+        c := ::llvm::dyn_cast<::llvm::CallInst>(call);
+        return c
+            && ((c*).getCalledFunction()*).getName().starts_with("llvm.memcpy");
+    }; {
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr2);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        src_bit_offset := size_t(offset.getSExtValue() << 3);
+
+        gep = ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr1);
+        offset = ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        dst_bit_offset := size_t(offset.getSExtValue() << 3);
+
+        arg2_const := ::llvm::dyn_cast<::llvm::Constant>(memcpy_size);
+        bit_size := (arg2_const*).getUniqueInteger().getZExtValue() << 3;
+
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument1);
+        is_frame := (arg*).getArgNo() == 4;
+
+        return xdp2gen::llvm::metadata_transfer(
+            src_bit_offset, dst_bit_offset, bit_size, is_frame,
+            std::nullopt, std::nullopt, std::nullopt, std::nullopt
+        );
+    });
+    (get_element_ptr1: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr1);
+    });
+    (argument1: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument1);
+        return arg && ((arg*).getArgNo() == 3 || (arg*).getArgNo() == 4);
+    });
+    (get_element_ptr2: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr2);
+    });
+    (argument2: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        return arg && (arg*).getArgNo() == 0;
+    });
+    (memcpy_size: {
+        return ::llvm::isa<::llvm::Constant>(memcpy_size);
+    });
+};
+// write constant
+/* The following pattern matches an operation of metadata write constant that
+ * is performed by just storing a constant value into a destination pointer.
+ * The destination pointer must be calculated at an offset from either the
+ * fourth or fifth arguments. The action will return an instance of 'struct
+ * xdp2gen::llvm::metadata_write_constant' if successful.
+ * This pattern would match the following LLVM block:
+ *
+ * `%10 = getelementptr inbounds %struct.metadata, ptr %4, i64 0, i32 8`
+ * `store i8 1, ptr %10, align 8, !tbaa !17`
+ */
+metadata_pattern_const: match_type = match {
+    (store)->[0](constant);
+    (store)->[1](get_element_ptr)->[0](argument);
+
+    (store: {
+        return ::llvm::isa<::llvm::StoreInst>(store);
+    }; {
+        const_store := ::llvm::dyn_cast<::llvm::Constant>(constant);
+        const_value := (const_store*).getUniqueInteger().getZExtValue();
+        const_size := xdp2gen::llvm::get_integer_size(const_store);
+
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        bit_offset := offset.getSExtValue() << 3;
+
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument);
+        is_frame := (arg*).getArgNo() == 4;
+
+        return xdp2gen::llvm::metadata_write_constant(
+            const_value, const_size, bit_offset, is_frame, std::nullopt, std::nullopt, std::nullopt
+        );
+    });
+    (constant: {
+        return ::llvm::isa<::llvm::Constant>(constant);
+    });
+    (get_element_ptr: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr);
+    });
+    (argument: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument);
+        return arg && ((arg*).getArgNo() == 3 || (arg*).getArgNo() == 4) ;
+    });
+};
+// write header offset
+/* The following pattern matches an operation of metadata write header offset
+ * that is performed by just storing the third argument of the function into a
+ * destination pointer. The destination pointer must be calculated at an offset
+ * from either the fourth or fifth arguments. The action will return an
+ * instance of 'struct xdp2gen::llvm::metadata_write_header_offset' if
+ * successful.
+ * This pattern would match the following LLVM block:
+ *
+ * `%20 = trunc i64 %2 to i16`
+ * `%21 = getelementptr inbounds %struct.metadata, ptr %4, i64 0, i32 6`
+ * `store i16 %20, ptr %21, align 1, !tbaa !21`
+ */
+metadata_pattern_hdr_off: match_type = match {
+    (store)->[0](trunc)->[0](argument1);
+    (store)->[1](get_element_ptr)->[0](argument2);
+
+    (store: {
+        return ::llvm::isa<::llvm::StoreInst>(store);
+    }; {
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        bit_offset := offset.getSExtValue() << 3;
+
+        src_ty := (gep*).getSourceElementType();
+        ops := ::llvm::SmallVector<*::llvm::Value>((gep*).idx_begin(), (gep*).idx_end());
+        ty := ::llvm::GetElementPtrInst::getIndexedType(src_ty, ops);
+        dl := (mod*).getDataLayout();
+        bit_size := dl.getTypeAllocSizeInBits(ty);
+
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+
+        return xdp2gen::llvm::metadata_write_header_offset(
+            bit_offset, bit_size, 0, (arg*).getArgNo() == 4, std::nullopt
+        );
+    });
+    (trunc: {
+        return ::llvm::isa<::llvm::TruncInst>(trunc);
+    });
+    (argument1: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument1);
+        return arg && (arg*).getArgNo() == 2;
+    });
+    (get_element_ptr: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr);
+    });
+    (argument2: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        return arg && ((arg*).getArgNo() == 3 || (arg*).getArgNo() == 4);
+    });
+};
+// write header length
+/* The following pattern matches an operation of metadata write header length
+ * that is performed by just storing the second argument of the function into a
+ * destination pointer. The destination pointer must be calculated at an offset
+ * from either the fourth or fifth arguments. The action will return an
+ * instance of 'struct xdp2gen::llvm::metadata_write_header_length' if
+ * successful.
+ * This pattern would match the following LLVM block:
+ *
+ * `%22 = trunc i64 %1 to i8`
+ * `%23 = getelementptr inbounds %struct.metadata, ptr %4, i64 0, i32 5`
+ * `store i8 %22, ptr %23, align 2, !tbaa !22`
+ */
+metadata_pattern_hdr_len: match_type = match {
+    (store)->[0](trunc)->[0](argument1);
+    (store)->[1](get_element_ptr)->[0](argument2);
+
+    (store: {
+        return ::llvm::isa<::llvm::StoreInst>(store);
+    }; {
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        bit_offset := offset.getSExtValue() << 3;
+
+        src_ty := (gep*).getSourceElementType();
+        ops := ::llvm::SmallVector<*::llvm::Value>((gep*).idx_begin(), (gep*).idx_end());
+        ty := ::llvm::GetElementPtrInst::getIndexedType(src_ty, ops);
+        dl := (mod*).getDataLayout();
+        bit_size := dl.getTypeAllocSizeInBits(ty);
+
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+
+        return xdp2gen::llvm::metadata_write_header_length(
+            bit_offset, bit_size, 0, (arg*).getArgNo() == 4, std::nullopt
+        );
+    });
+    (trunc: {
+        return ::llvm::isa<::llvm::TruncInst>(trunc);
+    });
+    (argument1: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument1);
+        return arg && (arg*).getArgNo() == 1;
+    });
+    (get_element_ptr: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr);
+    });
+    (argument2: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        return arg && ((arg*).getArgNo() == 3 || (arg*).getArgNo() == 4);
+    });
+};
+// value transfer
+/* The following pattern matches an operation of metadata write value transfer
+ * that is performed by just storing the loaded value at an offset of the
+ * memory region pointer the sixth argument of the function into a destination
+ * pointer. The loaded value must either be the first, sixth or seventh member
+ * variables of the 'struct xdp2_ctrl_data' record, corresponding to "ret",
+ * "node_cnt" and "encap_levels", respectively. The destination pointer must be
+ * calculated at an offset from either the fourth or fifth arguments. The
+ * action will return an instance of 'struct
+ * xdp2gen::llvm::metadata_value_transfer' if successful.
+ */
+metadata_pattern_value_transfer_lhs_load_gep_rhs_gep: match_type = match {
+    (store)->[0](load)->[0](get_element_ptr1)->[0](argument1);
+    (get_element_ptr1)->[2](constant);
+    (store)->[1](get_element_ptr2)->[0](argument2);
+
+    (store: {
+        return ::llvm::isa<::llvm::StoreInst>(store);
+    }; {
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr1);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        src_bit_offset := size_t(offset.getSExtValue() << 3);
+
+        src_ty := (gep*).getSourceElementType();
+        ops := ::llvm::SmallVector<*::llvm::Value>((gep*).idx_begin(), (gep*).idx_end());
+        ty := ::llvm::GetElementPtrInst::getIndexedType(src_ty, ops);
+        dl := (mod*).getDataLayout();
+        bit_size :size_t = dl.getTypeAllocSizeInBits(ty);
+
+        gep = ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr2);
+        offset = ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        dst_bit_offset := size_t(offset.getSExtValue() << 3);
+
+        c := ::llvm::dyn_cast<::llvm::Constant>(constant);
+        val := (c*).getUniqueInteger().getSExtValue();
+        type :std::string = "";
+        if val == 5 {
+            type = "num_nodes";
+        } else if val == 6 {
+            type = "num_encaps";
+        } else {
+            type = "return_code";
+        }
+
+        return xdp2gen::llvm::metadata_value_transfer(
+            src_bit_offset, dst_bit_offset, bit_size,
+            type, std::nullopt, std::nullopt, std::nullopt
+        );
+    });
+    (load: {
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (get_element_ptr1: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr1);
+    });
+    (argument1: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument1);
+        return arg && (arg*).getArgNo() == 5;
+    });
+    (constant: {
+        c := ::llvm::dyn_cast<::llvm::Constant>(constant);
+        if !c {
+            return false;
+        }
+        val := (c*).getUniqueInteger().getSExtValue();
+        // elements from struct xdp2_ctrl_data
+        return val == 0 || val == 5 || val == 6;
+    });
+    (get_element_ptr2: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr2);
+    });
+    (argument2: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        return arg && ((arg*).getArgNo() == 3 || (arg*).getArgNo() == 4);
+    });
+};
+/* The following pattern matches an operation of metadata write value transfer
+ * that is performed by just storing the loaded value of the memory region
+ * pointed by the sixth argument of the function into a destination pointer,
+ * that corresponds to the "ret" member variable of the 'struct
+ * xdp2_ctrl_data' record. The destination pointer must be calculated at an
+ * offset from either the fourth or fifth arguments. The action will return an
+ * instance of 'struct xdp2gen::llvm::metadata_value_transfer' if successful.
+ */
+metadata_pattern_value_transfer_ret_code: match_type = match {
+    (store)->[0](load)->[0](argument1);
+    (store)->[1](get_element_ptr)->[0](argument2);
+
+    (store: {
+        return ::llvm::isa<::llvm::StoreInst>(store);
+    }; {
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        dst_bit_offset := size_t(offset.getSExtValue() << 3);
+
+        bit_size :size_t = xdp2gen::llvm::get_integer_size(load);
+
+        return xdp2gen::llvm::metadata_value_transfer(
+            0, dst_bit_offset, bit_size, "return_code",
+            std::nullopt, std::nullopt, std::nullopt
+        );
+    });
+    (load: {
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (argument1: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument1);
+        return arg && (arg*).getArgNo() == 5;
+    });
+    (get_element_ptr: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr);
+    });
+    (argument2: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        return arg && ((arg*).getArgNo() == 3 || (arg*).getArgNo() == 4);
+    });
+};
+/* The following pattern matches an operation of metadata write value transfer
+ * that is very similar to the
+ * 'metadata_pattern_value_transfer_lhs_load_gep_rhs_gep' pattern, the only
+ * difference being that no offset is calculated for the destination pointer.
+ * The action will return an instance of 'struct
+ * xdp2gen::llvm::metadata_value_transfer' if successful.
+ */
+metadata_pattern_value_transfer_lhs_load_gep_rhs_arg: match_type = match {
+    (store)->[0](load)->[0](get_element_ptr)->[0](argument1);
+    (get_element_ptr)->[2](constant);
+    (store)->[1](argument2);
+
+    (store: {
+        return ::llvm::isa<::llvm::StoreInst>(store);
+    }; {
+        gep := ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr);
+        mod := (gep*).getModule();
+        offset := ::llvm::APInt(64, 0, false);
+        if !(gep*).accumulateConstantOffset((mod*).getDataLayout(), offset) {
+            std::cerr << "Could not get constant offset";
+            return std::any();
+        }
+        src_bit_offset := size_t(offset.getSExtValue() << 3);
+
+        src_ty := (gep*).getSourceElementType();
+        ops := ::llvm::SmallVector<*::llvm::Value>((gep*).idx_begin(), (gep*).idx_end());
+        ty := ::llvm::GetElementPtrInst::getIndexedType(src_ty, ops);
+        dl := (mod*).getDataLayout();
+        bit_size := dl.getTypeAllocSizeInBits(ty);
+
+        c := ::llvm::dyn_cast<::llvm::Constant>(constant);
+        val := (c*).getUniqueInteger().getSExtValue();
+        type :std::string = "";
+        if val == 5 {
+            type = "num_nodes";
+        } else if val == 6 {
+            type = "num_encaps";
+        } else {
+            type = "return_code";
+        }
+
+        return xdp2gen::llvm::metadata_value_transfer(
+            src_bit_offset, 0, bit_size,
+            type, std::nullopt, std::nullopt, std::nullopt
+        );
+    });
+    (load: {
+        return ::llvm::isa<::llvm::LoadInst>(load);
+    });
+    (get_element_ptr: {
+        return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr);
+    });
+    (argument1: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument1);
+        return arg && (arg*).getArgNo() == 5;
+    });
+    (constant: {
+        c := ::llvm::dyn_cast<::llvm::Constant>(constant);
+        if !c {
+            return false;
+        }
+        val := (c*).getUniqueInteger().getSExtValue();
+        // elements from struct xdp2_ctrl_data
+        return val == 0 || val == 5 || val == 6;
+    });
+    (argument2: {
+        arg := ::llvm::dyn_cast<::llvm::Argument>(argument2);
+        return arg && ((arg*).getArgNo() == 3 || (arg*).getArgNo() == 4);
+    });
+};

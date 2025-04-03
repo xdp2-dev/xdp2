@@ -1,0 +1,310 @@
+// SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+/*
+ * Copyright (c) 2024 SiXDP2 Inc.
+ *
+ * Authors: Otávio Lucas Alves da Silva <otavio.silva@expertisesolutions.com.br>
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
+#include <any>
+#include <functional>
+#include <vector>
+#include <string>
+#include <tuple>
+
+#include "xdp2gen/ast-consumer/clang_ast_graph.h"
+
+namespace xdp2gen
+{
+namespace ast_consumer
+{
+
+struct metadata_record {
+    clang::RecordDecl *record;
+    std::string record_name;
+    std::string field_name;
+
+    inline friend std::ostream &operator<<(std::ostream &os, metadata_record r)
+    {
+        return os << "metadata_record [ record_name: " << r.record_name
+                  << ", field_name: " << r.field_name << "]";
+    }
+};
+
+}
+}
+
+using clang_match_type = std::function<std::vector<std::vector<std::tuple<size_t, std::any>>>(xdp2gen::ast_consumer::clang_ast_graph const &)>;
+
+get_metadata_record: (in expr: *const clang::MemberExpr)
+    -> std::optional<xdp2gen::ast_consumer::metadata_record> =
+{
+    member_expr := expr;
+    range := (expr*).children();
+    current_field_name := std::string();
+    name := std::string();
+    record_name := std::string();
+    is_array := false;
+    literal_index := -1UL;
+    while std::distance(std::begin(range), std::end(range)) == 1 && (
+        clang::dyn_cast<clang::MemberExpr>(std::begin(range)*) != nullptr
+        || clang::dyn_cast<clang::ArraySubscriptExpr>(std::begin(range)*) != nullptr)
+    {
+        field := clang::dyn_cast<clang::FieldDecl>(
+            (member_expr*).getMemberDecl());
+        current_field_name = (field*).getNameAsString();
+        if !current_field_name.empty() {
+            ss := std::stringstream();
+            if (is_array) {
+                ss << "[";
+                if literal_index != -1UL {
+                    ss << literal_index;
+                }
+                ss << "]";
+                is_array = false;
+                literal_index = -1UL;
+            }
+            if name.empty() {
+                name = current_field_name + ss.str();
+            } else {
+                name = current_field_name + ss.str() + "." + name;
+            }
+        }
+        range_begin :*const clang::Stmt = expr;
+        ar_expr := clang::dyn_cast<clang::ArraySubscriptExpr>(
+            std::begin(range)*);
+        if ar_expr {
+            ar_range := ((ar_expr*).getBase()*).children();
+            range_begin = std::begin(ar_range)*;
+            is_array = true;
+            int_lit_expr := clang::dyn_cast<clang::IntegerLiteral>((ar_expr*).getIdx());
+            if int_lit_expr {
+                literal_index = (int_lit_expr*).getValue().getZExtValue();
+            }
+        } else {
+            range_begin = std::begin(range)*;
+        }
+        child := clang::dyn_cast<clang::MemberExpr>(range_begin);
+
+        if child != nullptr {
+            member_expr = child;
+            range = (member_expr*).children();
+        } else {
+            std::cerr << "child is null\n";
+            std::abort();
+        }
+    }
+    if std::distance(std::begin(range), std::end(range)) == 0 ||
+        clang::dyn_cast<clang::MemberExpr>(std::begin(range)*) == nullptr
+    {
+        field := clang::dyn_cast<clang::FieldDecl>(
+            (member_expr*).getMemberDecl());
+        current_field_name = (field*).getNameAsString();
+        if !current_field_name.empty() {
+            if name.empty() {
+                name = current_field_name;
+            } else {
+                name = current_field_name + "." + name;
+            }
+        }
+        record := (field*).getParent();
+        record_name = (record*).getNameAsString();
+        return xdp2gen::ast_consumer::metadata_record(record, record_name, name);
+    }
+    return std::nullopt;
+}
+
+// Assignment patterns
+/* The following pattern matches an assignment operation (clang::BinaryOperator
+ * class) to a member expression of a struct (clang::MemberExpr). The action
+ * will return an instance of 'struct xdp2gen::ast_consumer::metadata_record'
+ * if successful.
+ * This pattern would match the following statement:
+ *
+ * `frame->ip_proto = iph->protocol;`
+ */
+clang_ast_assignment_pattern: clang_match_type = match {
+    (assign)->[0](member);
+
+    (assign: {
+        if !std::holds_alternative<*const clang::Stmt>(assign) {
+            return false;
+        }
+        stmt := std::get<*const clang::Stmt>(assign);
+        binop := clang::dyn_cast<clang::BinaryOperator>(stmt);
+
+        return binop && (binop*).isAssignmentOp();
+    }; {
+        expr := clang::dyn_cast<clang::MemberExpr>(
+            std::get<*const clang::Stmt>(member));
+        mr := get_metadata_record(expr);
+        if mr.has_value() {
+            return mr.value();
+        }
+        return std::any();
+    });
+
+    (member: {
+        if !std::holds_alternative<*const clang::Stmt>(member) {
+            return false;
+        }
+        stmt := std::get<*const clang::Stmt>(member);
+        return clang::dyn_cast<clang::MemberExpr>(stmt) != nullptr;
+    });
+};
+
+// Increment patterns
+/* The following pattern matches an increment operation (clang::UnaryOperator
+ * class) to a member expression of a struct (clang::MemberExpr). The action
+ * will return an instance of 'struct xdp2gen::ast_consumer::metadata_record'
+ * if successful.
+ * This pattern would match the following statement:
+ *
+ * `frame->ip_proto++;`
+ */
+clang_ast_increment_pattern: clang_match_type = match {
+    (inc)->[0](member);
+
+    (inc: {
+        if !std::holds_alternative<*const clang::Stmt>(inc) {
+            return false;
+        }
+        stmt := std::get<*const clang::Stmt>(inc);
+        unop := clang::dyn_cast<clang::UnaryOperator>(stmt);
+
+        return unop && (unop*).isIncrementOp();
+    }; {
+        expr := clang::dyn_cast<clang::MemberExpr>(
+            std::get<*const clang::Stmt>(member));
+        mr := get_metadata_record(expr);
+        if mr.has_value() {
+            return mr.value();
+        }
+        return std::any();
+    });
+
+    (member: {
+        if !std::holds_alternative<*const clang::Stmt>(member) {
+            return false;
+        }
+        stmt := std::get<*const clang::Stmt>(member);
+        return clang::dyn_cast<clang::MemberExpr>(stmt) != nullptr;
+    });
+};
+
+// Call patterns
+/* The following pattern matches a call to a memcpy function (clang::CallExpr
+ * class) whose first operand is an "address of" operation (prefixed '&',
+ * clang::UnaryOperator class) of a member expression of a struct
+ * (clang::MemberExpr). The action will return an instance of 'struct
+ * xdp2gen::ast_consumer::metadata_record' if successful.
+ * This pattern would match the following statement:
+ *
+ * `memcpy(&frame->ip_proto, &iph->protocol, sizeof(frame->ip_proto));`
+ */
+clang_ast_call_pattern1: clang_match_type = match {
+    (call)->[1](addressof)->(member);
+
+    (call: {
+        if !std::holds_alternative<*const clang::Stmt>(call) {
+            return false;
+        }
+        stmt := std::get<*const clang::Stmt>(call);
+        call_expr := clang::dyn_cast<clang::CallExpr>(stmt);
+
+        if call_expr {
+            func_decl := (call_expr*).getDirectCallee();
+            return func_decl && (func_decl*).getName() == "memcpy";
+        }
+        return false;
+    }; {
+        expr := clang::dyn_cast<clang::MemberExpr>(
+            std::get<*const clang::Stmt>(member));
+        mr := get_metadata_record(expr);
+        if mr.has_value() {
+            return mr.value();
+        }
+        return std::any();
+    });
+
+    (addressof: {
+        if !std::holds_alternative<*const clang::Stmt>(addressof) {
+            return false;
+        }
+        stmt := std::get<*const clang::Stmt>(addressof);
+        unop := clang::dyn_cast<clang::UnaryOperator>(stmt);
+
+        return unop
+            && (unop*).getOpcode() == clang::UnaryOperator::Opcode::UO_AddrOf;
+    });
+
+    (member: {
+        if !std::holds_alternative<*const clang::Stmt>(member) {
+            return false;
+        }
+        stmt := std::get<*const clang::Stmt>(member);
+        return clang::dyn_cast<clang::MemberExpr>(stmt) != nullptr;
+    });
+};
+
+/* The following pattern matches a call to a memcpy function (clang::CallExpr
+ * class) whose first operand is a member expression of a struct
+ * (clang::MemberExpr). The action will return an instance of 'struct
+ * xdp2gen::ast_consumer::metadata_record' if successful.
+ * This pattern would match the following statement:
+ *
+ * `memcpy(meta->tcp_options.sack, opt->sack, sizeof(meta->tcp_options.sack));`
+ */
+clang_ast_call_pattern2: clang_match_type = match {
+    (call)->[1](member);
+
+    (call: {
+        if !std::holds_alternative<*const clang::Stmt>(call) {
+            return false;
+        }
+        stmt := std::get<*const clang::Stmt>(call);
+        call_expr := clang::dyn_cast<clang::CallExpr>(stmt);
+
+        if call_expr {
+            func_decl := (call_expr*).getDirectCallee();
+            return func_decl && (func_decl*).getName() == "memcpy";
+        }
+        return false;
+    }; {
+        expr := clang::dyn_cast<clang::MemberExpr>(
+            std::get<*const clang::Stmt>(member));
+        mr := get_metadata_record(expr);
+        if mr.has_value() {
+            return mr.value();
+        }
+        return std::any();
+    });
+
+    (member: {
+        if !std::holds_alternative<*const clang::Stmt>(member) {
+            return false;
+        }
+        stmt := std::get<*const clang::Stmt>(member);
+        return clang::dyn_cast<clang::MemberExpr>(stmt) != nullptr;
+    });
+};
