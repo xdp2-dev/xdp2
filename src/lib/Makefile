@@ -3,7 +3,7 @@ include $(SRCDIR)/config.mk
 
 TOPTARGETS := all clean install
 
-SUBDIRS = cli siphash crc flowdis
+SUBDIRS = cli siphash crc flowdis lzf
 
 $(TOPTARGETS) : $(SUBDIRS)
 
