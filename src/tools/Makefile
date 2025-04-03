@@ -2,7 +2,7 @@ include ../config.mk
 
 TOPTARGETS := all clean install
 
-SUBDIRS =
+SUBDIRS = pmacro
 
 $(TOPTARGETS) : $(SUBDIRS)
 
