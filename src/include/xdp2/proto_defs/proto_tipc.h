@@ -24,30 +24,33 @@
  * SUCH DAMAGE.
  */
 
-/* Include for all defined proto nodes */
+#ifndef __XDP2_PROTO_TIPC_H__
+#define __XDP2_PROTO_TIPC_H__
 
-/* Don't use header file guard here */
+/* TIPC protocol definitions */
 
-#include "xdp2/proto_defs/proto_arp_rarp.h"
-#include "xdp2/proto_defs/proto_batman.h"
-#include "xdp2/proto_defs/proto_ether.h"
-#include "xdp2/proto_defs/proto_fcoe.h"
-#include "xdp2/proto_defs/proto_gre.h"
-#include "xdp2/proto_defs/proto_icmp.h"
-#include "xdp2/proto_defs/proto_igmp.h"
-#include "xdp2/proto_defs/proto_ip.h"
-#include "xdp2/proto_defs/proto_ipv4.h"
-#include "xdp2/proto_defs/proto_ipv4ip.h"
-#include "xdp2/proto_defs/proto_ipv6.h"
-#include "xdp2/proto_defs/proto_ipv6_eh.h"
-#include "xdp2/proto_defs/proto_ipv6ip.h"
-#include "xdp2/proto_defs/proto_ipv6_nd.h"
-#include "xdp2/proto_defs/proto_l2tp.h"
-#include "xdp2/proto_defs/proto_l2tp_v0.h"
-#include "xdp2/proto_defs/proto_mpls.h"
-#include "xdp2/proto_defs/proto_ports.h"
-#include "xdp2/proto_defs/proto_ppp.h"
-#include "xdp2/proto_defs/proto_pppoe.h"
-#include "xdp2/proto_defs/proto_protobuf.h"
-#include "xdp2/proto_defs/proto_tcp.h"
-#include "xdp2/proto_defs/proto_tipc.h"
+#include <linux/ppp_defs.h>
+
+#include "xdp2/parser.h"
+
+/* LINK_PROTOCOL + MSG_IS_KEEPALIVE */
+#define TIPC_KEEPALIVE_MSG_MASK		0x0e080000
+
+struct tipc_basic_hdr {
+	__be32 w[4];
+};
+
+#endif /* __XDP2_PROTO_TIPC_H__ */
+
+#ifdef XDP2_DEFINE_PARSE_NODE
+
+/* xdp2_parse_tipc protocol definition
+ *
+ * Parse TIPC header
+ */
+static const struct xdp2_proto_def xdp2_parse_tipc __unused() = {
+	.name = "TIPC",
+	.min_len = sizeof(struct tipc_basic_hdr),
+};
+
+#endif /* XDP2_DEFINE_PARSE_NODE */
