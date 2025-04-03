@@ -24,11 +24,26 @@
  * SUCH DAMAGE.
  */
 
-/* Include for all defined proto nodes */
+#ifndef __XDP2_PROTO_FCOE_H__
+#define __XDP2_PROTO_FCOE_H__
 
-/* Don't use header file guard here */
+#include "xdp2/parser.h"
 
-#include "xdp2/proto_defs/proto_arp_rarp.h"
-#include "xdp2/proto_defs/proto_batman.h"
-#include "xdp2/proto_defs/proto_ether.h"
-#include "xdp2/proto_defs/proto_fcoe.h"
+/* Generic FCOE protocol definitions */
+
+#define FCOE_HEADER_LEN		38
+
+#endif /* __XDP2_PROTO_FCOE_H__ */
+
+#ifdef XDP2_DEFINE_PARSE_NODE
+
+/* xdp2_parse_fcoe protocol definition
+ *
+ * Parse FCOE header
+ */
+static const struct xdp2_proto_def xdp2_parse_fcoe __unused() = {
+	.name = "FCOE",
+	.min_len = FCOE_HEADER_LEN,
+};
+
+#endif /* XDP2_DEFINE_PARSE_NODE */
