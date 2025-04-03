@@ -32,3 +32,4 @@
 #include "xdp2/proto_defs/proto_batman.h"
 #include "xdp2/proto_defs/proto_ether.h"
 #include "xdp2/proto_defs/proto_fcoe.h"
+#include "xdp2/proto_defs/proto_gre.h"
