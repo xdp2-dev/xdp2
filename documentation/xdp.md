@@ -1,4 +1,4 @@
-<img src="images/Hop.png" alt="Hop the Panda Logo" align="right"/>
+<img src="images/xdp2.png" alt="XDP2 logo"/>
 
 The XDP Target
 ================
