@@ -4,7 +4,7 @@ include $(SRCDIR)/config.mk
 
 CFLAGS += -fPIC
 
-UTILOBJ =
+UTILOBJ = vstruct.o
 
 ALLOBJS = $(UTILOBJ)
 
