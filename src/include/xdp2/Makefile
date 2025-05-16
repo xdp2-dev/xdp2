@@ -17,6 +17,7 @@ INCDIR=$(INSTALLDIR)$(HDRDIR)/xdp2
 
 TARGETS = compiler_helpers.h utility.h bswap.h bitmap_word.h
 TARGETS += bitmap.h bitmap_helpers.h pmacro.h _pmacro_gen.h
+TARGETS += vstruct.h
 
 PMACRO_GEN = $(SRCDIR)/tools/pmacro/pmacro_gen
 
