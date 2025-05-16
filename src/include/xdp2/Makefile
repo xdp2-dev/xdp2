@@ -16,6 +16,7 @@ $(SUBDIRS):
 INCDIR=$(INSTALLDIR)$(HDRDIR)/xdp2
 
 TARGETS = compiler_helpers.h utility.h bswap.h bitmap_word.h
+TARGETS += bitmap.h bitmap_helpers.h
 
 clean:
 
