@@ -20,6 +20,7 @@ TARGETS += bitmap.h bitmap_helpers.h pmacro.h _pmacro_gen.h
 TARGETS += vstruct.h switch.h locks.h timer.h cli.h pcap.h
 TARGETS += packets_helpers.h table_common.h stable.h _stable.h
 TARGETS += dtable.h _dtable.h checksum.h obj_allocator.h pvbuf.h
+TARGETS += pvpkt.h
 
 PMACRO_GEN = $(SRCDIR)/tools/pmacro/pmacro_gen
 
