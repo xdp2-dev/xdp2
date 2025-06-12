@@ -1,0 +1,7 @@
+# List of output methods.  Lines whose first character is #, or which
+#  contain nothing except possibly some whitespace, are comments; other
+#  lines are expected to contain just a method name, which must be
+#  suitable for use as a C symbol.
+text
+err
+null
