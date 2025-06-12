@@ -5,7 +5,7 @@ include $(SRCDIR)/config.mk
 CFLAGS += -fPIC
 
 UTILOBJ = vstruct.o timer.o cli.o pcap.o packets_helpers.o dtable.o
-UTILOBJ += obj_allocator.o pvbuf.o pvpkt.o
+UTILOBJ += obj_allocator.o pvbuf.o pvpkt.o config_functions.o
 
 ALLOBJS = $(UTILOBJ)
 
