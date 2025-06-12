@@ -4,7 +4,7 @@ include $(SRCDIR)/config.mk
 
 TOPTARGETS := all clean install
 
-SUBDIRS =
+SUBDIRS = proto_defs
 
 $(TOPTARGETS) : $(SUBDIRS)
 
@@ -21,7 +21,7 @@ TARGETS += vstruct.h switch.h locks.h timer.h cli.h pcap.h
 TARGETS += packets_helpers.h table_common.h stable.h _stable.h
 TARGETS += dtable.h _dtable.h checksum.h obj_allocator.h pvbuf.h
 TARGETS += pvpkt.h config.h parser_types.h parser.h parser_metadata.h
-TARGETS += flag_fields.h tlvs.h
+TARGETS += flag_fields.h tlvs.h proto_defs_define.h proto_defs.h
 
 PMACRO_GEN = $(SRCDIR)/tools/pmacro/pmacro_gen
 
