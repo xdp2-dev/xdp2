@@ -7,6 +7,7 @@ CFLAGS += -fPIC
 
 UTILOBJ = vstruct.o timer.o cli.o pcap.o packets_helpers.o dtable.o
 UTILOBJ += obj_allocator.o pvbuf.o pvpkt.o config_functions.o parser.o
+UTILOBJ += accelerator.o
 
 # Parser files are in parsers subdirectory
 
