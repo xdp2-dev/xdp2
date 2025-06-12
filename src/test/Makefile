@@ -2,7 +2,7 @@ include ../config.mk
 
 TOPTARGETS := all clean install
 
-SUBDIRS = vstructs switch tables timer pvbuf
+SUBDIRS = vstructs switch tables timer pvbuf parser
 
 $(TOPTARGETS) : $(SUBDIRS)
 

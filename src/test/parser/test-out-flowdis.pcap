@@ -1,0 +1,88 @@
+-------- Packet #1: length 74
+control: thoff=34 addr_type=IPv4 flags=0
+basic: n_proto=0800 ip_proto=6
+ipv4_addrs: src=10.0.2.15 dst=192.0.47.59
+ports: src=44188 dst=43
+eth_addrs: dst=52:54:00:12:35:02 src=08:00:27:3e:ac:31
+tcp: flags=0002 <SYN>
+ip: tos=00 ttl=64
+-------- Packet #2: length 60
+control: thoff=34 addr_type=IPv4 flags=0
+basic: n_proto=0800 ip_proto=6
+ipv4_addrs: src=192.0.47.59 dst=10.0.2.15
+ports: src=43 dst=44188
+eth_addrs: dst=08:00:27:3e:ac:31 src=52:54:00:12:35:02
+tcp: flags=0012 <SYN,ACK>
+ip: tos=00 ttl=64
+-------- Packet #3: length 54
+control: thoff=34 addr_type=IPv4 flags=0
+basic: n_proto=0800 ip_proto=6
+ipv4_addrs: src=10.0.2.15 dst=192.0.47.59
+ports: src=44188 dst=43
+eth_addrs: dst=52:54:00:12:35:02 src=08:00:27:3e:ac:31
+tcp: flags=0010 <ACK>
+ip: tos=00 ttl=64
+-------- Packet #4: length 67
+control: thoff=34 addr_type=IPv4 flags=0
+basic: n_proto=0800 ip_proto=6
+ipv4_addrs: src=10.0.2.15 dst=192.0.47.59
+ports: src=44188 dst=43
+eth_addrs: dst=52:54:00:12:35:02 src=08:00:27:3e:ac:31
+tcp: flags=0018 <PSH,ACK>
+ip: tos=00 ttl=64
+-------- Packet #5: length 60
+control: thoff=34 addr_type=IPv4 flags=0
+basic: n_proto=0800 ip_proto=6
+ipv4_addrs: src=192.0.47.59 dst=10.0.2.15
+ports: src=43 dst=44188
+eth_addrs: dst=08:00:27:3e:ac:31 src=52:54:00:12:35:02
+tcp: flags=0010 <ACK>
+ip: tos=00 ttl=64
+-------- Packet #6: length 287
+control: thoff=34 addr_type=IPv4 flags=0
+basic: n_proto=0800 ip_proto=6
+ipv4_addrs: src=192.0.47.59 dst=10.0.2.15
+ports: src=43 dst=44188
+eth_addrs: dst=08:00:27:3e:ac:31 src=52:54:00:12:35:02
+tcp: flags=0018 <PSH,ACK>
+ip: tos=00 ttl=64
+-------- Packet #7: length 54
+control: thoff=34 addr_type=IPv4 flags=0
+basic: n_proto=0800 ip_proto=6
+ipv4_addrs: src=10.0.2.15 dst=192.0.47.59
+ports: src=44188 dst=43
+eth_addrs: dst=52:54:00:12:35:02 src=08:00:27:3e:ac:31
+tcp: flags=0010 <ACK>
+ip: tos=00 ttl=64
+-------- Packet #8: length 60
+control: thoff=34 addr_type=IPv4 flags=0
+basic: n_proto=0800 ip_proto=6
+ipv4_addrs: src=192.0.47.59 dst=10.0.2.15
+ports: src=43 dst=44188
+eth_addrs: dst=08:00:27:3e:ac:31 src=52:54:00:12:35:02
+tcp: flags=0011 <FIN,ACK>
+ip: tos=00 ttl=64
+-------- Packet #9: length 54
+control: thoff=34 addr_type=IPv4 flags=0
+basic: n_proto=0800 ip_proto=6
+ipv4_addrs: src=10.0.2.15 dst=192.0.47.59
+ports: src=44188 dst=43
+eth_addrs: dst=52:54:00:12:35:02 src=08:00:27:3e:ac:31
+tcp: flags=0010 <ACK>
+ip: tos=00 ttl=64
+-------- Packet #10: length 54
+control: thoff=34 addr_type=IPv4 flags=0
+basic: n_proto=0800 ip_proto=6
+ipv4_addrs: src=10.0.2.15 dst=192.0.47.59
+ports: src=44188 dst=43
+eth_addrs: dst=52:54:00:12:35:02 src=08:00:27:3e:ac:31
+tcp: flags=0011 <FIN,ACK>
+ip: tos=00 ttl=64
+-------- Packet #11: length 60
+control: thoff=34 addr_type=IPv4 flags=0
+basic: n_proto=0800 ip_proto=6
+ipv4_addrs: src=192.0.47.59 dst=10.0.2.15
+ports: src=43 dst=44188
+eth_addrs: dst=08:00:27:3e:ac:31 src=52:54:00:12:35:02
+tcp: flags=0010 <ACK>
+ip: tos=00 ttl=64
