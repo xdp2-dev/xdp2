@@ -18,7 +18,7 @@ INCDIR=$(INSTALLDIR)$(HDRDIR)/xdp2
 TARGETS = compiler_helpers.h utility.h bswap.h bitmap_word.h
 TARGETS += bitmap.h bitmap_helpers.h pmacro.h _pmacro_gen.h
 TARGETS += vstruct.h switch.h locks.h timer.h cli.h pcap.h
-TARGETS += packets_helpers.h table_common.h
+TARGETS += packets_helpers.h table_common.h stable.h _stable.h
 
 PMACRO_GEN = $(SRCDIR)/tools/pmacro/pmacro_gen
 
@@ -32,7 +32,7 @@ $(PMACRO_TARG):
 	fi
 	$(PMACRO_GEN) $(PMACRO_MAX_ARGS) > $@
 
-TABLES_TARGS =
+TABLES_TARGS = _stable.h
 
 _%table.h: _%table_template.h _%table_skey_template.h
 	if  [ "$(VERBOSE)" = "0" ]; then \
