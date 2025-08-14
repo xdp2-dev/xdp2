@@ -18,7 +18,7 @@ INCDIR=$(INSTALLDIR)$(HDRDIR)/xdp2
 TARGETS = compiler_helpers.h utility.h bswap.h bitmap_word.h
 TARGETS += bitmap.h bitmap_helpers.h pmacro.h _pmacro_gen.h
 TARGETS += vstruct.h switch.h locks.h timer.h cli.h pcap.h
-TARGETS += packets_helpers.h
+TARGETS += packets_helpers.h table_common.h
 
 PMACRO_GEN = $(SRCDIR)/tools/pmacro/pmacro_gen
 
@@ -32,10 +32,38 @@ $(PMACRO_TARG):
 	fi
 	$(PMACRO_GEN) $(PMACRO_MAX_ARGS) > $@
 
-all: $(PMACRO_TARG)
+TABLES_TARGS =
+
+_%table.h: _%table_template.h _%table_skey_template.h
+	if  [ "$(VERBOSE)" = "0" ]; then \
+		echo "    TBL_INC  $@"; \
+	fi
+	sed -e 's/$$TYPE\$$/PLAIN/g;s/$$CLASS\$$//g;s/$$LTYPE\$$/plain/g' $< > $@
+	sed -e 's/$$TYPE\$$/PLAIN/g;s/$$CLASS\$$/_NAME/g;s/$$LTYPE\$$/plain/g' $< >> $@
+	sed -e 's/$$TYPE\$$/PLAIN/g;s/$$CLASS\$$/_CAST/g;s/$$LTYPE\$$/plain/g' $< >> $@
+	sed -e 's/$$TYPE\$$/PLAIN/g;s/$$CLASS\$$/_NAME_CAST/g;s/$$LTYPE\$$/plain/g' $< >> $@
+	sed -e 's/$$TYPE\$$/PLAIN/g;s/$$CLASS\$$/_ANAME/g;s/$$LTYPE\$$/plain/g' $< >> $@
+	sed -e 's/$$TYPE\$$/PLAIN/g;s/$$CLASS\$$/_ANAME_CAST/g;s/$$LTYPE\$$/plain/g' $< >> $@
+	sed -e 's/$$TYPE\$$/TERN/g;s/$$CLASS\$$//g;s/$$LTYPE\$$/tern/g' $< >> $@
+	sed -e 's/$$TYPE\$$/TERN/g;s/$$CLASS\$$/_NAME/g;s/$$LTYPE\$$/tern/g' $< >> $@
+	sed -e 's/$$TYPE\$$/TERN/g;s/$$CLASS\$$/_CAST/g;s/$$LTYPE\$$/tern/g' $< >> $@
+	sed -e 's/$$TYPE\$$/TERN/g;s/$$CLASS\$$/_NAME_CAST/g;s/$$LTYPE\$$/tern/g' $< >> $@
+	sed -e 's/$$TYPE\$$/TERN/g;s/$$CLASS\$$/_ANAME/g;s/$$LTYPE\$$/tern/g' $< >> $@
+	sed -e 's/$$TYPE\$$/TERN/g;s/$$CLASS\$$/_ANAME_CAST/g;s/$$LTYPE\$$/tern/g' $< >> $@
+	sed -e 's/$$TYPE\$$/LPM/g;s/$$CLASS\$$//g;s/$$LTYPE\$$/lpm/g' $< >> $@
+	sed -e 's/$$TYPE\$$/LPM/g;s/$$CLASS\$$/_NAME/g;s/$$LTYPE\$$/lpm/g' $< >> $@
+	sed -e 's/$$TYPE\$$/LPM/g;s/$$CLASS\$$/_CAST/g;s/$$LTYPE\$$/lpm/g' $< >> $@
+	sed -e 's/$$TYPE\$$/LPM/g;s/$$CLASS\$$/_NAME_CAST/g;s/$$LTYPE\$$/lpm/g' $< >> $@
+	sed -e 's/$$TYPE\$$/LPM/g;s/$$CLASS\$$/_ANAME/g;s/$$LTYPE\$$/lpm/g' $< >> $@
+	sed -e 's/$$TYPE\$$/LPM/g;s/$$CLASS\$$/_ANAME_CAST/g;s/$$LTYPE\$$/lpm/g' $< >> $@
+	sed -e 's/$$TYPE\$$/PLAIN/g;s/$$LTYPE\$$/plain/g' $(word 2, $^) >> $@
+	sed -e 's/$$TYPE\$$/TERN/g;s/$$LTYPE\$$/tern/g' $(word 2, $^) >> $@
+	sed -e 's/$$TYPE\$$/LPM/g;s/$$LTYPE\$$/lpm/g' $(word 2, $^) >> $@
+
+all: $(PMACRO_TARG) $(TABLES_TARGS)
 
 clean:
-	@rm -f $(PMACRO_TARG)
+	@rm -f $(PMACRO_TARG) $(TABLES_TARGS)
 
 install: $(TARGETS)
 	@install -m 0755 -d $(INCDIR)
