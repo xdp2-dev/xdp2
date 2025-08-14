@@ -4,7 +4,7 @@ include $(SRCDIR)/config.mk
 
 TOPTARGETS := all clean install
 
-SUBDIRS = cli siphash
+SUBDIRS = cli siphash xdp2
 
 $(TOPTARGETS) : $(SUBDIRS)
 
