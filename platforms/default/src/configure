@@ -1,0 +1,32 @@
+#!/bin/bash
+# configure based on on from iproute2
+#
+# This is not an autoconf generated configure
+#
+
+platform_usage()
+{
+	echo
+}
+
+init_platform()
+{
+	echo
+}
+
+parse_platform_opts()
+{
+	usage $PROGNAME >&2
+	exit 1
+}
+
+set_platform_opts()
+{
+	echo
+}
+
+output_platform_config()
+{
+	echo
+}
+
