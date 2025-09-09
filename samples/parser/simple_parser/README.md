@@ -6,7 +6,7 @@ Simple parser example
 Example parser for TCP/IP with parsing timestamp option. There are
 two variants: one that uses
 [metadata templates](../../../src/include/xdp2/parser_metadata.h) and one
-that doesn't. Both an optimized and non-optimized parser s built (run
+that doesn't. Both an optimized and non-optimized parser are built (run
 optimized with -O)
 
 Run by:
