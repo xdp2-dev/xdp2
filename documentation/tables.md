@@ -263,7 +263,7 @@ function, and when an entry is matched the entry’s function is called with
 some specified arguments. The arguments of the action function might include
 the key that was matched, a reference to the matching entry, and maybe a
 pointer to a private data structure set in each entry. When the action function
-completes what happens next is implementation dependent. Program control might
+completes, what happens next is implementation dependent. Program control might
 return to the caller, or maybe processing continues at the next stage of a
 processing pipeline. In the case that a lookup is performed but no match is
 found then a default action may be taken. The default action, or function, is
@@ -316,7 +316,7 @@ Common macro arguments are:
 	argument type is "struct iphdr *" then the keys can be derived
 	based on that (e.g. ihl, ros, saddr fields to match)
 * **KEY_DEF**: Defines the key structure for the table. The key
-fields are expressed as a list field name or tuples. More detail is
+fields are expressed as a list of field name or tuples. More detail is
 provided below
 
 The macros to create a key-value table take these additional arguments:
@@ -427,7 +427,7 @@ entries is specific to the table type and the key definition:
 * For plain tables an entry has the format as a pair of (\<key\>, \<value\>)
 for a key-value table, or (\<key\>, \<function\>) for a match-action table. The
 \<function\> is a function invocation with arguments like "foo(ctx, 1)".
-The aguments of the function invocation are either variables from the
+The arguments of the function invocation are either variables from the
 **COMMON_ARGS_LIST** or constants. For example, the following defines a list
 of three entries to initialize an exact match match-action table with an IPv4
 key like described above. The *key* has the type of the key definition
@@ -542,7 +542,7 @@ named as the name of the table followed by **_lookup** or **_lookup_by_key**.
 The _lookup functions perform a lookup on a key argument type, for instance
 an IPv4 header as in the examples above. The _lookup_by_key variant performs the
 lookup with a key type for the table. The \<common_arg\> is a list of
-arguments containg variables from **COMMON_SIG** or constants.
+arguments containing variables from **COMMON_SIG** or constants.
 
 ```C
 <name>_lookup(const <name>_key_arg_t key_arg, <common_args, ...)
@@ -633,7 +633,7 @@ an exact match lookup on select fields from the Ethernet header.
 my_ctx *ctx, and so the common argument list is "ctx". The common arguments
 allow information in arguments arguments to the lookup function to be passed 
 through to the target functions. We define three action functions and the Miss
-functionis set as the default for a lookup miss. We also add two entries using
+function is set as the default for a lookup miss. We also add two entries using
 the ADD-ENTRY macro.
 
 
@@ -745,10 +745,10 @@ argument is **()** and an example non-empty argument might be something like
 (.max_entries = 1000, .change_rate = 0.1).
 
 For creating a key-value table the **TARG_TYPE** gives the type of the
-return vlaue from a lookup and **DEFAULT_TARG** is the default value
+return value from a lookup and **DEFAULT_TARG** is the default value
 returned on a tbal miss.
 
-For creaing a match-action table the **DEFAULT_FUNC** is a pointer
+For creating a match-action table the **DEFAULT_FUNC** is a pointer
 to a *struct __xdp2_dtable_entry_func_target*. This structure is defined as:
 ```C
 struct __xdp2_dtable_entry_func_target {
@@ -778,7 +778,7 @@ struct xdp2_dtable_lpm_table *xdp2_dtable_create_lpm(
 
 *name* is the table name, *key_len* is the key  length in bits,
 *default_target* is the default target (castable). *ident* returns an
-identifier fot the tbale.
+identifier for the table.
 
 Adding an entry to a dynamic tables
 -----------------------------------
@@ -795,7 +795,7 @@ XDP2_DTABLE_ADD_TERN(NAME, KEY, KEY_MASK, POS, TARG)
 XDP2_DTABLE_ADD_LPM(NAME, KEY, PREFIX_LEN, TARG)
 ```
 
-An entry can be addedd to a dynamic match-action table by:
+An entry can be added to a dynamic match-action table by:
 
 ```C
 XDP2_DFTABLE_ADD_PLAIN(NAME, KEY, FUNC, ARG)
@@ -1042,14 +1042,14 @@ XDP2_DFTABLE_*_TABLE_SKEY(NAME, KEY_ARG_TYPE, DEFAULT_ACTION, CONFIG)
 
 All lookups for SKEY tables are performed with a key as input, so the
 **_lookup_by_key** functions are created for SKY tables. The type of the
-key argument is the **KEY_ARG_TYPE** specfied in the macro that created
+key argument is the **KEY_ARG_TYPE** specified in the macro that created
 the table.
 
 ```C
 <name>_lookup_by_key(const struct user_defined_key *key, <common_args>, ...)
 ```
 
-The add, change, and revmove entry functions for SKEY are defined and
+The add, change, and remove entry functions for SKEY are defined and
 have the same signature and semantics of the functions for regular
 dynamic tables.
 
@@ -1096,7 +1096,7 @@ perform an exact match lookup on select fields from the Ethernet header.
 **XDP2_SFTABLE_PLAIN_TABLE** is invoked. The common args signature
 is a 'struct my_ctx *ctx, and so the common argument list is "ctx". The
 common arguments allow information to be passed as arguments to the lookup
-function that are passed though to the target functions. We define three
+function that are passed through to the target functions. We define three
 action functions and Miss is set as the default for a lookup miss. We
 also add two entries using the ADD-ENTRY macro.
 

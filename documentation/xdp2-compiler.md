@@ -9,8 +9,8 @@ parser relationship used to define a specific XDP2 Parser.
 # Code generation
 
 The XDP2 Compiler extracts the graph relationship of the parser defined in the
-source file and uses this relationship to generate optimized C code that is then
-used when called with the generated optimized parser.
+source file and uses this relationship to generate optimized C code that is
+then used when called with the generated optimized parser.
 
 # How it works
 
@@ -28,8 +28,8 @@ To leverage the most C compiler optimization it is important to use "static
 const" structures as much as possible and to restrict the parser definitions
 to one execution unit.
 
-Note that results will vary based on the aggressive of compiler optimizations.
-Using gcc version 10 or greater seems to give good performance.
+Note that results will vary based on the aggressiveness of compiler
+optimizations.  Using gcc version 10 or greater seems to give good performance.
 
 # How to use the compiler
 
@@ -45,7 +45,7 @@ Which will generate **output.c** which can be compiled in your own project to
 accelerate your XDP2 parser definition.
 
 Not that the <output.c> file includes the <input.c> so that all the <input.c>
-code is compiled with out change. Specifically, this means that the
+code is compiled without change. Specifically, this means that the
 unoptimized plain parser code is always compiled, and the additional code in
 <output.c> is for compiling the optimized parser.
 

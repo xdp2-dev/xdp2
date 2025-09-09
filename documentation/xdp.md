@@ -33,7 +33,7 @@ parsing in a tail-call.
 *xdp_prog* is the frontend XDP program called each packet. *parser_prog*
 is called as a tail-call by *xdp_prog* or itself.
 
-The code in this program parsers up to 8 nodes, handing over the
+The code in this program parses up to 8 nodes, handing over the
 control to 'parser program' in case it didn't finish parsing or if it
 encountered a node with TLVs.
 
@@ -44,7 +44,7 @@ A node that by the specification has TLVs (eg. TCP), but doesn't declare
 them in the parser graph node, will not trigger this behaviour.
 Nodes that come after a node with TLVs are always processed in 'parser program'.
 
-In total, the current implementation, can parse up to 40 nodes.
+In total, the current implementation can parse up to 40 nodes.
 Due to the restrictions imposed by the eBPF verifier, it might not be always
 possible to parse up to 8 nodes in 'xdp entry'.
 
@@ -147,7 +147,7 @@ function is `xdp2_parser_simple_tuple_xdp2_parse_ether_node` in our case.
 Flow tracker
 ------------
 
-Let's create a toy flow tracker which store flows in a hash map.
+Let's create a toy flow tracker that stores flows in a hash map.
 
 From
 [samples/xdp/flow_tracker_simple/flow_tracker.h](../samples/xdp/flow_tracker_simple/flow_tracker.h)
@@ -417,7 +417,7 @@ value is the memory dump of our `__u64` counter.
 Unloading
 ---------
 
-The flow tracket program can be unloaded by:
+The flow tracker program can be unloaded by:
 
 ```
 sudo ip link set dev <device> xdp off

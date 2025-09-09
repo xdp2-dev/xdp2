@@ -37,7 +37,7 @@ running 'test_parser -h' will show:
         If NAME is `help', gives help on method named ARGS, as in
         `-i help,tcpdump`
 
-        For `list' and `help', does not start after printing.
+        For `list' and `help' the program exits after printing.
 
 -o NAME[,ARGS]
 
@@ -47,7 +47,7 @@ running 'test_parser -h' will show:
         If NAME is `help', gives help on method named ARGS, as in
         '-o help,text'
 
-        For `list' and `help', does not start after printing.
+        For `list' and `help' the program exits after printing.
 
 -c NAME[,ARGS]
 
@@ -57,9 +57,9 @@ running 'test_parser -h' will show:
         If NAME is `help', gives help on core named ARGS, as in
         '-o help,flowdis'
 
-        For `list' and `help', does not start after printing.
+        For `list' and `help' the program exits after printing.
 
-The currently define computation cores are:
+The currently defined computation cores are:
 
 * **xdp2**
 * **flowdis**
@@ -87,8 +87,8 @@ There are two other options:
 
 	Compute/print metadata hashes. Uses siphash algorithm to calculate
 	a tuple hash over fields metadata structure returned by a parser
-	that identify a flow. It is expected that for the same packet, the
-	smae hash value is returned by the XDP2 Parser, flowdis, and
+	that identifies a flow. It is expected that for the same packet, the
+	same hash value is returned by the XDP2 Parser, flowdis, and
 	parselite when running the test.
 
 ## Discovering Interfaces
@@ -123,7 +123,7 @@ raw
 pcap
 fuzz
 
-Do a help on each to get more details.
+Invoke help on each to get more details.
 
 tcpdump input is useful mostly when what you have is packet data in
 text form, in tcpdump -xx format.
@@ -169,7 +169,7 @@ $ ./test_parser -c help,xdp2
 
 For the `xdp2' core, arguments must be either not given or zero length.
 
-This core uses the xdp2 library which impelements the engine for the XDP2
+This core uses the xdp2 library which implements the engine for the XDP2
 Parser.
 
 C) The optimized XDP2 Parser:
@@ -177,7 +177,8 @@ C) The optimized XDP2 Parser:
 $ ./test_parser -c help,xdp2opt
 For the `xdp2opt' core, arguments must be either not given or zero length.
 
-This core uses the compiler tool to optimize xdp2 "Big parser" engine for the XDP2 Parser.
+This core uses the compiler tool to optimize the "Big parser" engine for the
+XDP2 Parser.
 
 D) The optimized XDP2 Parser without TCP options parsing:
 
@@ -190,7 +191,7 @@ E) The Parselite parser:
 
 $ ./test_parser -c help,parselite
 
-This core uses the parselite library which impelements a lightweight parser.
+This core uses the parselite library which implements a lightweight parser.
 
 F) The null parser
 
@@ -223,7 +224,7 @@ can include:
 
 Thus, for example, `-i text,p,a' prints packet data _and_ all fields.
 
-B) The err output
+B) The error output
 
 $ ./test_parser -o help,err
 
@@ -354,7 +355,7 @@ Usage is:
     1) A .out extension to the input file name relative to
        the pcap-dir.  This file contains stdout from the run.
 
-    2) A .err extension incase of errors. This file will be present only
+    2) A .err extension in case of errors. This file will be present only
        if an error is detected;  It will contain stderr from the run.
 
 ### Example Run of Test Corpus Of Pcap Files

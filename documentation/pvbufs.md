@@ -34,7 +34,7 @@ bits of a paddr:
 * Short address: first two bits are 0b01xx, 0b10xx, or 0b11xx
 * Long address: first four bits are 0b000
 
-*sturct xdp2_paddr* is defined a as a union that contains the structures
+*sturct xdp2_paddr* is defined as a union that contains the structures
 of the  four paddr type:
 ```C
 struct xdp2_paddr {
@@ -65,7 +65,7 @@ The paddr for a PVbuf has the following structure:
 * 32 bits data length
  
 The paddr type of a PVbuf is 0b0001. PVbuf gives the size of the PVbuf
-in number of cache-lines (64 bytes) minus one. The index is the index of
+in the number of cache-lines (64 bytes) minus one. The index is the index of
 the object in the PVbuf allocator for the PVbuf size. The PVbuf size and
 the index uniquely identify a PVBuf. The data length is the aggregate
 length of all the memory objects within the PVbuf. If data length is set
@@ -78,7 +78,7 @@ The minimum length PVbuf is 64 bytes (seven iovecs taking the bitmap into
 account) and the maximum is 1024 bytes or 255 iovecs (although the maximum
 number of iovecs allowed by the bitmap is sixty-four).
 
-An example diagram of a pvbuf is show below including two interpretations
+An example diagram of a pvbuf is shown below including two interpretations
 of how the data would be logically linearized
 
 <img src="images/pvbufs.png" alt="pvbufs"/>
@@ -254,8 +254,8 @@ called to take a reference for a pbuf.
 
 Single reference pbufs
 ----------------------
-A single reference pbuf is one that is known to only have on reference. Single
-reference pbufs have paddr type 0b0011. When a single reference pbuf is
+A single reference pbuf is one that is known to only have one reference.
+Single reference pbufs have paddr type 0b0011. When a single reference pbuf is
 freed the reference count does not need to be checked so the free operation
 is fast. A single reference pbuf is allocated as such when the caller intends
 that there will be no more than one reference. If a single reference pbuf
@@ -277,8 +277,8 @@ The three paddr types indicate the three memory regions each of which has
 their own base address. The offset allows up to 16TBytes of memory to be
 addressed per memory region. The memory regions can be pooled together to
 allows 48TBytes of addressable memory. The data length is set to the real
-data length minus one to allow up 262,144 bytes to be addressed. Note that
-zero length cannot be represented in a short address.
+data length minus one to allow up to 262,144 bytes to be addressed. Note
+that zero length cannot be represented in a short address.
 
 Long address paddrs
 ===================
@@ -313,7 +313,7 @@ sixth bit indicates the first or second word of a long address paddr. The
 first word contains the memory region identifier that maps to a base address.
 The first word also contains the sixteen high order bits of the offset
 and the data length. The second word contains the low order forty-eight bits
-of offset. The absolute address is computed by:
+of the offset. The absolute address is computed by:
 
     address = memory_region_base[memory_region] + high_offset << 48 +
                                                               low_offset
@@ -328,7 +328,7 @@ buffers are managed externally).
 
 When an application runs there is a default PVmgre created. Alternatively,
 an application may create its own PVmgr and may also define more than on
-PVmgr for its own uses. Various service function described below take a
+PVmgr for its own uses. Various service functions described below take a
 PVmgr structure as input. If the global PVmgr is used then the function
 doesn't contain an explicit PVmgr argument, else the function includes a
 PVmgr argument as *struct xdp2_pvbuf_mgr \*pvmgr*.
@@ -394,7 +394,7 @@ Allocate a pvbuf and populate it with pbuf for some requested size:
 					 struct xdp2_pvbuf **pvbuf)
 ```
 *size* is the size of data in pbufs allocated for the pvbuf, *pvbuf*
-is a absolute pointer to the allocated PVbuf.
+is an absolute pointer to the allocated PVbuf.
 
 Free a pvbuf including any pbufs and pvbufs under the pvbuf
 ```C
@@ -571,7 +571,7 @@ pvbuf test
 
 The pvbuf test (test_pvbuf) exercises the various operations on pvbufs.
 The test works by creating an initial pvbuf, or set of pvbufs, and then
-performing a sequence of random pvbuf operation on the pvbufs. The test checks
+performing a sequence of random pvbuf operations on the pvbufs. The test checks
 the contents and lengths of any resultant pvbuf are correct and will abort if
 an error is detected. Configuration includes the ability to set the number of
 pvbufs and pbufs that can be allocated, and in particular the numbers can be

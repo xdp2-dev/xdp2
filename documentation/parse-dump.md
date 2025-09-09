@@ -5,7 +5,7 @@ Parse dump program
 
 Parse-dump in [test/parse_dump](../src/test/parse_dump) is a program
 for exercising the XDP2 parser. [parser.c](../src/test/parse_dump/parser.c)
-defines ans XP2 parser for many protocols. A set of pcap files for testing
+defines an XP2 parser for many protocols. A set of pcap files for testing
 is in [data/pcaps](../data/pcaps).
 
 
@@ -112,7 +112,7 @@ collected.
 IPinIP encapsulation
 ---------------------
 
-This show an example of an encapsulation protocol.
+This shows an example of an encapsulation protocol.
 ```
 
 $ ./parse_dump -v 10 ~/xdp2/data/pcaps/ipip.pcap 

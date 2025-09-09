@@ -40,7 +40,7 @@ custom, per protocol processing. An efficient software implementation can be
 elicited by an optimizing compiler that is aware of the XDP2 Parser data
 structure, and the XDP2 Parser is amenable to hardware acceleration by mapping
 data structures and operations to hardware mechanisms and functions. An example
-of protocol parse graph is shown below.
+of a protocol parse graph is shown below.
 
 <img src="images/Parse-graph.png" alt="Parse graph"/>
 
@@ -156,7 +156,7 @@ protocol table. The parse nodes are connected to be a graph via the
 relationships set in the protocol tables. The parser can be represented as a
 declarative data structure in C and can equivalently be viewed as a type of
 Finite State Machine (FSM) where each parse node is one state and transitions
-are defined by next protocol type and associated protocol tables. A parser
+are defined by a next protocol type and associated protocol tables. A parser
 defines a **root node** which is the start node for parsing an object (for
 networking the root is typically Ethernet).
 
@@ -217,8 +217,8 @@ configuration are discussed below).
 
 A metadata buffer is defined by the programmer. The first part of the buffer
 is the *metameta data* that holds metadata common to all nodes. Following the
-metameta is an array of frames of the same length. The image below shows an
-example metadata buffer with metameta data followed by three frames.
+metameta data is an array of frames of the same length. The image below shows
+an example metadata buffer with metameta data followed by three frames.
 
 <img src="images/Metadata-frames.jpg" alt="Metadata frames"/>
 

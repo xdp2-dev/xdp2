@@ -4,7 +4,7 @@ XDP2 Bitmaps
 ============
 
 The XDP2 API supports rich bitmaps API attuned to handle multi-word bitmaps
-with functions that are amenable to hradware acceleration.
+with functions that are amenable to hardware acceleration.
 
 A bitmap is an array of bits. Each bit can be one or zero and we apply some
 semantics to the bit at a particular index. Typically, each bit index refers
@@ -143,10 +143,10 @@ bits in a bitmap, then the total number of words in the bitmap is:
       NUM_WORDS = (NBITS + N - 1) / N
 ```
 
-Endianess and word ordering
----------------------------
+Endianness and word ordering
+----------------------------
 
-There are four variants of bitmaps with regard to endianess. The words of a
+There are four variants of bitmaps with regard to endianness. The words of a
 bitmap may be little endian or big endian, and the array of words in a
 multi-word bitmap may be counted from zero up in increasing word ordering
 (like normal array indexing), or may be counted from maximum number of words
@@ -160,7 +160,7 @@ down to zero in decreasing word ordering. So the four variants are:
 <figure class="image">
     <img src="images/bitmap numbering.png" alt="bitmap numbering"/>
     <figcaption> Bit numbering for a bitmap with three sixteen bit words.
-    On the left the number for lttle endian words and increasing word
+    On the left the number for little endian words and increasing word
     ordering is shown, and on the right the numbering for big endian words
     and decreasing word ordering is shown.
     </figcaption>
@@ -226,10 +226,10 @@ that gives the number of words in the bitmap. Unless decreasing ordering is an
 external requirement, say per a network protocol, increasing ordering is
 recommended.
 
-Applying word endianess
------------------------
+Applying word endianness
+------------------------
 
-In the above examples word endianess could be applied when the word is
+In the above examples word endianness could be applied when the word is
 accessed. For instance, a multi-word bitmap might be both big endian
 and decreasing word order (i.e. network byte order applied to a multi-
 word bitmap). In this case, assuming 64-bit words, numbering would be:
@@ -453,7 +453,7 @@ Functions
 Shift functions
 ---------------
 
-Shift a bitmap left or right by so many bits. The source and desintation
+Shift a bitmap left or right by so many bits. The source and destination
 may be the same bitmap (explicit in *dstsrc* functions). Note that *nbits*
 must be a multiple of 8.
 
@@ -503,7 +503,7 @@ void xdp2_rbitmap[N][swp]_dstsrc_shift_right(__uN *dest,
 Rotate functions
 ----------------
 
-Rotate a bitmap left or right by so many bits. The source and desintation
+Rotate a bitmap left or right by so many bits. The source and destination
 may be the same bitmap (explicit in *dstsrc* functions). Note that *nbits*
 must be a multiple of 8
 
@@ -628,7 +628,7 @@ are the same. The function prototypes have the form:
 <function>(const __uN *src1, const __uN *src, unsigned int pos, ...)
 ```
 
-If **_gen** is present then the source position and the desiination position
+If **_gen** is present then the source position and the destination position
 can be separately set. The function prototypes have the form:
 ```C
 <function>(const __uN *src1, unsigned int src1_pos, const __uN *src,
@@ -669,12 +669,12 @@ a destination and source bitmap where the destination also acts as the first
 source arguments.
 
 If **_gen** is not present then the source position and the destination position
-are the same. The function prototypes hace the form:
+are the same. The function prototypes have the form:
 ```C
 <function>(__uN *dest, const __uN *src, unsigned int pos, ...)
 ```
 
-If **_gen** is present then the source position and the desiination position
+If **_gen** is present then the source position and the destination position
 can be separately set. The function prototypes have the form:
 ```C
 <function>(const __uN *dest, unsigned int dest_pos, const __uN *src,
@@ -751,13 +751,13 @@ Boolean operations like and, or, and exclusive or, that take three arguments
 a destination and two source bitmap arguments.
 
 If **_gen** is not present then the source position and the destination position
-are the same. The function prototypes hace the form:
+are the same. The function prototypes have the form:
 ```C
 <function>(__uN *dest, const __uN *src1, const __uN *src2,
 	   unsigned int pos, ...)
 ```
 
-If **_gen** is present then the source position and the desiination position
+If **_gen** is present then the source position and the destination position
 can be separately set. The function prototypes have the form:
 ```C
 <function>(__uN *dest, unsigned int dest_pos, const __uN *src1,
