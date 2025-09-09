@@ -39,6 +39,8 @@
 #include "xdp2/parser_metadata.h"
 #include "xdp2/utility.h"
 
+#define XDP2_PARSER_SIMPLE_NUM_FRAMES 1
+
 /* Meta data structure for multiple frames (i.e. to retrieve metadata
  * for multiple levels of encapsulation)
  */

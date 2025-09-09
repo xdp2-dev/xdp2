@@ -63,12 +63,14 @@ XDP2_METADATA_TEMP_ports(ports_metadata, xdp2_parser_simple_hash_metadata)
 
 XDP2_MAKE_PARSE_NODE(ether_node, xdp2_parse_ether, ether_table,
 		     (.ops.extract_metadata = ether_metadata));
-XDP2_MAKE_PARSE_NODE(ipv4_check_node, xdp2_parse_ip, ipv4_check_table, ());
 XDP2_MAKE_PARSE_NODE(ipv4_node, xdp2_parse_ipv4, ipv4_table,
 		     (.ops.extract_metadata = ipv4_metadata));
-XDP2_MAKE_PARSE_NODE(ipv6_check_node, xdp2_parse_ip, ipv6_check_table, ());
+XDP2_MAKE_AUTONEXT_PARSE_NODE(ipv4_check_node, xdp2_parse_ipv4_check,
+			      ipv4_node, ());
 XDP2_MAKE_PARSE_NODE(ipv6_node, xdp2_parse_ipv6_stopflowlabel, ipv6_table,
 		     (.ops.extract_metadata = ipv6_metadata));
+XDP2_MAKE_AUTONEXT_PARSE_NODE(ipv6_check_node, xdp2_parse_ipv6_check,
+			      ipv6_node, ());
 XDP2_MAKE_PARSE_NODE(ipv6_eh_node, xdp2_parse_ipv6_eh, ipv6_table, ());
 XDP2_MAKE_PARSE_NODE(ipv6_frag_node, xdp2_parse_ipv6_frag_eh, ipv6_table, ());
 
@@ -77,7 +79,12 @@ XDP2_MAKE_LEAF_PARSE_NODE(ports_node, xdp2_parse_ports,
 
 /* Define hash parser to begin parsing at an Ethernet header */
 XDP2_PARSER(xdp2_parser_simple_hash_ether,
-	    "XDP2 simple hash parser for Ethernet", ether_node, ());
+	    "XDP2 simple hash parser for Ethernet", ether_node,
+	    (.max_frames = XDP2_PARSER_SIMPLE_NUM_FRAMES,
+	     .metameta_size = 0,
+	     .frame_size = sizeof(struct xdp2_parser_simple_hash_metadata)
+	    )
+);
 
 /* Protocol tables */
 
@@ -86,19 +93,11 @@ XDP2_MAKE_PROTO_TABLE(ether_table,
 	(__cpu_to_be16(ETH_P_IPV6), ipv6_check_node)
 );
 
-XDP2_MAKE_PROTO_TABLE(ipv4_check_table,
-	(4, ipv4_node)
-);
-
 XDP2_MAKE_PROTO_TABLE(ipv4_table,
 	(IPPROTO_TCP, ports_node),
 	(IPPROTO_UDP, ports_node),
 	(IPPROTO_SCTP, ports_node),
 	(IPPROTO_DCCP, ports_node)
-);
-
-XDP2_MAKE_PROTO_TABLE(ipv6_check_table,
-	(6, ipv6_node)
 );
 
 XDP2_MAKE_PROTO_TABLE(ipv6_table,
