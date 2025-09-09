@@ -97,14 +97,14 @@ XDP2_MAKE_PARSE_NODE(ether_node, xdp2_parse_ether, ether_table,
 		     (.ops.extract_metadata = ether_metadata));
 XDP2_MAKE_PARSE_NODE(ip_overlay_node, xdp2_parse_ip, ip_table,
 		     (.ops.extract_metadata = ip_overlay_metadata));
-XDP2_MAKE_PARSE_NODE(ipv4_check_node, xdp2_parse_ipv4_check, ipv4_table,
-		     (.ops.extract_metadata = ipv4_metadata));
 XDP2_MAKE_PARSE_NODE(ipv4_node, xdp2_parse_ipv4, ipv4_table,
 		     (.ops.extract_metadata = ipv4_metadata));
+XDP2_MAKE_AUTONEXT_PARSE_NODE(ipv4_check_node, xdp2_parse_ipv4_check,
+			      ipv4_node, ());
 XDP2_MAKE_PARSE_NODE(ipv6_node, xdp2_parse_ipv6, ipv6_table,
 		     (.ops.extract_metadata = ipv6_metadata));
-XDP2_MAKE_PARSE_NODE(ipv6_check_node, xdp2_parse_ipv6_check, ipv6_table,
-		     (.ops.extract_metadata = ipv6_metadata));
+XDP2_MAKE_AUTONEXT_PARSE_NODE(ipv6_check_node, xdp2_parse_ipv6_check,
+			      ipv6_node, ());
 XDP2_MAKE_PARSE_NODE(ipv6_eh_node, xdp2_parse_ipv6_eh, ipv6_table,
 		     (.ops.extract_metadata = ipv6_eh_metadata));
 XDP2_MAKE_PARSE_NODE(ipv6_frag_node, xdp2_parse_ipv6_frag_eh, ipv6_table,
@@ -199,7 +199,13 @@ XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_pptp_flag_seq_node,
  * Ethernet header, and one for packets starting with an IP header.
  */
 XDP2_PARSER(xdp2_parser_big_ether, "XDP2 big parser for Ethernet",
-	    ether_node, ());
+	    ether_node,
+	    (.max_frames = XDP2_PARSER_BIG_NUM_FRAMES,
+	     .metameta_size = 0,
+	     .frame_size = sizeof(struct xdp2_parser_big_metadata_one)
+	    )
+);
+
 XDP2_PARSER(xdp2_parser_big_ip, "XDP2 big parser for IP",
 	    ip_overlay_node, ());
 

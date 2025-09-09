@@ -38,11 +38,13 @@
 
 #include "xdp2/parser_metadata.h"
 
+#define XDP2_PARSER_BIG_NUM_FRAMES 5
+
 /* Meta data structure for multiple frames (i.e. to retrieve metadata
  * for multiple levels of encapsulation)
  */
 struct xdp2_parser_big_metadata {
-	struct xdp2_metadata_all frame[0];
+	struct xdp2_metadata_all frame[XDP2_PARSER_BIG_NUM_FRAMES];
 };
 
 /* Meta data structure for just one frame */
