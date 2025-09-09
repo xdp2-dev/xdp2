@@ -141,9 +141,7 @@ static void run_parser(const struct xdp2_parser *parser, char **pcap_files,
 					       packets[pn].hdr_size,
 					       i);
 
-		xdp2_parse(parser, &pdata,
-			   (struct xdp2_metadata *)&pmetadata,
-			   flags);
+		xdp2_parse(parser, &pdata, &pmetadata, flags);
 	}
 }
 
