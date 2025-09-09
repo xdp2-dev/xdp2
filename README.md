@@ -22,8 +22,18 @@ This repository contains the code base for the XDP2 project. The XDP2 code
 is composed of a number of C libraries, include files for the API, scripts,
 test code, and sample code.
 
-There are several libraries:
+Relationship to XDP
+===================
 
+XDP2 can be thought of as a generalization of XDP. Where XDP is a facility
+for programming the low level datapath from device drivers, XDP2 extends
+the model to program programmable hardware as well as software environments
+that are not eBPF like DPDK. XDP2 retains the spirit of XDP in an easy-to-use
+programming model, as well as the general look and feel of XDP. The XDP2
+API is a bit more generic than XDP and abstracts out target specific items.
+XDP is a first class target of XDP (see XDP2 samples). Converting an XDP
+program to XDP2 should mostly be a matter of adapting the code to the XDP2
+API and splitting out required XDP code like glue code.
 
 Directory structure
 ===================
@@ -156,7 +166,7 @@ be supported in the future)
 an alternative
 * **--build-opt-parser** build the optimized parser (see **xdp-compiler**
 below)
-* **--llvm-config <llvm-config>** set the the LLVM config command. The default
+* **--llvm-config <llvm-config>** set the LLVM config command. The default
 is */usr/bin/llvm-config*. This is only used if **--build-opt-parser** is set
  
 Examples:
@@ -221,7 +231,7 @@ $ make CCOPTS=-g
 Building samples
 ================
 
-Before building samples the main source must be built and install. Note that
+Before building samples the main source must be built and installed. Note that
 *samples/xdp* requires that the optimized parser was built. Sample are built
 by:
 ```
@@ -235,7 +245,7 @@ For more information consult the README files in the *samples* directory.
 Test
 ====
 
-The XDP2 test are built as part of XDP build. They are installed in
+The XDP2 tests are built as part of XDP build. They are installed in
 *\<install-dir\>/bin/test_\** where \* is replaced by the test name. For
 instance:
 
