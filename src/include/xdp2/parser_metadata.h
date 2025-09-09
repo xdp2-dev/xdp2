@@ -230,7 +230,6 @@ struct xdp2_metadata_all {
 	XDP2_METADATA_l3_off;
 	XDP2_METADATA_l4_off;
 
-
 #define XDP2_HASH_START_FIELD_ALL eth_proto
 	XDP2_METADATA_eth_proto __aligned(8);
 	XDP2_METADATA_ip_proto;
