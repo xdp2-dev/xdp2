@@ -21,7 +21,6 @@ ETCDIR?=/etc
 CONFDIR?=/etc
 DATADIR?=/share
 HDRDIR?=/include
-TEST_PRSR_DIR?=/test_parser
 MANDIR?=$(DATADIR)/man
 KERNEL_INCLUDE?=/usr/include
 BASH_COMPDIR?=$(DATADIR)/bash-completion/completions
@@ -83,7 +82,6 @@ install: all
 	@install -m 0755 -d $(INSTALLDIR)$(LIBDIR)
 	@install -m 0755 -d $(INSTALLDIR)$(ETCDIR)
 	@install -m 0755 -d $(INSTALLDIR)$(HDRDIR)
-	@install -m 0755 -d $(INSTALLDIR)$(TEST_PRSR_DIR)
 	@for i in $(SUBDIRS); \
 	do echo; echo $$i; $(MAKE) $(MFLAGS) -C $$i install; done
 

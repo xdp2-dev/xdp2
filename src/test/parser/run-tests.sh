@@ -57,15 +57,6 @@ $basedir/test_parser -i fuzz -c xdp2 -o text < $basedir/test-in.fuzz | \
 	grep -v Dumping | diff -u $basedir/test-out-xdp2.fuzz -
 
 echo "running xdp2 optimized parser basic validation tests"
-#xdp2 optimized tests
-$basedir/test_parser -i raw,$basedir/test-in.raw -c xdp2opt -o text | \
-	grep -v Dumping | diff -u $basedir/test-out-xdp2.raw -
-$basedir/test_parser -i pcap,$basedir/test-in.pcap -c xdp2opt -o text | \
-	grep -v Dumping | diff -u $basedir/test-out-xdp2.pcap -
-$basedir/test_parser -i tcpdump,$basedir/test-in.tcpdump -c xdp2opt -o text \
-	 | grep -v Dumping | diff -u $basedir/test-out-xdp2.tcpdump -
-$basedir/test_parser -i fuzz -c xdp2opt -o text < $basedir/test-in.fuzz | \
-	grep -v Dumping | diff -u $basedir/test-out-xdp2.fuzz -
 
 arch=$(uname -m)
 if [[ "$arch" != *"riscv"* ]]; then

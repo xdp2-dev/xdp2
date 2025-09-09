@@ -21,7 +21,7 @@ OBJ = $(CORES_OBJ) $(IMETHODS_OBJ) $(OMETHODS_OBJ)		\
       cores.o imethods.o main.o omethods.o
 
 LIBS = -lpcap ../../../src/lib/flowdis/libflowdis.a		\
-       ../../../src/lib/xdp2/libxdp2.a			\
+       ../../../src/lib/xdp2/libxdp2.a				\
        ../../../src/lib/parselite/libparselite.a		\
        ../../../src/lib/siphash/libsiphash.a
 

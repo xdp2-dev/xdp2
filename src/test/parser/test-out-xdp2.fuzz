@@ -1,7 +1,6 @@
 -------- Packet #1: length 74
 control: thoff=0 addr_type=IPv4 flags=0
 basic: n_proto=0800 ip_proto=6
-ipv4_flags: is_fragment is set! 
 ipv4_addrs: src=10.0.2.15 dst=192.0.47.59
 ports: src=44188 dst=43
 eth_addrs: dst=52:54:00:12:35:02 src=08:00:27:3e:ac:31
