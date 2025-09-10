@@ -366,14 +366,12 @@ This can be tested by:
 $ echo; echo "*** Diffs";for i in ~/xdp2/data/pcaps/*.pcap; do bn=`basename $i`; ./parse_dump -v 10 $i > /tmp/pdiff.noopt; ./parse_dump -v 10 -O $i > /tmp/pdiff.opt; diff -q /tmp/pdiff.noopt /tmp/pdiff.opt > /dev/null; [ $? -eq 1 ] && echo $bn; done
 
 *** Diffs
-l7_l2tp.pcap
 protobuf_in_udp.pcap
-tcp_sack.pcap
-vxlan.pcap
 ```
 
-Note that there are four pcap files with a discrepancy between the optimized
-and non-optimized parsers. This is a known bug.
+Note that there is one pcap file with a discrepancy between the optimized
+and non-optimized parsers. This is a known bug (nested TLVs need to be properly
+supported by the optimized parser).
 
 We can also do a speed test to compare:
 ```
