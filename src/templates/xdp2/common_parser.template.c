@@ -224,21 +224,23 @@ static inline __attribute__((always_inline)) int
 			if (ret != XDP2_OKAY)
 				return ret;
 
-			break;
+			if (!parse_tlv_node->overlay_table)
+				break;
+
 		<!--(if len(tlv['overlay_nodes']) != 0)-->
 			if (parse_tlv_node->proto_tlv_def->ops.overlay_type)
 				type = parse_tlv_node->proto_tlv_def->
 							ops.overlay_type(cp);
 			else
-				type = hdr_len;
+				type = tlv_len;
 
 			switch (type) {
 			<!--(for overlay in tlv['overlay_nodes'])-->
 			case @!overlay['type']!@:
 				parse_tlv_node = &@!overlay['name']!@;
 				ret = xdp2_parse_tlv(parse_tlvs_node,
-						parse_tlv_node, cp, _obj_ref,
-						_metadata, frame, hdr_len,
+						parse_tlv_node, _obj_ref, cp,
+						_metadata, frame, tlv_len,
 						&tlv_ctrl, flags);
 				if (ret != XDP2_OKAY)
 					return ret;
@@ -261,7 +263,7 @@ static inline __attribute__((always_inline)) int
 				return xdp2_parse_tlv(
 					parse_tlvs_node,
 					parse_tlvs_node->tlv_wildcard_node,
-					cp, _obj_ref, _metadata, frame,
+					_obj_ref, cp, _metadata, frame,
 					hdr_len, &tlv_ctrl, flags);
 			else if (parse_tlvs_node->unknown_tlv_type_ret !=
 							XDP2_OKAY)
