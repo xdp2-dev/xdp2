@@ -192,8 +192,10 @@ static inline __attribute__((always_inline)) int
 		if (len < proto_tlvs_def->min_len)
 			return XDP2_STOP_TLV_LENGTH;
 
-		if (proto_tlvs_def->ops.len) {
-			tlv_len = proto_tlvs_def->ops.len(cp);
+		if (proto_tlvs_def->ops.len || proto_tlvs_def->ops.len_maxlen) {
+			tlv_len = proto_tlvs_def->ops.len_maxlen ?
+				proto_tlvs_def->ops.len_maxlen(cp, len) :
+				proto_tlvs_def->ops.len(cp);
 			if (!tlv_len || len < tlv_len)
 				return XDP2_STOP_TLV_LENGTH;
 			if (tlv_len < proto_tlvs_def->min_len)

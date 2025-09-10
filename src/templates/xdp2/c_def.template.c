@@ -44,8 +44,10 @@ static inline __attribute__((always_inline)) int check_pkt_len(const void* hdr,
 	if (len < *hlen)
 		return XDP2_STOP_LENGTH;
 
-	if (pnode->ops.len) {
-		*hlen = pnode->ops.len(hdr);
+	if (pnode->ops.len || pnode->ops.len_maxlen) {
+		*hlen = pnode->ops.len_maxlen ?
+				pnode->ops.len_maxlen(hdr, len) :
+				pnode->ops.len(hdr);
 		if (len < *hlen)
 			return XDP2_STOP_LENGTH;
 		if (*hlen < pnode->min_len)

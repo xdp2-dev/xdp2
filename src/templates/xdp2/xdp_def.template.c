@@ -52,14 +52,17 @@ static __always_inline int check_pkt_len(const void *hdr, const void *hdr_end,
 					 const struct xdp2_proto_def *pnode,
 					 ssize_t* hlen)
 {
+	size_t len = (uintptr_t)(hdr_end - hdr);
 	*hlen = pnode->min_len;
 
 	/* Protocol node length checks */
 	if (xdp2_bpf_check_pkt(hdr, *hlen, hdr_end))
 		return XDP2_STOP_LENGTH;
 
-	if (pnode->ops.len) {
-		*hlen = pnode->ops.len(hdr);
+	if (pnode->ops.len || pnode->ops.len_maxlen) {
+		*hlen = pnode->ops.len_maxlen ?
+				pnode->ops.len_maxlen(hdr, len) :
+				pnode->ops.len(hdr);
 		if (*hlen < 0)
 			return XDP2_STOP_LENGTH;
 		if (*hlen < pnode->min_len)
