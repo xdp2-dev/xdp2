@@ -396,6 +396,13 @@ static inline int __@!parser_name!@_@!name!@_xdp2_parse(
 	<!--(else)-->
 
 		<!--(if len(graph[name]['wildcard_proto_node']) != 0)-->
+
+	if (!proto_def->overlay) {
+		hdr += hlen;
+		hdr_len -= hlen;
+		ctrl->hdr.hdr_offset += hlen;
+	}
+
 	return __@!parser_name!@_@!graph[name]['wildcard_proto_node']!@_xdp2_parse(
 		parser, _obj_ref, hdr, hdr_len, metadata,
 		frame, frame_num, ctrl, flags);
