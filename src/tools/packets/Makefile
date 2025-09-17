@@ -1,12 +1,8 @@
-include ../config.mk
+include ../../config.mk
 
 TOPTARGETS := all clean install
 
-SUBDIRS = pmacro packets
-
-ifeq ($(BUILD_OPT_PARSER),y)
-	SUBDIRS += compiler
-endif
+SUBDIRS =
 
 $(TOPTARGETS) : $(SUBDIRS)
 
