@@ -37,13 +37,7 @@
 #include "xdp2/utility.h"
 
 #include "parse_dump.h"
-
-#define LOC_PRINTFC(CTRL, ...) do {					\
-	int _i;								\
-	for (_i = 0; _i < (CTRL).hdr.tlv_levels; _i++)			\
-		PRINTFC((CTRL).pkt.seqno, "\t\t");			\
-	PRINTFC((CTRL).pkt.seqno, __VA_ARGS__);				\
-} while (0)
+#include "parse_helpers.h"
 
 /* Extract EtherType from Ethernet header */
 static void extract_ether(const void *hdr, void *_frame,
@@ -421,20 +415,6 @@ static int handler_ether_root(const void *hdr, void *frame,
 	return 0;
 }
 
-#define MAKE_SIMPLE_TCP_OPT_HANDLER(NAME, TEXT)			\
-static int handler_##NAME(const void *hdr, void *frame,		\
-			  const struct xdp2_ctrl_data ctrl)	\
-{								\
-	const __u8 *tcp_opt = hdr;				\
-								\
-	if (verbose >= 5)					\
-		LOC_PRINTFC(ctrl, "\t\t"			\
-			TEXT " option %u, length %u\n",	\
-			tcp_opt[0], tcp_opt[1]);		\
-								\
-	return 0;						\
-}
-
 static int handler_icmpv6_nd_target_addr_opt(const void *hdr, void *frame,
 					     const struct xdp2_ctrl_data ctrl)
 {
@@ -500,27 +480,6 @@ static int handler_ospf(const void *hdr, void *frame,
 		LOC_PRINTFC(ctrl, "\tOSPF node\n");
 
 	return 0;
-}
-
-#define MAKE_SIMPLE_HANDLER(NAME, TEXT)				\
-static int handler_##NAME(const void *hdr, void *frame,		\
-			  const struct xdp2_ctrl_data ctrl)	\
-{								\
-								\
-	if (verbose >= 5)					\
-		LOC_PRINTFC(ctrl, "\t" TEXT "\n");		\
-								\
-	return 0;						\
-}
-
-#define MAKE_SIMPLE_FLAG_FIELD_HANDLER(NAME, TEXT)		\
-static int handler_##NAME(const void *hdr, void *frame,		\
-			  const struct xdp2_ctrl_data ctrl)	\
-{								\
-	if (verbose >= 5)					\
-		LOC_PRINTFC(ctrl, "\t\t" TEXT "\n");		\
-								\
-	return 0;						\
 }
 
 MAKE_SIMPLE_HANDLER(ether, "Ether node")
@@ -647,20 +606,6 @@ static int handler_protobufs1_id(const void *hdr, void *frame,
 		LOC_PRINTFC(ctrl, "Protobuf id: %llu\n", value);
 
 	return 0;
-}
-
-#define MAKE_SACK_HANDLER(NUM)						\
-static int handler_tcp_sack_##NUM(const void *hdr, void *frame,		\
-				  const struct xdp2_ctrl_data ctrl)	\
-{									\
-	const __u8 *tcp_opt = hdr;					\
-									\
-	if (verbose >= 5)						\
-		LOC_PRINTFC(ctrl,					\
-			"\t\tTCP SACK_" #NUM " option %u, length %u\n",	\
-			tcp_opt[0], tcp_opt[1]);			\
-									\
-	return 0;							\
 }
 
 MAKE_SACK_HANDLER(1)
@@ -1018,17 +963,6 @@ XDP2_MAKE_PROTO_TABLE(ip4_table,
 	( IPPROTO_ICMP, icmpv4_node ),
 	( IPPROTO_OSPF, ospf_node )
 );
-
-#define MAKE_SIMPLE_EH_HANDLER(NAME, TEXT)			\
-static int handler_##NAME(const void *hdr, void *frame,		\
-			  const struct xdp2_ctrl_data ctrl)	\
-{								\
-	if (verbose >= 5)					\
-		LOC_PRINTFC(ctrl, "\t" TEXT "length %u\n",	\
-			    ipv6_optlen(			\
-				(struct ipv6_opt_hdr *)hdr));	\
-	return 0;						\
-}
 
 MAKE_SIMPLE_EH_HANDLER(ipv6_hbh_options, "IPv6 HBH options")
 MAKE_SIMPLE_EH_HANDLER(ipv6_dest_options, "IPv6 Dest options")

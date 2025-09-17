@@ -32,10 +32,9 @@
 #include "xdp2/utility.h"
 #include "xdp2/parser.h"
 
-#define MAX_VLAN_CNT 2
+#include "parse_helpers.h"
 
-extern int verbose;
-extern bool use_colors;
+#define MAX_VLAN_CNT 2
 
 struct metametadata {
 	union {
@@ -168,13 +167,6 @@ struct one_packet {
 };
 
 void print_metadata(void *_metadata, const struct xdp2_ctrl_data *ctrl);
-
-#define PRINTFC(SEQNO, ...) do {				\
-	if (use_colors)						\
-		XDP2_PRINT_COLOR_SEL(SEQNO, __VA_ARGS__);	\
-	else							\
-		XDP2_CLI_PRINT(NULL, __VA_ARGS__);		\
-} while (0)
 
 void lookup_tuple(struct metadata *frame, int seqno);
 
