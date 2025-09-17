@@ -2,7 +2,7 @@ include ../../config.mk
 
 TOPTARGETS := all clean install
 
-SUBDIRS = uet
+SUBDIRS = uet falcon
 
 $(TOPTARGETS) : $(SUBDIRS)
 
