@@ -4,7 +4,7 @@ include $(SRCDIR)/config.mk
 
 TOPTARGETS := all clean install
 
-SUBDIRS = cli siphash xdp2 parselite uet
+SUBDIRS = cli siphash xdp2 parselite uet falcon
 
 $(TOPTARGETS) : $(SUBDIRS)
 
