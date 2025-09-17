@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause-FreeBSD
  *
- * Copyright (c) 2020 Tom Herbert
+ * Copyright (c) 2025 Tom Herbert
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -180,4 +180,4 @@ void lookup_tuple(struct metadata *frame, int seqno);
 
 void init_tables(void);
 
-#endif /* __XDP2_TEST_PARSER_THREADS_H__ */
+#endif /* __XDP2_TEST_PARSE_DUMP_H__ */
