@@ -74,7 +74,7 @@ all: config.mk $(EXTRA_TARGETS)
 	do echo; echo $$i; $(MAKE) $(MFLAGS) -C $$i; done
 
 config.mk:
-	sh configure $(KERNEL_INCLUDE)
+	bash configure $(KERNEL_INCLUDE)
 
 install: all
 	@install -m 0755 -d $(INSTALLDIR)$(SBINDIR)
