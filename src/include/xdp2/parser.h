@@ -71,6 +71,12 @@ static const struct xdp2_proto_def xdp2_parse_null __unused() = {
 	.ops.len_maxlen = __xdp2_proto_null_all_len,
 };
 
+static const struct xdp2_proto_def xdp2_parse_null_overlay __unused() = {
+	.name = "NULL-proto",
+	.ops.len_maxlen = __xdp2_proto_null_all_len,
+	.overlay = 1,
+};
+
 static inline const char *xdp2_get_text_code(int code)
 {
 	static char buff[sizeof("XDP2 Unknown code: XXXXXXXX")];
