@@ -15,7 +15,8 @@ OBJ = main.o print_meta.o tables.o
 LDLIBS = $(SRCDIR)/lib/xdp2/libxdp2.a $(SRCDIR)/lib/cli/libcli.a
 LDLIBS += -L$(SRCDIR)/../thirdparty/libpcap
 LDLIBS += $(SRCDIR)/lib/siphash/libsiphash.a
-LDLIBS +=-lpcap -lbsd
+LDLIBS +=-lpcap
+# -lbsd
 
 $(NONOPT_TARGET): $(OBJ) $(NONOPT_PARSER_OBJ)
 	$(QUIET_LINK)$(CC) $^  $(LDLIBS) -o $@
