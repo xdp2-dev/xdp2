@@ -36,6 +36,7 @@
 #include "xdp2/proto_defs_define.h"
 #include "xdp2/utility.h"
 
+#include "falcon_parse.h"
 #include "parse_dump.h"
 #include "parse_helpers.h"
 #include "uet_parse.h"
@@ -1152,7 +1153,8 @@ XDP2_MAKE_PROTO_TABLE(udp_ports_table,
 	( __cpu_to_be16(4789), vxlan_node ),
 	( __cpu_to_be16(1701), l2tp_base_node ),
 	( __cpu_to_be16(6081), geneve_base_node ),
-	( __cpu_to_be16(UET_UDP_PORT_NUM), uet_base_node )
+	( __cpu_to_be16(UET_UDP_PORT_NUM), uet_base_node ),
+	( __cpu_to_be16(FALCON_UDP_PORT_NUM), falcon_base_node )
 );
 
 XDP2_MAKE_PROTO_TABLE(icmpv6_table,
