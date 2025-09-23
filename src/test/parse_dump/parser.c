@@ -39,6 +39,7 @@
 #include "falcon_parse.h"
 #include "parse_dump.h"
 #include "parse_helpers.h"
+#include "sue_parse.h"
 #include "uet_parse.h"
 
 /* Extract EtherType from Ethernet header */
@@ -1154,7 +1155,8 @@ XDP2_MAKE_PROTO_TABLE(udp_ports_table,
 	( __cpu_to_be16(1701), l2tp_base_node ),
 	( __cpu_to_be16(6081), geneve_base_node ),
 	( __cpu_to_be16(UET_UDP_PORT_NUM), uet_base_node ),
-	( __cpu_to_be16(FALCON_UDP_PORT_NUM), falcon_base_node )
+	( __cpu_to_be16(FALCON_UDP_PORT_NUM), falcon_base_node ),
+	( __cpu_to_be16(SUE_UDP_PORT_NUM), sue_base_node )
 );
 
 XDP2_MAKE_PROTO_TABLE(icmpv6_table,
