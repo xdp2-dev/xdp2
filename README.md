@@ -148,24 +148,29 @@ build process. The usage is:
 ```
 $ ./configure --help
 
-Usage: ./configure [--python-ver <version>]
- [--pkg-config-path <path>] [--ccarch <arch>]
- [--arch <arch>] [--installdir <dir>]
- [--compiler <compiler>] [--build-opt-parser]
+$ ./configure --help
+
+Usage: ./configure [--config-defines <defines>] [--ccarch <arch>]
+ [--arch <arch>] [--compiler <compiler>]
+ [--installdir <dir>] [--build-opt-parser]
+ [--pkg-config-path <path>] [--python-ver <version>]
  [--llvm-config <llvm-config>]
 ```
 
 Parameters:
 
-* **--python-ver <version>** sets the Python version
-* **--pkg-config-path <path>** set Python package config path
+* **--config-defines <defines>** set compiler defines with format
+  "**-D**\<*name*\>=\<*val*\> ..."
 * **--ccarch <arch>** set cross compiler architecture (cross compilation will
 be supported in the future)
 * **--arch <arch>** set architecture. Currently *x84_64* is supported
 * **--compiler <compiler>** set the compiler. Default is *gcc*, *clang* is
 an alternative
+* **--installdir** install directory
 * **--build-opt-parser** build the optimized parser (see **xdp-compiler**
 below)
+* **--pkg-config-path <path>** set Python package config path
+* **--python-ver <version>** sets the Python version
 * **--llvm-config <llvm-config>** set the LLVM config command. The default
 is */usr/bin/llvm-config*. This is only used if **--build-opt-parser** is set
  
