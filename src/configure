@@ -12,6 +12,7 @@ TMPDIR=$(mktemp -d config.XXXXXX)
 trap 'status=$?; rm -rf $TMPDIR; exit $status' EXIT HUP INT QUIT TERM
 
 PYTHON_VER=3
+
 check_prog()
 {
     echo -n "$2"
@@ -273,11 +274,11 @@ usage()
 		echo -n " --platform $PLATFORM_TEXT"
 	fi
 
-        echo " [--python-ver <version>]"
-	echo " [--pkg-config-path <path>] [--ccarch <arch>]"
-	echo " [--arch <arch>] [--installdir <dir>]"
-        echo " [--compiler <compiler>] [--build-opt-parser]"
-        echo " [--llvm-config <llvm-config>]"
+	echo " [--config-defines <defines>] [--ccarch <arch>]"
+	echo " [--arch <arch>] [--compiler <compiler>]"
+	echo " [--installdir <dir>] [--build-opt-parser]"
+	echo " [--pkg-config-path <path>] [--python-ver <version>]"
+	echo " [--llvm-config <llvm-config>]"
 
 	platform_usage
 
@@ -293,15 +294,15 @@ COMPILER="gcc"
 
 while [ -n "$1" ]; do
 	case $1 in
-		"--python-ver") PYTHON_VER=$2; shift;;
-		"--pkg-config-path") MY_PKG_CONFIG_PATH=$2; shift;;
+		"--config-defines") CONFIG_DEFINES=$2; shift;;
 		"--ccarch") TARGET_ARCH=$2; shift;;
 		"--arch") ARCH=$2; shift;;
-		"--installdir") INSTALLDIR=$2; shift;;
-		"--installtarname") INSTALLTARNAME=$2; shift;;
 		"--compiler") COMPILER=$2; shift;;
-		"--llvm-config") HOST_LLVM_CONFIG=$2; shift;;
+		"--pkg-config-path") MY_PKG_CONFIG_PATH=$2; shift;;
+		"--installdir") INSTALLDIR=$2; shift;;
 		"--build-opt-parser") BUILD_OPT_PARSER="y";;
+		"--python-ver") PYTHON_VER=$2; shift;;
+		"--llvm-config") HOST_LLVM_CONFIG=$2; shift;;
 		*) parse_platform_opts $1;;
 	esac
 	shift
@@ -440,7 +441,7 @@ echo "CXX := $CXX" >> $CONFIG
 echo "HOST_LLVM_CONFIG := $HOST_LLVM_CONFIG" >> $CONFIG
 echo "LLVM_CONFIG := $LLVM_CONFIG" >> $CONFIG
 echo "LDFLAGS := $LDFLAGS" >> $CONFIG
-
+echo "PYTHON := python$PYTHON_VER" >> $CONFIG
 
 # If we didn't get an architecture from the command line set it base
 # on the running host
@@ -512,3 +513,4 @@ echo >> $CONFIG
 echo "INSTALLDIR ?= $INSTALLDIR" >> $CONFIG
 echo "INSTALLTARNAME ?= $INSTALLTARNAME" >> $CONFIG
 echo "BUILD_OPT_PARSER ?= $BUILD_OPT_PARSER" >> $CONFIG
+echo "CONFIG_DEFINES := $CONFIG_DEFINES" >> $CONFIG
