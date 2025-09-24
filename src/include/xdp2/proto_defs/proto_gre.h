@@ -218,6 +218,16 @@ static inline int gre_v1_proto(const void *vgre)
 	return ((struct gre_hdr *)vgre)->protocol;
 }
 
+static inline __u32 gre_get_flags(const void *hdr)
+{
+	return ((struct gre_hdr *)hdr)->flags;
+}
+
+static inline size_t gre_fields_offset(const void *hdr)
+{
+	return sizeof(struct gre_hdr);
+}
+
 #endif /* __XDP2_PROTO_GRE_H__ */
 
 #ifdef XDP2_DEFINE_PARSE_NODE
@@ -234,16 +244,6 @@ static const struct xdp2_proto_def xdp2_parse_gre_base __unused() = {
 	.min_len = sizeof(struct gre_hdr),
 	.ops.next_proto = gre_proto_version,
 };
-
-static inline __u32 gre_get_flags(const void *hdr)
-{
-	return ((struct gre_hdr *)hdr)->flags;
-}
-
-static inline size_t gre_fields_offset(const void *hdr)
-{
-	return sizeof(struct gre_hdr);
-}
 
 /* xdp2_parse_gre_v0 protocol definition
  *
