@@ -752,6 +752,7 @@ static void run_one_p_(__u8 *data, struct my_pipeline_s *pline, int tnum,
 	size_t offset = 0, retlen, base_length;
 	void *args[XDP2_PIPELINE_MAX_STAGES];
 	unsigned int error, error_stage;
+	xdp2_paddr_t opkts[MAX_OPKTS];
 	xdp2_pipeline_common_t zfunc;
 	xdp2_paddr_t pkts[MAX_IPKTS];
 	size_t block_size;
@@ -812,16 +813,14 @@ static void run_one_p_(__u8 *data, struct my_pipeline_s *pline, int tnum,
 
 	switch (out_type) {
 	case XDP2_PIPELINE_P:
-		xdp2_paddr_t opkts[MAX_OPKTS];
-
 		memset(opkts, 0, sizeof(opkts));
 
 		zfunc = (xdp2_pipeline_common_t)pline->pfunc;
-		zfunc((void **)pkts, ipkts_cnt, (void **)opkts, MAX_OPKTS,
-		       &error, &error_stage, args);
+		zfunc((void **)pkts, ipkts_cnt, (void **)opkts,
+		      MAX_OPKTS, &error, &error_stage, args);
 
-		check_expected_pkts(byte_count, opkts, MAX_OPKTS, pline->value,
-				    tnum, 0);
+		check_expected_pkts(byte_count, opkts, MAX_OPKTS,
+				    pline->value, tnum, 0);
 
 		for (i = 0; i < MAX_OPKTS; i++)
 			if (opkts[i])
@@ -838,8 +837,9 @@ static void run_one_p_(__u8 *data, struct my_pipeline_s *pline, int tnum,
 		break;
 
 	case XDP2_PIPELINE_X:
-		set_targ_value(args, pline->value, byte_count, tnum);
+		memset(opkts, 0, sizeof(opkts));
 
+		set_targ_value(args, pline->value, byte_count, tnum);
 		zfunc = (xdp2_pipeline_common_t)pline->pfunc;
 
 		zfunc((void **)pkts, ipkts_cnt, (void **)opkts, MAX_OPKTS,
@@ -994,6 +994,7 @@ static void run_all(unsigned long num_tests, const char *run_test,
 				   byte_count, block_size);
 			break;
 		default:
+			break;
 		}
 	}
 }
