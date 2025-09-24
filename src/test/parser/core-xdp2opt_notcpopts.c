@@ -24,17 +24,6 @@
  * SUCH DAMAGE.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <strings.h>
-#include <string.h>
-
-#include "test-parser-core.h"
-
-#include "xdp2/parser_metadata.h"
-#include "xdp2/parsers/parser_big.h"
-#include <time.h>
-
 /* XDP2 Big Parser
  *
  * Build a variant of the XDP2 big parse where we inline the parser, via
@@ -51,12 +40,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
-#include "xdp2/parsers/parser_big.h"
 #include "siphash/siphash.h"
 
-/* Define protocol nodes that are used below */
-#include "xdp2/proto_defs.h"
+#include "xdp2/parser_metadata.h"
+#include "xdp2/parsers/parser_big.h"
+#include "xdp2/proto_defs_define.h"
+
+#include "test-parser-core.h"
 
 /* Meta data functions for parser nodes. Use the canned templates
  * for common metadata
@@ -90,186 +82,191 @@ XDP2_METADATA_TEMP_gre_pptp_ack(gre_pptp_ack_metadata, xdp2_metadata_all)
  * nodes, metadata functions defined above, and protocol tables defined
  * below
  */
-XDP2_MAKE_PARSE_NODE(ether_node, xdp2_parse_ether, ether_metadata, NULL,
-		      ether_table);
-XDP2_MAKE_PARSE_NODE(ipv4_check_node, xdp2_parse_ip, NULL, NULL,
-		      ipv4_check_table);
-XDP2_MAKE_PARSE_NODE(ipv4_node, xdp2_parse_ipv4, ipv4_metadata, NULL,
-		      ipv4_table);
-XDP2_MAKE_PARSE_NODE(ipv6_check_node, xdp2_parse_ip, NULL, NULL,
-		      ipv6_check_table);
-XDP2_MAKE_PARSE_NODE(ipv6_node, xdp2_parse_ipv6, ipv6_metadata, NULL,
-		      ipv6_table);
-XDP2_MAKE_PARSE_NODE(ip_overlay_node, xdp2_parse_ip, ip_overlay_metadata,
-		      NULL, ip_table);
-XDP2_MAKE_PARSE_NODE(ipv6_eh_node, xdp2_parse_ipv6_eh, ipv6_eh_metadata,
-		      NULL, ipv6_table);
-XDP2_MAKE_PARSE_NODE(ipv6_frag_node, xdp2_parse_ipv6_frag_eh,
-		      ipv6_frag_metadata, NULL, ipv6_table);
-XDP2_MAKE_PARSE_NODE(gre_base_node, xdp2_parse_gre_base, NULL, NULL,
-		      gre_base_table);
+XDP2_MAKE_PARSE_NODE(ether_node, xdp2_parse_ether, ether_table,
+		     (.ops.extract_metadata = ether_metadata));
+XDP2_MAKE_PARSE_NODE(ipv4_check_node, xdp2_parse_ip, ipv4_check_table, ());
+XDP2_MAKE_PARSE_NODE(ipv4_node, xdp2_parse_ipv4, ipv4_table,
+		     (.ops.extract_metadata = ipv4_metadata));
+XDP2_MAKE_PARSE_NODE(ipv6_check_node, xdp2_parse_ip, ipv6_check_table, ());
+XDP2_MAKE_PARSE_NODE(ipv6_node, xdp2_parse_ipv6, ipv6_table,
+		     (.ops.extract_metadata = ipv6_metadata));
+XDP2_MAKE_PARSE_NODE(ip_overlay_node, xdp2_parse_ip, ip_table,
+		     (.ops.extract_metadata = ip_overlay_metadata));
+XDP2_MAKE_PARSE_NODE(ipv6_eh_node, xdp2_parse_ipv6_eh, ipv6_table,
+		     (.ops.extract_metadata = ipv6_eh_metadata));
+XDP2_MAKE_PARSE_NODE(ipv6_frag_node, xdp2_parse_ipv6_frag_eh, ipv6_table,
+		     (.ops.extract_metadata = ipv6_frag_metadata));
+XDP2_MAKE_PARSE_NODE(gre_base_node, xdp2_parse_gre_base, gre_base_table, ());
 
 XDP2_MAKE_FLAG_FIELDS_PARSE_NODE(gre_v0_node, xdp2_parse_gre_v0,
-				  gre_metadata, NULL, gre_v0_table,
-				  gre_v0_flag_fields_table);
+				 gre_v0_table, gre_v0_flag_fields_table,
+				 (.ops.extract_metadata = gre_metadata), ());
 XDP2_MAKE_FLAG_FIELDS_PARSE_NODE(gre_v1_node, xdp2_parse_gre_v1,
-				  gre_pptp_metadata, NULL, gre_v1_table,
-				  gre_v1_flag_fields_table);
+				 gre_v1_table, gre_v1_flag_fields_table,
+				 (.ops.extract_metadata = gre_pptp_metadata),
+				 ());
 
-XDP2_MAKE_PARSE_NODE(e8021AD_node, xdp2_parse_vlan, e8021AD_metadata, NULL,
-		      ether_table);
-XDP2_MAKE_PARSE_NODE(e8021Q_node, xdp2_parse_vlan, e8021Q_metadata, NULL,
-		      ether_table);
-XDP2_MAKE_PARSE_NODE(ppp_node, xdp2_parse_ppp, NULL, NULL, ppp_table);
-XDP2_MAKE_PARSE_NODE(pppoe_node, xdp2_parse_pppoe, NULL, NULL, pppoe_table);
-XDP2_MAKE_PARSE_NODE(ipv4ip_node, xdp2_parse_ipv4ip, NULL, NULL,
-		      ipv4ip_table);
-XDP2_MAKE_PARSE_NODE(ipv6ip_node, xdp2_parse_ipv6ip, NULL, NULL,
-		      ipv6ip_table);
-XDP2_MAKE_PARSE_NODE(batman_node, xdp2_parse_batman, NULL, NULL,
-		      ether_table);
+XDP2_MAKE_PARSE_NODE(e8021AD_node, xdp2_parse_vlan, ether_table,
+		     (.ops.extract_metadata = e8021AD_metadata));
+XDP2_MAKE_PARSE_NODE(e8021Q_node, xdp2_parse_vlan, ether_table,
+		     (.ops.extract_metadata = e8021Q_metadata));
+XDP2_MAKE_PARSE_NODE(ppp_node, xdp2_parse_ppp, ppp_table, ());
+XDP2_MAKE_PARSE_NODE(pppoe_node, xdp2_parse_pppoe, pppoe_table, ());
+XDP2_MAKE_PARSE_NODE(ipv4ip_node, xdp2_parse_ipv4ip, ipv4ip_table, ());
+XDP2_MAKE_PARSE_NODE(ipv6ip_node, xdp2_parse_ipv6ip, ipv6ip_table, ());
+XDP2_MAKE_PARSE_NODE(batman_node, xdp2_parse_batman, ether_table, ());
 
-XDP2_MAKE_LEAF_PARSE_NODE(ports_node, xdp2_parse_ports, ports_metadata, NULL);
-XDP2_MAKE_LEAF_PARSE_NODE(icmpv4_node, xdp2_parse_icmpv4, icmp_metadata,
-			   NULL);
-XDP2_MAKE_LEAF_PARSE_NODE(icmpv6_node, xdp2_parse_icmpv6, icmp_metadata,
-			   NULL);
-XDP2_MAKE_LEAF_PARSE_NODE(mpls_node, xdp2_parse_mpls, mpls_metadata, NULL);
-XDP2_MAKE_LEAF_PARSE_NODE(arp_node, xdp2_parse_arp, arp_rarp_metadata, NULL);
-XDP2_MAKE_LEAF_PARSE_NODE(rarp_node, xdp2_parse_rarp, arp_rarp_metadata,
-			   NULL);
-XDP2_MAKE_LEAF_PARSE_NODE(tipc_node, xdp2_parse_tipc, tipc_metadata, NULL);
-XDP2_MAKE_LEAF_PARSE_NODE(fcoe_node, xdp2_parse_fcoe, NULL, NULL);
-XDP2_MAKE_LEAF_PARSE_NODE(igmp_node, xdp2_parse_igmp, NULL, NULL);
+XDP2_MAKE_LEAF_PARSE_NODE(ports_node, xdp2_parse_ports,
+			  (.ops.extract_metadata = ports_metadata));
+XDP2_MAKE_LEAF_PARSE_NODE(icmpv4_node, xdp2_parse_icmpv4,
+			  (.ops.extract_metadata = icmp_metadata));
+XDP2_MAKE_LEAF_PARSE_NODE(icmpv6_node, xdp2_parse_icmpv6,
+			  (.ops.extract_metadata = icmp_metadata));
+XDP2_MAKE_LEAF_PARSE_NODE(mpls_node, xdp2_parse_mpls,
+			  (.ops.extract_metadata = mpls_metadata));
+XDP2_MAKE_LEAF_PARSE_NODE(arp_node, xdp2_parse_arp,
+			  (.ops.extract_metadata = arp_rarp_metadata));
+XDP2_MAKE_LEAF_PARSE_NODE(rarp_node, xdp2_parse_rarp,
+			  (.ops.extract_metadata = arp_rarp_metadata));
+XDP2_MAKE_LEAF_PARSE_NODE(tipc_node, xdp2_parse_tipc,
+			  (.ops.extract_metadata = tipc_metadata));
+XDP2_MAKE_LEAF_PARSE_NODE(fcoe_node, xdp2_parse_fcoe, ());
+XDP2_MAKE_LEAF_PARSE_NODE(igmp_node, xdp2_parse_igmp, ());
 
-XDP2_MAKE_LEAF_PARSE_NODE(tcp_node, xdp2_parse_tcp_notlvs, ports_metadata,
-			   NULL);
+XDP2_MAKE_LEAF_PARSE_NODE(tcp_node, xdp2_parse_tcp_notlvs,
+			  (.ops.extract_metadata = ports_metadata));
 
-XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_flag_csum_node, gre_checksum_metadata,
-				 NULL);
-XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_flag_key_node, gre_keyid_metadata,
-				 NULL);
-XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_flag_seq_node, gre_seq_metadata,
-				 NULL);
+XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_flag_csum_node,
+				(.ops.extract_metadata =
+						gre_checksum_metadata));
+XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_flag_key_node,
+				(.ops.extract_metadata =
+						gre_keyid_metadata));
+XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_flag_seq_node,
+				(.ops.extract_metadata =
+						gre_seq_metadata));
 
-XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_pptp_flag_ack_node, gre_pptp_ack_metadata,
-				 NULL);
-XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_pptp_flag_key_node, gre_pptp_key_metadata,
-				 NULL);
-XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_pptp_flag_seq_node, gre_pptp_seq_metadata,
-				 NULL);
+XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_pptp_flag_ack_node,
+				(.ops.extract_metadata =
+						gre_pptp_ack_metadata));
+XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_pptp_flag_key_node,
+				(.ops.extract_metadata =
+						gre_pptp_key_metadata));
+XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_pptp_flag_seq_node,
+				(.ops.extract_metadata =
+						gre_pptp_seq_metadata));
 
 /* Define parsers. Two of them: one for packets starting with an
  * Ethernet header, and one for packets starting with an IP header.
  */
 XDP2_PARSER(my_xdp2_parser_big_ether, "XDP2 big parser for Ethernet",
-	     &ether_node);
+	    ether_node, ());
 XDP2_PARSER(my_xdp2_parser_big_ip, "XDP2 big parser for IP",
-	     &ip_overlay_node);
+	    ip_overlay_node, ());
 
 /* Protocol tables */
 
 XDP2_MAKE_PROTO_TABLE(ether_table,
-	{ __cpu_to_be16(ETH_P_IP), &ipv4_check_node },
-	{ __cpu_to_be16(ETH_P_IPV6), &ipv6_check_node },
-	{ __cpu_to_be16(ETH_P_8021AD), &e8021AD_node },
-	{ __cpu_to_be16(ETH_P_8021Q), &e8021Q_node },
-	{ __cpu_to_be16(ETH_P_MPLS_UC), &mpls_node },
-	{ __cpu_to_be16(ETH_P_MPLS_MC), &mpls_node },
-	{ __cpu_to_be16(ETH_P_ARP), &arp_node },
-	{ __cpu_to_be16(ETH_P_RARP), &rarp_node },
-	{ __cpu_to_be16(ETH_P_TIPC), &tipc_node },
-	{ __cpu_to_be16(ETH_P_BATMAN), &batman_node },
-	{ __cpu_to_be16(ETH_P_FCOE), &fcoe_node },
-	{ __cpu_to_be16(ETH_P_PPP_SES), &pppoe_node },
+	( __cpu_to_be16(ETH_P_IP), ipv4_check_node ),
+	( __cpu_to_be16(ETH_P_IPV6), ipv6_check_node ),
+	( __cpu_to_be16(ETH_P_8021AD), e8021AD_node ),
+	( __cpu_to_be16(ETH_P_8021Q), e8021Q_node ),
+	( __cpu_to_be16(ETH_P_MPLS_UC), mpls_node ),
+	( __cpu_to_be16(ETH_P_MPLS_MC), mpls_node ),
+	( __cpu_to_be16(ETH_P_ARP), arp_node ),
+	( __cpu_to_be16(ETH_P_RARP), rarp_node ),
+	( __cpu_to_be16(ETH_P_TIPC), tipc_node ),
+	( __cpu_to_be16(ETH_P_BATMAN), batman_node ),
+	( __cpu_to_be16(ETH_P_FCOE), fcoe_node ),
+	( __cpu_to_be16(ETH_P_PPP_SES), pppoe_node )
 );
 
 XDP2_MAKE_PROTO_TABLE(ipv4_check_table,
-	{ 4, &ipv4_node },
+	( 4, ipv4_node )
 );
 
 XDP2_MAKE_PROTO_TABLE(ipv4_table,
-	{ IPPROTO_TCP, &ports_node },
-	{ IPPROTO_UDP, &ports_node },
-	{ IPPROTO_SCTP, &ports_node },
-	{ IPPROTO_DCCP, &ports_node },
-	{ IPPROTO_GRE, &gre_base_node },
-	{ IPPROTO_ICMP, &icmpv4_node },
-	{ IPPROTO_IGMP, &igmp_node },
-	{ IPPROTO_MPLS, &mpls_node },
-	{ IPPROTO_IPIP, &ipv4ip_node },
-	{ IPPROTO_IPV6, &ipv6ip_node },
+	( IPPROTO_TCP, ports_node ),
+	( IPPROTO_UDP, ports_node ),
+	( IPPROTO_SCTP, ports_node ),
+	( IPPROTO_DCCP, ports_node ),
+	( IPPROTO_GRE, gre_base_node ),
+	( IPPROTO_ICMP, icmpv4_node ),
+	( IPPROTO_IGMP, igmp_node ),
+	( IPPROTO_MPLS, mpls_node ),
+	( IPPROTO_IPIP, ipv4ip_node ),
+	( IPPROTO_IPV6, ipv6ip_node )
 );
 
 XDP2_MAKE_PROTO_TABLE(ipv6_check_table,
-	{ 6, &ipv6_node },
+	( 6, ipv6_node )
 );
 
 XDP2_MAKE_PROTO_TABLE(ipv6_table,
-	{ IPPROTO_HOPOPTS, &ipv6_eh_node },
-	{ IPPROTO_ROUTING, &ipv6_eh_node },
-	{ IPPROTO_DSTOPTS, &ipv6_eh_node },
-	{ IPPROTO_FRAGMENT, &ipv6_frag_node },
-	{ IPPROTO_TCP, &ports_node },
-	{ IPPROTO_UDP, &ports_node },
-	{ IPPROTO_SCTP, &ports_node },
-	{ IPPROTO_DCCP, &ports_node },
-	{ IPPROTO_GRE, &gre_base_node },
-	{ IPPROTO_ICMPV6, &icmpv6_node },
-	{ IPPROTO_IGMP, &igmp_node },
-	{ IPPROTO_MPLS, &mpls_node },
-	{ IPPROTO_IPIP, &ipv4ip_node },
-	{ IPPROTO_IPV6, &ipv6ip_node },
+	( IPPROTO_HOPOPTS, ipv6_eh_node ),
+	( IPPROTO_ROUTING, ipv6_eh_node ),
+	( IPPROTO_DSTOPTS, ipv6_eh_node ),
+	( IPPROTO_FRAGMENT, ipv6_frag_node ),
+	( IPPROTO_TCP, ports_node ),
+	( IPPROTO_UDP, ports_node ),
+	( IPPROTO_SCTP, ports_node ),
+	( IPPROTO_DCCP, ports_node ),
+	( IPPROTO_GRE, gre_base_node ),
+	( IPPROTO_ICMPV6, icmpv6_node ),
+	( IPPROTO_IGMP, igmp_node ),
+	( IPPROTO_MPLS, mpls_node ),
+	( IPPROTO_IPIP, ipv4ip_node ),
+	( IPPROTO_IPV6, ipv6ip_node )
 );
 
 XDP2_MAKE_PROTO_TABLE(ip_table,
-	{ 4, &ipv4_node },
-	{ 6, &ipv6_node },
+	( 4, ipv4_node ),
+	( 6, ipv6_node )
 );
 
 XDP2_MAKE_PROTO_TABLE(ipv4ip_table,
-	{ 0, &ipv4_node },
+	( 0, ipv4_node )
 );
 
 XDP2_MAKE_PROTO_TABLE(ipv6ip_table,
-	{ 0, &ipv6_node },
+	( 0, ipv6_node )
 );
 
 XDP2_MAKE_PROTO_TABLE(gre_base_table,
-	{ 0, &gre_v0_node.parse_node },
-	{ 1, &gre_v1_node.parse_node },
+	( 0, gre_v0_node ),
+	( 1, gre_v1_node )
 );
 
 XDP2_MAKE_PROTO_TABLE(gre_v0_table,
-	{ __cpu_to_be16(ETH_P_IP), &ipv4_check_node },
-	{ __cpu_to_be16(ETH_P_IPV6), &ipv6_check_node },
-	{ __cpu_to_be16(ETH_P_TEB), &ether_node },
+	( __cpu_to_be16(ETH_P_IP), ipv4_check_node ),
+	( __cpu_to_be16(ETH_P_IPV6), ipv6_check_node ),
+	( __cpu_to_be16(ETH_P_TEB), ether_node )
 );
 
 XDP2_MAKE_PROTO_TABLE(gre_v1_table,
-	{ 0, &ppp_node },
+	( 0, ppp_node )
 );
 
 XDP2_MAKE_PROTO_TABLE(ppp_table,
-	{ __cpu_to_be16(PPP_IP), &ipv4_check_node },
-	{ __cpu_to_be16(PPP_IPV6), &ipv6_check_node },
+	( __cpu_to_be16(PPP_IP), ipv4_check_node ),
+	( __cpu_to_be16(PPP_IPV6), ipv6_check_node )
 );
 
 XDP2_MAKE_PROTO_TABLE(pppoe_table,
-	{ __cpu_to_be16(PPP_IP), &ipv4_check_node },
-	{ __cpu_to_be16(PPP_IPV6), &ipv6_check_node },
+	( __cpu_to_be16(PPP_IP), ipv4_check_node ),
+	( __cpu_to_be16(PPP_IPV6), ipv6_check_node )
 );
 
 XDP2_MAKE_FLAG_FIELDS_TABLE(gre_v0_flag_fields_table,
-	{ GRE_FLAGS_CSUM_IDX, &gre_flag_csum_node },
-	{ GRE_FLAGS_KEY_IDX, &gre_flag_key_node },
-	{ GRE_FLAGS_SEQ_IDX, &gre_flag_seq_node }
+	( GRE_FLAGS_CSUM_IDX, gre_flag_csum_node ),
+	( GRE_FLAGS_KEY_IDX, gre_flag_key_node ),
+	( GRE_FLAGS_SEQ_IDX, gre_flag_seq_node )
 );
 
 XDP2_MAKE_FLAG_FIELDS_TABLE(gre_v1_flag_fields_table,
-	{ GRE_PPTP_FLAGS_KEY_IDX, &gre_pptp_flag_key_node },
-	{ GRE_PPTP_FLAGS_SEQ_IDX, &gre_pptp_flag_seq_node },
-	{ GRE_PPTP_FLAGS_ACK_IDX, &gre_pptp_flag_ack_node }
+	( GRE_PPTP_FLAGS_KEY_IDX, gre_pptp_flag_key_node ),
+	( GRE_PPTP_FLAGS_SEQ_IDX, gre_pptp_flag_seq_node ),
+	( GRE_PPTP_FLAGS_ACK_IDX, gre_pptp_flag_ack_node )
 );
 
 struct xdp2_priv {
@@ -295,7 +292,7 @@ static void *core_xdp2opt_notcpopts_init(const char *args)
 	}
 
 	p = calloc(1, sizeof(struct xdp2_priv));
-	if (!p || xdp2_parser_init() < 0) {
+	if (!p) {
 		fprintf(stderr, "xdp2_parser_init failed\n");
 		exit(-11);
 	}
@@ -303,7 +300,7 @@ static void *core_xdp2opt_notcpopts_init(const char *args)
 	return p;
 }
 
-XDP2_PARSER_DECL(my_xdp2_parser_big_ether_opt);
+XDP2_PARSER_EXTERN(my_xdp2_parser_big_ether_opt);
 
 static const char *core_xdp2opt_notcpopts_process(void *pv, void *data,
 					size_t len,
@@ -320,11 +317,18 @@ static const char *core_xdp2opt_notcpopts_process(void *pv, void *data,
 
 	if (!(flags & CORE_F_NOCORE)) {
 		struct timespec begin_tp, now_tp;
+		struct xdp2_packet_data pdata;
+		unsigned int pflags = 0;
+
+		if (flags & CORE_F_DEBUG)
+			pflags |= XDP2_F_DEBUG;
 
 		clock_gettime(CLOCK_MONOTONIC, &begin_tp);
-		err = xdp2_parse(my_xdp2_parser_big_ether_opt, data, len,
-				  &p->md.xdp2_data, 0,
-				  XDP2_PARSER_BIG_ENCAP_DEPTH);
+
+		XDP2_SET_BASIC_PDATA(pdata, data, len);
+
+		err = xdp2_parse(my_xdp2_parser_big_ether_opt, &pdata,
+				  &p->md, pflags);
 		clock_gettime(CLOCK_MONOTONIC, &now_tp);
 		*time += (now_tp.tv_sec - begin_tp.tv_sec) * 1000000000 +
 					(now_tp.tv_nsec - begin_tp.tv_nsec);

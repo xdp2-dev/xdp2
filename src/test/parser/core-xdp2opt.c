@@ -35,12 +35,6 @@
 #include "xdp2/parsers/parser_big.h"
 #include <time.h>
 
-int xdp2_parser_big_ether_xdp2_parse_ether_node(
-		const struct xdp2_parser *parser,
-		const struct xdp2_parse_node *parse_node, const void *hdr,
-		size_t len, struct xdp2_metadata *metadata,
-		unsigned int flags, unsigned int max_encaps);
-
 struct xdp2_priv {
 	struct xdp2_parser_big_metadata_one md;
 };
@@ -64,7 +58,7 @@ static void *core_xdp2opt_init(const char *args)
 	}
 
 	p = calloc(1, sizeof(struct xdp2_priv));
-	if (!p || xdp2_parser_init() < 0) {
+	if (!p) {
 		fprintf(stderr, "xdp2_parser_init failed\n");
 		exit(-11);
 	}
@@ -86,11 +80,18 @@ static const char *core_xdp2opt_process(void *pv, void *data, size_t len,
 
 	if (!(flags & CORE_F_NOCORE)) {
 		struct timespec begin_tp, now_tp;
+		struct xdp2_packet_data pdata;
+		unsigned int pflags = 0;
+
+		if (flags & CORE_F_DEBUG)
+			pflags |= XDP2_F_DEBUG;
 
 		clock_gettime(CLOCK_MONOTONIC, &begin_tp);
-		err = xdp2_parse(xdp2_parser_big_ether_opt, data, len,
-				  &p->md.xdp2_data, 0,
-				  XDP2_PARSER_BIG_ENCAP_DEPTH);
+
+		XDP2_SET_BASIC_PDATA(pdata, data, len);
+
+		err = xdp2_parse(xdp2_parser_big_ether_opt, &pdata,
+				 &p->md, pflags);
 		clock_gettime(CLOCK_MONOTONIC, &now_tp);
 		*time += (now_tp.tv_sec - begin_tp.tv_sec) * 1000000000 +
 					(now_tp.tv_nsec - begin_tp.tv_nsec);

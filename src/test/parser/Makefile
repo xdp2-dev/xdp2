@@ -1,12 +1,14 @@
-include ../../config.mk
+SRCDIR = ../..
 
-COMPDIR=../../tools/compiler
+include $(SRCDIR)/config.mk
 
-#ifneq ($(OPTIMIZED_PARSER),n)
-#CORES_LIST = cores.list
-#else
+COMPDIR=$(SRCDIR)/tools/compiler
+
+ifeq ($(BUILD_OPT_PARSER),y)
+CORES_LIST = cores.list
+else
 CORES_LIST = cores-nonopt.list
-#endif
+endif
 
 IMETHODS != sed -f method.sed < imethods.list
 IMETHODS_OBJ := $(foreach m,$(IMETHODS),in-$(m).o)
@@ -20,10 +22,10 @@ CFLAGS += -I../../lib/xdp2
 OBJ = $(CORES_OBJ) $(IMETHODS_OBJ) $(OMETHODS_OBJ)		\
       cores.o imethods.o main.o omethods.o
 
-LIBS = -lpcap ../../../src/lib/flowdis/libflowdis.a		\
-       ../../../src/lib/xdp2/libxdp2.a				\
-       ../../../src/lib/parselite/libparselite.a		\
-       ../../../src/lib/siphash/libsiphash.a
+LIBS = -lpcap $(SRCDIR)/lib/flowdis/libflowdis.a		\
+       $(SRCDIR)/lib/xdp2/libxdp2.a				\
+       $(SRCDIR)/lib/parselite/libparselite.a			\
+       $(SRCDIR)/lib/siphash/libsiphash.a
 
 CLEANFILES = $(OBJ)
 
@@ -35,8 +37,11 @@ TARGETS = test_parser
 .PHONY: all
 all: $(TARGETS)
 
+XDP2_COMPILER = $(SRCDIR)/tools/compiler/xdp2-compiler
+
 %.p.c: %.c
-	$(COMPDIR)/xdp2-compiler $< $@
+	echo "$(XDP2_COMPILER) -I$(SRCDIR)/include -o $@ -i $<"
+	$(XDP2_COMPILER) -I$(SRCDIR)/include -o $@ -i $<
 
 test_parser: $(OBJ)
 	$(CC) $(LDFLAGS) -o test_parser $(OBJ) $(LIBS)
