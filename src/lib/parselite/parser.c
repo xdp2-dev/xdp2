@@ -128,12 +128,6 @@ static inline ssize_t gre_v1_flags_offset(unsigned int flags,
 	return gre_v1_flags_length(flags, mask);
 }
 
-static inline __u8 ipv4_get_dsfield(const struct iphdr *iph)
-{
-	return iph->tos;
-}
-
-
 static inline __u8 ipv6_get_dsfield(const struct ipv6hdr *ipv6h)
 {
 	return ntohs(*(__be16 *)ipv6h) >> 4;
@@ -434,10 +428,8 @@ switch_ether_type:
 	}
 	case __cpu_to_be16(ETH_P_PPP_SES):
 	{
-		struct {
-			struct pppoe_hdr hdr;
-			__be16 proto;
-		} *pppoeh;
+		struct pppoe_hdr *pppoeh;
+		__be16 proto;
 
 		hlen = PPPOE_SES_HLEN;
 		if (len < hlen)
@@ -447,7 +439,8 @@ switch_ether_type:
 		hdr += hlen;
 		len -= hlen;
 
-		switch (pppoeh->proto) {
+		proto = *((__be16 *)&pppoeh[1]);
+		switch (proto) {
 		case __cpu_to_be16(PPP_IP):
 			metadata->eth_proto = __cpu_to_be16(ETH_P_IP);
 			goto switch_ether_type;
@@ -655,7 +648,7 @@ switch_ip_proto:
 
 			metadata->eth_proto = GRE_PROTO_PPP;
 
-			offset = gre_v0_flags_offset(greh->flags, GRE_KEY,
+			offset = gre_v1_flags_offset(greh->flags, GRE_KEY,
 						     GRE_KEY_OMASK);
 			if (offset > 0)
 				metadata->keyid = *(__u32 *)(hdr + offset);
