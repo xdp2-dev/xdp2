@@ -5,7 +5,7 @@ include $(SRCDIR)/config.mk
 TARGETS = liblzf_compress.so liblzf_compress.a
 TARGETS += liblzf_decompress.so liblzf_decompress.a
 
-CFLAGS += -fPIC -lc
+CFLAGS += -fPIC
 
 UTILOBJ = lzf_compress.o lzf_decompress.o
 

@@ -4,7 +4,7 @@ include $(SRCDIR)/config.mk
 
 TARGETS = libcrc.so libcrc.a
 
-CFLAGS += -fPIC -lc
+CFLAGS += -fPIC
 
 UTILOBJ = crc16.o crc32c.o crc64.o crcspeed.o
 

@@ -4,7 +4,7 @@ include $(SRCDIR)/config.mk
 
 TARGETS = libsiphash.so libsiphash.a
 
-CFLAGS += -fPIC -lc
+CFLAGS += -fPIC
 
 UTILOBJ = siphash.o
 

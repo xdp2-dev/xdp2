@@ -3,7 +3,7 @@ include $(SRCDIR)/config.mk
 
 TARGETS = libmurmur3hash.so libmurmur3hash.a
 
-CFLAGS += -fPIC -lc
+CFLAGS += -fPIC
 
 UTILOBJ = murmur3_hash.o
 
