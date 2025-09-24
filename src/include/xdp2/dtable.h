@@ -212,6 +212,7 @@ enum {
 	const TARG_TYPE XDP2_JOIN2(NAME, _default_target) =		\
 			DEFAULT_TARG;					\
 									\
+	XDP2_PUSH_NO_WEXTRA();						\
 	struct XDP2_JOIN3(xdp2_dtable_, LTYPE, _table)			\
 			XDP2_JOIN2(NAME, _table)			\
 			XDP2_SECTION_ATTR(				\
@@ -229,7 +230,8 @@ enum {
 			.size = -1U,					\
 			XDP2_DEPAIR(CONFIG)				\
 		},							\
-	};
+	};								\
+	XDP2_POP_NO_WEXTRA();						\
 
 #define __XDP2_DTABLE_MAKE_MATCH_TABLE(NAME, DEFAULT_TARG, TYPE, LTYPE,	\
 				       KEY_TYPE, CONFIG)		\
@@ -253,7 +255,7 @@ enum {
 /* Macros for making lookup functions */
 #define __XDP2_DTABLE_MAKE_LOOKUP_FUNC_BY_KEY(NAME, TYPE, KEY_TYPE,	\
 					      TARG_TYPE)		\
-	static inline const TARG_TYPE XDP2_JOIN2(			\
+	static __unused() inline const TARG_TYPE XDP2_JOIN2(		\
 			NAME, _lookup_by_key)(const KEY_TYPE key)	\
 	{								\
 		struct XDP2_JOIN3(xdp2_dtable_, TYPE, _table) *table =	\
@@ -269,7 +271,8 @@ enum {
 	__XDP2_DTABLE_MAKE_LOOKUP_FUNC_BY_KEY(NAME, TYPE,		\
 		struct XDP2_JOIN2(NAME, _key_struct) *, TARG_TYPE)	\
 									\
-	static inline const TARG_TYPE XDP2_JOIN2(NAME, _lookup)(	\
+	static __unused() inline const					\
+				TARG_TYPE XDP2_JOIN2(NAME, _lookup)(	\
 		XDP2_JOIN2(NAME, _key_arg_t) params) {			\
 		struct XDP2_JOIN2(NAME, _key_struct) key;		\
 									\
@@ -283,7 +286,7 @@ enum {
 					      TARG_TYPE)
 
 #define __XDP2_DFTABLE_MAKE_LOOKUP_FUNC_BY_KEY(NAME, TYPE, KEY_TYPE)	\
-	static inline void XDP2_JOIN2(NAME, _lookup_by_key)(		\
+	static __unused() inline void XDP2_JOIN2(NAME, _lookup_by_key)(	\
 	    const KEY_TYPE key, void *arg)				\
 	{								\
 		struct XDP2_JOIN3(xdp2_dtable_, TYPE,			\
@@ -304,7 +307,7 @@ enum {
 	__XDP2_DFTABLE_MAKE_LOOKUP_FUNC_BY_KEY(NAME, TYPE,		\
 		struct XDP2_JOIN2(NAME, _key_struct) *)			\
 									\
-	static inline void XDP2_JOIN2(NAME, _lookup)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _lookup)(	\
 	    const XDP2_JOIN2(NAME, _key_arg_t) params, void *arg) {	\
 		struct XDP2_JOIN2(NAME, _key_struct) key;		\
 									\
@@ -318,35 +321,36 @@ enum {
 /* Macros for add, delete, and change for statically defined tables */
 
 #define __XDP2_DFTABLE_MAKE_DEL_PLAIN_FUNC(NAME, TYPE)			\
-	static inline void XDP2_JOIN2(NAME, _del)(const TYPE key)	\
+	static __unused() inline void XDP2_JOIN2(NAME, _del)(		\
+							const TYPE key)	\
 	{								\
-		struct xdp2_dtable_plain_table *table =		\
+		struct xdp2_dtable_plain_table *table =			\
 			&XDP2_JOIN2(NAME, _table);			\
 		xdp2_dtable_del_plain(table, key);			\
 	}
 
 #define __XDP2_DFTABLE_MAKE_PLAIN_FUNCS(NAME, TYPE)			\
-	static inline void XDP2_JOIN2(NAME, _add)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _add)(		\
 	    const TYPE key, xdp2_dftable_func_t func, void *arg)	\
 	{								\
 		struct __xdp2_dtable_entry_func_target ftarg = {	\
 			.func = func,					\
 			.arg = arg,					\
 		};							\
-		struct xdp2_dtable_plain_table *table =		\
+		struct xdp2_dtable_plain_table *table =			\
 			&XDP2_JOIN2(NAME, _table);			\
 									\
 		xdp2_dtable_add_plain(table, 0, key, &ftarg);		\
 	}								\
 									\
-	static inline void XDP2_JOIN2(NAME, _change)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _change)(	\
 	    const TYPE key, xdp2_dftable_func_t func, void *arg)	\
 	{								\
 		struct __xdp2_dtable_entry_func_target ftarg = {	\
 			.func = func,					\
 			.arg = arg,					\
 		};							\
-		struct xdp2_dtable_plain_table *table =		\
+		struct xdp2_dtable_plain_table *table =			\
 			&XDP2_JOIN2(NAME, _table);			\
 									\
 		xdp2_dtable_change_plain(table, key, &ftarg);		\
@@ -355,19 +359,19 @@ enum {
 
 
 #define __XDP2_DTABLE_MAKE_PLAIN_FUNCS(NAME, TYPE, TARG_TYPE)		\
-	static inline void XDP2_JOIN2(NAME, _add)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _add)(		\
 		const TYPE key, TARG_TYPE targ)				\
 	{								\
-		struct xdp2_dtable_plain_table *table =		\
+		struct xdp2_dtable_plain_table *table =			\
 			&XDP2_JOIN2(NAME, _table);			\
 									\
 		xdp2_dtable_add_plain(table, 0, key, &targ);		\
 	}								\
 									\
-	static inline void XDP2_JOIN2(NAME, _change)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _change)(	\
 	    const TYPE key, TARG_TYPE targ)				\
 	{								\
-		struct xdp2_dtable_plain_table *table =		\
+		struct xdp2_dtable_plain_table *table =			\
 			&XDP2_JOIN2(NAME, _table);			\
 									\
 		xdp2_dtable_change_plain(table, key, &targ);		\
@@ -376,16 +380,16 @@ enum {
 	__XDP2_DTABLE_MAKE_DEL_PLAIN_FUNC(NAME, TYPE)
 
 #define __XDP2_DTABLE_MAKE_DEL_PLAIN_FUNC(NAME, TYPE)			\
-	static inline void XDP2_JOIN2(NAME, _del)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _del)(		\
 	    const TYPE key)						\
 	{								\
-		struct xdp2_dtable_plain_table *table =		\
+		struct xdp2_dtable_plain_table *table =			\
 			&XDP2_JOIN2(NAME, _table);			\
 		xdp2_dtable_del_plain(table, key);			\
 	}
 
 #define __XDP2_DTABLE_MAKE_DEL_TERN_FUNC(NAME, TYPE)			\
-	static inline void XDP2_JOIN2(NAME, _del)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _del)(		\
 	    const TYPE key, const TYPE key_mask,			\
 	    unsigned int pos)						\
 	{								\
@@ -397,7 +401,7 @@ enum {
 	}
 
 #define __XDP2_DFTABLE_MAKE_TERN_FUNCS(NAME, TYPE)			\
-	static inline void XDP2_JOIN2(NAME, _add)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _add)(		\
 			const TYPE key, const TYPE key_mask,		\
 			unsigned int pos, xdp2_dftable_func_t func,	\
 			void *arg)					\
@@ -412,7 +416,7 @@ enum {
 				      &ftarg);				\
 	}								\
 									\
-	static inline void XDP2_JOIN2(NAME, _change)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _change)(	\
 			const TYPE key, const TYPE key_mask,		\
 			unsigned int pos, xdp2_dftable_func_t func,	\
 			void *arg)					\
@@ -430,7 +434,7 @@ enum {
 	__XDP2_DTABLE_MAKE_DEL_TERN_FUNC(NAME, TYPE)
 
 #define __XDP2_DTABLE_MAKE_TERN_FUNCS(NAME, TYPE, TARG_TYPE)		\
-	static inline void XDP2_JOIN2(NAME, _add)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _add)(		\
 			const TYPE key, const TYPE key_mask,		\
 			unsigned int pos, TARG_TYPE targ)		\
 	{								\
@@ -441,7 +445,7 @@ enum {
 				      &targ);				\
 	}								\
 									\
-	static inline void XDP2_JOIN2(NAME, _change)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _change)(	\
 			const TYPE key, const TYPE key_mask,		\
 			unsigned int pos, TARG_TYPE targ)		\
 	{								\
@@ -456,7 +460,7 @@ enum {
 
 
 #define __XDP2_DTABLE_MAKE_BY_ID_FUNC(NAME, TYPE)			\
-	static inline void XDP2_JOIN2(NAME, del_by_id)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, del_by_id)(	\
 	    int ident)							\
 	{								\
 		struct XDP2_JOIN3(xdp2_dtable_, TYPE,			\
@@ -465,7 +469,7 @@ enum {
 		XDP2_JOIN3(xdp2_dtable_del_, TYPE, _by_id)(		\
 			table, ident);					\
 	}								\
-	static inline void XDP2_JOIN2(NAME, change_by_id)(		\
+	static __unused() inline void XDP2_JOIN2(NAME, change_by_id)(	\
 						int ident, void *targ)	\
 	{								\
 		struct XDP2_JOIN3(xdp2_dtable_, TYPE,			\
@@ -477,7 +481,8 @@ enum {
 	}
 
 #define __XDP2_DFTABLE_MAKE_BY_ID_FUNC(NAME, TYPE)			\
-	static inline void XDP2_JOIN2(NAME, _del_by_id)(int ident)	\
+	static __unused() inline void XDP2_JOIN2(			\
+					NAME, _del_by_id)(int ident)	\
 	{								\
 		struct XDP2_JOIN3(xdp2_dtable_, TYPE,			\
 				  _table) *table =			\
@@ -485,9 +490,10 @@ enum {
 		XDP2_JOIN3(xdp2_dtable_del_, TYPE, _by_id)(		\
 			table, ident);					\
 	}								\
-	static inline void XDP2_JOIN2(NAME, _change_by_id)(int ident,	\
-				      xdp2_dftable_func_t func,		\
-				      void *arg)			\
+	static __unused() inline void XDP2_JOIN2(			\
+				NAME, _change_by_id)(int ident,		\
+				xdp2_dftable_func_t func,		\
+				void *arg)				\
 	{								\
 		struct __xdp2_dtable_entry_func_target ftarg = {	\
 			.func = func,					\
@@ -501,7 +507,7 @@ enum {
 	}
 
 #define __XDP2_DTABLE_MAKE_DEL_LPM_FUNC(NAME, TYPE)			\
-	static inline void XDP2_JOIN2(NAME, _del)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _del)(		\
 	    const TYPE key, size_t prefix_len)				\
 	{								\
 		struct xdp2_dtable_lpm_table *table =			\
@@ -510,7 +516,7 @@ enum {
 	}
 
 #define __XDP2_DFTABLE_MAKE_LPM_FUNCS(NAME, TYPE)			\
-	static inline void XDP2_JOIN2(NAME, _add)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _add)(		\
 			const TYPE key, size_t prefix_len,		\
 			xdp2_dftable_func_t func, void *arg)		\
 	{								\
@@ -525,7 +531,7 @@ enum {
 				     &ftarg);				\
 	}								\
 									\
-	static inline void XDP2_JOIN2(NAME, _change)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _change)(	\
 			const TYPE key, size_t prefix_len,		\
 			xdp2_dftable_func_t func, void *arg)		\
 	{								\
@@ -543,7 +549,7 @@ enum {
 	__XDP2_DTABLE_MAKE_DEL_LPM_FUNC(NAME, TYPE)
 
 #define __XDP2_DTABLE_MAKE_LPM_FUNCS(NAME, TYPE, TARG_TYPE)		\
-	static inline void XDP2_JOIN2(NAME, _add)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _add)(		\
 			const TYPE key, size_t prefix_len,		\
 			TARG_TYPE targ)					\
 	{								\
@@ -554,7 +560,7 @@ enum {
 				     &targ);				\
 	}								\
 									\
-	static inline void XDP2_JOIN2(NAME, _change)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _change)(	\
 			const TYPE key, size_t prefix_len,		\
 			TARG_TYPE targ)					\
 	{								\

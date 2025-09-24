@@ -186,7 +186,7 @@
  */
 
 #define __XDP2_SFTABLE_MAKE_MATCH_TABLE(NAME, COMMON_ARGS_SIG, TYPE)	\
-	XDP2_DEFINE_SECTION(XDP2_JOIN2(NAME, _section_entries),	\
+	XDP2_DEFINE_SECTION(XDP2_JOIN2(NAME, _section_entries),		\
 		    struct XDP2_JOIN2(NAME, _entry_struct));		\
 	struct XDP2_JOIN2(NAME, _table) {				\
 		const char *name;					\
@@ -294,7 +294,7 @@
 
 /* General compare function entry. Enforces argument types */
 #define __XDP2_STABLE_COMPARE_FUNC(NAME, KEY_ARG_TYPE)			\
-static inline bool XDP2_JOIN2(NAME, _compare_func)			\
+static __unused() inline bool XDP2_JOIN2(NAME, _compare_func)		\
 	(const KEY_ARG_TYPE params,					\
 	 const struct XDP2_JOIN2(NAME, _entry_struct) *entry)		\
 {									\
@@ -307,7 +307,7 @@ static inline bool XDP2_JOIN2(NAME, _compare_func)			\
 /* Compare plain or ternary by key */
 #define __XDP2_STABLE_COMPARE_FUNC_BY_KEY(NAME, KEY_ARG_TYPE,		\
 					  USE_KEY_MASK)			\
-static inline bool XDP2_JOIN2(NAME, _compare_by_key)			\
+static __unused() inline bool XDP2_JOIN2(NAME, _compare_by_key)		\
 	(const struct XDP2_JOIN2(NAME, _key_struct) *key,		\
 	 const struct XDP2_JOIN2(NAME, _entry_struct) *entry)		\
 {									\
@@ -322,7 +322,7 @@ static inline bool XDP2_JOIN2(NAME, _compare_by_key)			\
 /* Compare plain or ternary by skey (basically by_key) */
 #define __XDP2_STABLE_COMPARE_FUNC_SKEY(NAME, KEY_ARG_TYPE,		\
 					USE_KEY_MASK)			\
-static inline bool XDP2_JOIN2(NAME, _compare_by_key)			\
+static __unused() inline bool XDP2_JOIN2(NAME, _compare_by_key)		\
 	(const KEY_ARG_TYPE key,					\
 	 const struct XDP2_JOIN2(NAME, _entry_struct)			\
 							*entry)		\
@@ -337,7 +337,7 @@ static inline bool XDP2_JOIN2(NAME, _compare_by_key)			\
 
 /* Compare one field by longest prefix match by key */
 #define __XDP2_STABLE_COMPARE_LPM_FUNC_BY_KEY(NAME, KEY_ARG_TYPE)	\
-static inline bool XDP2_JOIN2(NAME, _compare_by_key)			\
+static __unused() inline bool XDP2_JOIN2(NAME, _compare_by_key)		\
 	(const struct XDP2_JOIN2(NAME, _key_struct) *key,		\
 	 const struct XDP2_JOIN2(NAME, _entry_struct) *entry)		\
 {									\
@@ -348,7 +348,7 @@ static inline bool XDP2_JOIN2(NAME, _compare_by_key)			\
  * (basically by_key)
  */
 #define __XDP2_STABLE_COMPARE_LPM_FUNC_SKEY(NAME, KEY_ARG_TYPE)		\
-static inline bool XDP2_JOIN2(NAME, _compare_by_key)			\
+static __unused() inline bool XDP2_JOIN2(NAME, _compare_by_key)		\
 	(const KEY_ARG_TYPE key,					\
 	 const struct XDP2_JOIN2(NAME, _entry_struct) *entry)		\
 {									\
@@ -369,7 +369,7 @@ static inline bool XDP2_JOIN2(NAME, _compare_by_key)			\
 #define __XDP2_SFTABLE_MAKE_LOOKUP_FUNC_BY_KEY(NAME,			\
 		COMMON_ARGS_SIG, COMMON_ARGS_LIST, SECTION, TYPE,	\
 		KEY_TYPE)						\
-	static inline void XDP2_JOIN2(NAME, _lookup_by_key)(		\
+	static __unused() inline void XDP2_JOIN2(NAME, _lookup_by_key)(	\
 	    const KEY_TYPE key,						\
 	    XDP2_DEPAIR(COMMON_ARGS_SIG)) {				\
 		const struct XDP2_JOIN2(NAME, _table) *table =		\
@@ -393,7 +393,7 @@ static inline bool XDP2_JOIN2(NAME, _compare_by_key)			\
 #define __XDP2_SFTABLE_MAKE_LOOKUP_FUNC_COMMON(NAME, KEY_ARG_TYPE,	\
 					       COMMON_ARGS_SIG,		\
 					       COMMON_ARGS_LIST)	\
-	static inline void XDP2_JOIN2(NAME, _lookup)(			\
+	static __unused() inline void XDP2_JOIN2(NAME, _lookup)(	\
 	    const KEY_ARG_TYPE params, XDP2_DEPAIR(COMMON_ARGS_SIG)) {	\
 		struct XDP2_JOIN2(NAME, _key_struct) key;		\
 									\
@@ -462,7 +462,7 @@ static inline bool XDP2_JOIN2(NAME, _compare_by_key)			\
 /* Make lookup functions for longest prefix match by key */
 #define __XDP2_SFTABLE_MAKE_LOOKUP_LPM_FUNC_BY_KEY(NAME,		\
 		COMMON_ARGS_SIG, COMMON_ARGS_LIST, SECTION, KEY_TYPE)	\
-	static inline void XDP2_JOIN2(NAME, _lookup_by_key)(		\
+	static __unused() inline void XDP2_JOIN2(NAME, _lookup_by_key)(	\
 	    const KEY_TYPE key, XDP2_DEPAIR(COMMON_ARGS_SIG)) {		\
 		const struct XDP2_JOIN2(NAME, _table) *table =		\
 			&XDP2_JOIN2(NAME, _table);			\
@@ -519,8 +519,9 @@ static inline bool XDP2_JOIN2(NAME, _compare_by_key)			\
 /* Make lookup functions for plain and ternary by key */
 #define __XDP2_STABLE_MAKE_LOOKUP_FUNC_BY_KEY(NAME,			\
 		TARG_TYPE, SECTION, TYPE, KEY_TYPE)			\
-	static inline TARG_TYPE XDP2_JOIN2(NAME, _lookup_by_key)(	\
-					   const KEY_TYPE key) {	\
+	static __unused() inline TARG_TYPE XDP2_JOIN2(			\
+					NAME, _lookup_by_key)(		\
+					const KEY_TYPE key) {	\
 		const struct XDP2_JOIN2(NAME, _table) *table =		\
 			&XDP2_JOIN2(NAME, _table);			\
 		const struct XDP2_JOIN2(NAME, _entry_struct)		\
@@ -540,7 +541,7 @@ static inline bool XDP2_JOIN2(NAME, _compare_by_key)			\
 
 #define __XDP2_STABLE_MAKE_LOOKUP_FUNC_COMMON(NAME, KEY_ARG_TYPE,	\
 					      TARG_TYPE)		\
-	static inline TARG_TYPE XDP2_JOIN2(NAME, _lookup)(		\
+	static __unused() inline TARG_TYPE XDP2_JOIN2(NAME, _lookup)(	\
 	    const KEY_ARG_TYPE params) {				\
 		struct XDP2_JOIN2(NAME, _key_struct) key;		\
 									\
@@ -600,8 +601,9 @@ static inline bool XDP2_JOIN2(NAME, _compare_by_key)			\
 /* Make lookup functions for longest prefix match by key */
 #define __XDP2_STABLE_MAKE_LOOKUP_LPM_FUNC_BY_KEY(NAME,			\
 		TARG_TYPE, SECTION, KEY_TYPE)				\
-	static inline TARG_TYPE XDP2_JOIN2(NAME, _lookup_by_key)(	\
-					   const KEY_TYPE key) {	\
+	static __unused() inline TARG_TYPE XDP2_JOIN2(			\
+					NAME, _lookup_by_key)(		\
+					const KEY_TYPE key) {	\
 		const struct XDP2_JOIN2(NAME, _table) *table =		\
 			&XDP2_JOIN2(NAME, _table);			\
 		const struct XDP2_JOIN2(NAME, _entry_struct)		\
