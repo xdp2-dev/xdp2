@@ -33,6 +33,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#include "xdp2/compiler_helpers.h"
 #include "xdp2/parser_types.h"
 #include "xdp2/pmacro.h"
 #include "xdp2/utility.h"
@@ -303,13 +304,15 @@ struct xdp2_proto_flag_fields_def {
 					NEXT_NODE, FLAG_FIELDS_TABLE,	\
 					EXTRA_PN, EXTRA_FF)		\
 	XDP2_DECL_FLAG_FIELDS_TABLE(FLAG_FIELDS_TABLE);			\
+	XDP2_PUSH_NO_WEXTRA();						\
 	static const struct xdp2_parse_flag_fields_node			\
 					PARSE_FLAG_FIELDS_NODE = {	\
 		.pn.wildcard_node = &NEXT_NODE.pn,			\
 		XDP2_MAKE_FLAG_FIELDS_PARSE_NODE_COMMON(		\
 			PARSE_FLAG_FIELDS_NODE, PROTO_FLAG_FIELDS_DEF,	\
 			FLAG_FIELDS_TABLE, EXTRA_PN, EXTRA_FF)		\
-	}
+	};								\
+	XDP2_POP_NO_WEXTRA()
 
 /* Helper to create a leaf flag-fields parse node */
 #define XDP2_MAKE_LEAF_FLAG_FIELDS_PARSE_NODE(PARSE_FLAG_FIELDS_NODE,	\
@@ -317,12 +320,14 @@ struct xdp2_proto_flag_fields_def {
 					      FLAG_FIELDS_TABLE,	\
 					      EXTRA_PN, EXTRA_FF)	\
 	XDP2_DECL_FLAG_FIELDS_TABLE(FLAG_FIELDS_TABLE);			\
+	XDP2_PUSH_NO_WEXTRA();						\
 	static const struct xdp2_parse_flag_fields_node			\
 					PARSE_FLAG_FIELDS_NODE = {	\
 		XDP2_MAKE_FLAG_FIELDS_PARSE_NODE_COMMON(		\
 			PARSE_FLAG_FIELDS_NODE, PROTO_FLAG_FIELDS_DEF,	\
 			FLAG_FIELDS_TABLE, EXTRA_PN, EXTRA_FF)		\
-	}
+	};								\
+	XDP2_POP_NO_WEXTRA()
 
 /* Helper to create a parse node for a single flag-field */
 #define XDP2_MAKE_FLAG_FIELD_PARSE_NODE(NODE_NAME, EXTRA)		\

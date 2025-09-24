@@ -272,20 +272,24 @@ const struct xdp2_parse_tlv_node *xdp2_parse_lookup_tlv(
 					   NEXT_NODE, TLV_TABLE,	\
 					   EXTRA_PM, EXTRA_TLVS)	\
 	XDP2_DECL_TLVS_TABLE(TLV_TABLE);				\
+	XDP2_PUSH_NO_WEXTRA();						\
 	static const struct xdp2_parse_tlvs_node PARSE_TLV_NODE = {	\
 		.pn.wildcard_node = NEXT_NODE,				\
 		__XDP2_MAKE_TLVS_PARSE_NODE_COMMON(PARSE_TLV_NODE,	\
 			PROTO_TLV_DEF,	TLV_TABLE, EXTRA_PN, EXTRA_TLVS)\
-	}
+	}								\
+	XDP2_POP_NO_WEXTRA()
 
 /* Helper to create a leaf TLVs parse node */
 #define XDP2_MAKE_LEAF_TLVS_PARSE_NODE(PARSE_TLV_NODE, PROTO_TLV_DEF,	\
 				       TLV_TABLE, EXTRA_PN, EXTRA_TLVS)	\
 	XDP2_DECL_TLVS_TABLE(TLV_TABLE);				\
+	XDP2_PUSH_NO_WEXTRA();						\
 	static const struct xdp2_parse_tlvs_node PARSE_TLV_NODE = {	\
 		__XDP2_MAKE_TLVS_PARSE_NODE_COMMON(PARSE_TLV_NODE,	\
 			PROTO_TLV_DEF,	TLV_TABLE, EXTRA_PN, EXTRA_TLVS)\
-	}
+	};								\
+	XDP2_POP_NO_WEXTRA()
 
 #define __XDP2_MAKE_TLV_PARSE_NODE_COMMON(NODE_NAME, EXTRA)		\
 		.name = #NODE_NAME,					\
@@ -294,6 +298,7 @@ const struct xdp2_parse_tlv_node *xdp2_parse_lookup_tlv(
 
 /* Helper to create a TLV parse node for a single TLV */
 #define XDP2_MAKE_TLV_PARSE_NODE(NODE_NAME, PROTO_TLV_DEF, EXTRA)	\
+	XDP2_PUSH_NO_WEXTRA();						\
 	XDP2_PUSH_NO_WEXTRA();						\
 	static const struct xdp2_parse_tlv_node NODE_NAME = {		\
 		.proto_tlv_def = &PROTO_TLV_DEF,			\

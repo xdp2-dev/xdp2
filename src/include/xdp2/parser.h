@@ -239,14 +239,17 @@ struct xdp2_parse_user_node {
 /* Helper to create a parse node with an automatic next node */
 #define XDP2_MAKE_AUTONEXT_PARSE_NODE(PARSE_NODE, PROTO_DEF,		\
 				      OVERLAY_NODE, EXTRA)		\
+	XDP2_PUSH_NO_WEXTRA();						\
 	static const struct xdp2_parse_user_node PARSE_NODE = {		\
 		__XDP2_MAKE_PARSE_NODE_COMMON(PARSE_NODE, PROTO_DEF,	\
 					      NULL, EXTRA)		\
 		.pn.wildcard_node = &OVERLAY_NODE.pn,			\
-	}
+	};								\
+	XDP2_POP_NO_WEXTRA()
 
 /* Helper to create a leaf parse node */
 #define XDP2_MAKE_LEAF_PARSE_NODE(PARSE_NODE, PROTO_DEF, EXTRA)	\
+	XDP2_PUSH_NO_WEXTRA();						\
 	static const struct xdp2_parse_user_node PARSE_NODE = {		\
 		__XDP2_MAKE_PARSE_NODE_COMMON(PARSE_NODE, PROTO_DEF,	\
 					      NULL, EXTRA)		\
