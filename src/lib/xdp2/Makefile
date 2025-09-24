@@ -22,17 +22,19 @@ TARGETS = libxdp2.so libxdp2.a
 .PHONY: all
 all: $(TARGETS)
 
+XDP2_COMPILER = $(SRCDIR)/tools/compiler/xdp2-compiler
+
 OPTIMIZED_PARSER=n
 
-#ifeq ($(OPTIMIZED_PARSER),n)
+#ifneq ($(BUILD_OPT_PARSER),y)
 PARSEROSEXT = $(addprefix $(PARSERDIR)/, $(PARSEROBJS))
 #else
 
-#PARSERCSEXT = $(PARSEROBJSEXT:.o=.p.c)
-#PARSEROSEXT = $(PARSEROBJSEXT:.o=.p.o)
+PARSERCSEXT = $(PARSEROBJSEXT:.o=.p.c)
+PARSEROSEXT = $(PARSEROBJSEXT:.o=.p.o)
 
 $(PARSERCSEXT): %.p.c: %.c
-	$(SRCDIR)/tools/compiler/xdp2-compiler $< $@
+	$(XDP2_COMPILER) -I$(SRCDIR)/include -o $@ -i $<
 #endif
 
 CFLAGS += -I.
