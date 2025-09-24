@@ -26,6 +26,8 @@
  */
 <!--(end)-->
 
+#include "xdp2/compiler_helpers.h"
+
 /* Common parser template. This combined with another use case specific
  * template to make a complete template
  */
@@ -33,7 +35,8 @@
 <!--(macro generate_entry_parse_function)-->
 
 /* Parser entry function to commence parsing at the root */
-static inline int @!parser_name!@_xdp2_parse_@!root_name!@(
+static inline __unused() int
+	@!parser_name!@_xdp2_parse_@!root_name!@(
 		const struct xdp2_parser *parser,
 		const struct xdp2_packet_data *pdata,
 		void *metadata, unsigned int flags)
@@ -96,7 +99,7 @@ XDP2_PARSER_OPT(
 <!--(macro generate_protocol_fields_parse_function)-->
 
 /* Template for parsing flag fields */
-static inline __attribute__((always_inline)) int
+static inline __unused() __attribute__((always_inline)) int
 	__@!parser_name!@_@!name!@_xdp2_parse_flag_fields(
 		const struct xdp2_parse_node *parse_node,
 		void *_obj_ref, void *hdr, size_t hdr_len, void *_metadata,
@@ -145,7 +148,7 @@ static inline __attribute__((always_inline)) int
 <!--(macro generate_protocol_tlvs_parse_function)-->
 
 /* Template for parsing TLVs */
-static inline __attribute__((always_inline)) int
+static inline __unused() __attribute__((unused)) int
 	__@!parser_name!@_@!name!@_xdp2_parse_tlvs(
 		const struct xdp2_parse_node *parse_node,
 		void* _obj_ref, void *hdr, size_t hdr_len,
@@ -285,7 +288,8 @@ static inline __attribute__((always_inline)) int
 <!--(macro generate_protocol_parse_function_decl)-->
 
 /* Prototype for parse functions */
-static inline int __@!parser_name!@_@!name!@_xdp2_parse(
+static inline __unused() int
+	__@!parser_name!@_@!name!@_xdp2_parse(
 		const struct xdp2_parser *parser,
 		void *_obj_ref, void *hdr, size_t hdr_len,
 		void *metadata, void **frame, unsigned int frame_num,
@@ -301,7 +305,8 @@ static inline int __@!parser_name!@_@!name!@_xdp2_parse(
 	<!--(end)-->
 
 /* Parse function */
-static inline int __@!parser_name!@_@!name!@_xdp2_parse(
+static inline __unused() int
+	__@!parser_name!@_@!name!@_xdp2_parse(
 		const struct xdp2_parser *parser, void *_obj_ref,
 		void *hdr, size_t hdr_len, void *metadata,
 		void **frame, unsigned int frame_num,
@@ -420,7 +425,7 @@ static inline int __@!parser_name!@_@!name!@_xdp2_parse(
 <!--(macro generate_xdp2_parse_tlv_function)-->
 
 /* Parse wildcard TLV */
-static inline __attribute__((unused)) __attribute__((always_inline)) int
+static inline __unused() __attribute__((always_inline)) int
 	xdp2_parse_wildcard_tlv(
 		const struct xdp2_parse_tlvs_node *parse_node,
 		const struct xdp2_parse_tlv_node *wildcard_parse_tlv_node,
@@ -446,7 +451,7 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 }
 
 /* Parse one TLV */
-static inline __attribute__((unused)) __attribute__((always_inline))
+static inline __unused() __attribute__((always_inline))
 	int xdp2_parse_tlv(
 		const struct xdp2_parse_tlvs_node *parse_node,
 		const struct xdp2_parse_tlv_node *parse_tlv_node,

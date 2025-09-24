@@ -28,13 +28,15 @@
 
 /* Template for XDP parser */
 
-#include <linux/bpf.h>
 #include <bpf/bpf_helpers.h>
-#include "xdp2/proto_defs_define.h"
-#include "xdp2/bpf.h"
+#include <linux/bpf.h>
 
+#include "xdp2/bpf.h"
+#include "xdp2/compiler_helpers.h"
 #include "xdp2/parser.h"
 #include "xdp2/parser_metadata.h"
+#include "xdp2/proto_defs_define.h"
+
 #include "@!filename!@"
 #ifndef XDP2_LOOP_COUNT
 #define XDP2_LOOP_COUNT 8
@@ -48,7 +50,8 @@ CODE_@!node!@,
 CODE_IGNORE
 };
 
-static __always_inline int check_pkt_len(const void *hdr, const void *hdr_end,
+static __attribute__((unused)) __always_inline int
+	check_pkt_len(const void *hdr, const void *hdr_end,
 					 const struct xdp2_proto_def *pnode,
 					 ssize_t* hlen)
 {
@@ -77,7 +80,7 @@ static __always_inline int check_pkt_len(const void *hdr, const void *hdr_end,
 }
 
 <!--(macro generate_xdp2_encap_layer)-->
-static inline __attribute__((always_inline)) int
+static inline __attribute__((unused)) __attribute__((always_inline)) int
 	@!parser_name!@_xdp2_encap_layer(struct xdp2_metadata_all *metadata,
 					 void **frame, unsigned int *frame_num,
 					 unsigned int flags)
@@ -98,7 +101,8 @@ static inline __attribute__((always_inline)) int
 <!--(end)-->
 
 /* Parse one TLV */
-static inline __attribute__((always_inline)) int xdp2_parse_tlv(
+static inline __attribute__((unused)) __attribute__((always_inline)) int
+	xdp2_parse_tlv(
 		const struct xdp2_parse_tlvs_node *parse_node,
 		const struct xdp2_parse_tlv_node *parse_tlv_node,
 		const __u8 *cp, const void *hdr_end, void *_metadata,
@@ -140,7 +144,8 @@ static inline __attribute__((always_inline)) int xdp2_parse_tlv(
 /* Parse root function. Header passed as a ** since parse functions may
  * advance it
  */
-static __always_inline int @!parser_name!@_xdp2_parse_@!root_name!@(
+static __attribute__((unused)) __always_inline int
+	@!parser_name!@_xdp2_parse_@!root_name!@(
 		struct xdp2_xdp_ctx *ctx, const void **hdr,
 		const void *hdr_end, void *_metadata, bool tailcall,
 		unsigned int flags)
@@ -184,7 +189,8 @@ static __always_inline int @!parser_name!@_xdp2_parse_@!root_name!@(
 /* Parse node function. Header passed as a ** since parse functions may
  * advance it
  */
-static __always_inline int xdp2_xdp_parser_@!parser_name!@(
+static __attribute__((unused)) __always_inline int
+	xdp2_xdp_parser_@!parser_name!@(
 		struct xdp2_xdp_ctx *ictx, const void **hdr,
 		const void *hdr_end, bool tailcall, unsigned int flags)
 {
@@ -196,7 +202,8 @@ static __always_inline int xdp2_xdp_parser_@!parser_name!@(
 
 <!--(macro generate_protocol_tlvs_parse_function)-->
 /* Parse TLVs function */
-static inline __attribute__((always_inline)) int __@!name!@_xdp2_parse_tlvs(
+static inline __attribute__((unused)) __attribute__((always_inline)) int
+	__@!name!@_xdp2_parse_tlvs(
 		const struct xdp2_parse_node *parse_node, const void *hdr,
 		const void *hdr_end, void *_metadata, void *frame,
 		struct xdp2_ctrl_data ctrl, unsigned int flags)
@@ -360,7 +367,8 @@ static inline __attribute__((always_inline)) int __@!name!@_xdp2_parse_tlvs(
 <!--(end)-->
 
 <!--(macro generate_protocol_parse_function_decl)-->
-static int __always_inline __@!name!@_xdp2_parse(struct xdp2_xdp_ctx *ctx,
+static __attribute__((unused)) __always_inline int
+	__@!name!@_xdp2_parse(struct xdp2_xdp_ctx *ctx,
 		const void **hdr, const void *hdr_end, void *_metadata,
 		size_t offset, void *frame, unsigned int flags)
 						__attribute__((unused));
@@ -376,7 +384,7 @@ static int __always_inline __@!name!@_xdp2_parse(struct xdp2_xdp_ctx *ctx,
 /*  Main parse function. Header passed as a ** since parse functions may
  * advance it
  */
-static int __always_inline __@!name!@_xdp2_parse(
+static __attribute__((unused)) __always_inline int __@!name!@_xdp2_parse(
 		struct xdp2_xdp_ctx *ctx, const void **hdr,
 		const void *hdr_end, void *_metadata, size_t offset,
 		void *frame, unsigned int flags)

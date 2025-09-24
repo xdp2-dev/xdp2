@@ -31,11 +31,13 @@
 #include <stdlib.h>
 #include "xdp2/parser.h"
 #include "xdp2/proto_defs_define.h"
+#include "xdp2/compiler_helpers.h"
 #include "@!filename!@"
 
 /* Template for making a plain C parser */
 
-static inline __attribute__((always_inline)) int check_pkt_len(const void* hdr,
+static inline __unused() __attribute__((always_inline)) int
+	check_pkt_len(const void *hdr,
 		const struct xdp2_proto_def *pnode, size_t len, ssize_t *hlen)
 {
 	*hlen = pnode->min_len;
@@ -60,7 +62,8 @@ static inline __attribute__((always_inline)) int check_pkt_len(const void* hdr,
 }
 
 <!--(macro generate_xdp2_encap_layer)-->
-static inline __attribute__((always_inline)) int @!parser_name!@_xdp2_encap_layer(
+static inline __unused() __attribute__((always_inline)) int
+	@!parser_name!@_xdp2_encap_layer(
 		struct xdp2_metadata_all *metadata,
 		void **frame, unsigned *frame_num)
 {
