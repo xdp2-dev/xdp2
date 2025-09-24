@@ -1823,6 +1823,7 @@ static inline __u64 __xdp2_bitmap_do_swap(__u64 val,
 			break;
 		case 8:
 		default:
+			break;
 		}
 	}
 	default:
