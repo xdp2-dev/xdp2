@@ -530,7 +530,26 @@ int generate_root_parser_c(std::string filename, std::string output,
         auto template_str = std::string(common_parser_template_str) +
                             std::string(c_def_template_str);
 
-        Py_SetProgramName(program_name.get());
+//       Py_SetProgramName(program_name.get());
+        PyStatus status;
+        PyConfig config;
+        PyConfig_InitPythonConfig(&config);
+
+        status = PyConfig_SetString(&config, &config.program_name,
+				    program_name.get());
+        if (PyStatus_Exception(status)) {
+            plog::log(std::cerr)
+                << "Error running generation template" << std::endl;
+	    return 120;
+        }
+
+        status = Py_InitializeFromConfig(&config);
+        if (PyStatus_Exception(status)) {
+            plog::log(std::cerr)
+                << "Error running generation template" << std::endl;
+	    return 120;
+        }
+
         Py_Initialize();
 
         auto checker = error_checker{};
@@ -575,7 +594,26 @@ int generate_root_parser_xdp_c(std::string filename, std::string output,
         auto template_str = std::string(common_parser_template_str) +
                             std::string(xdp_def_template_str);
 
-        Py_SetProgramName(program_name.get());
+//        Py_SetProgramName(program_name.get());
+        PyStatus status;
+        PyConfig config;
+        PyConfig_InitPythonConfig(&config);
+
+        status = PyConfig_SetString(&config, &config.program_name,
+				    program_name.get());
+        if (PyStatus_Exception(status)) {
+            plog::log(std::cerr)
+                << "Error running generation template" << std::endl;
+	    return 120;
+        }
+
+        status = Py_InitializeFromConfig(&config);
+        if (PyStatus_Exception(status)) {
+            plog::log(std::cerr)
+                << "Error running generation template" << std::endl;
+	    return 120;
+        }
+
         Py_Initialize();
 
         auto checker = error_checker{};
