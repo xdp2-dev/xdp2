@@ -24,12 +24,15 @@
  * SUCH DAMAGE.
  */
 
+#include <linux/if_packet.h>
+#include <arpa/inet.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
 #include <linux/types.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 
 #include "xdp2/cli.h"
 #include "xdp2/parser.h"
@@ -46,6 +49,9 @@
  * Run: ./parse_dump [ -c <test-count> ] [ -v <verbose> ]
  *                    [ -I <report-interval> ] [ -C <cli_port_num> ]
  *                    [-R] [-d] [ -P <prompt-color>] [-U] <pcap_file> ...
+ *
+ *      ./parse_dump -i <iface> [ -v <verbose> ] [ -I <report-interval> ]
+ *		      [ -C <cli_port_num> ] [-R] [-d] [ -P <prompt-color>] [-U]
  */
 
 
@@ -148,6 +154,65 @@ static void run_parser(const struct xdp2_parser *parser, char **pcap_files,
 	}
 }
 
+static void run_parser_iface(const struct xdp2_parser *parser,
+			     const char *ifname, bool show_outgoing,
+			     bool debug)
+{
+	__u32 flags = (debug ? XDP2_F_DEBUG : 0);
+	struct xdp2_packet_data pdata;
+	struct pmetadata pmetadata;
+	struct sockaddr_ll sll;
+	unsigned int seq = 0;
+	socklen_t socklen;
+	__u8 buffer[1500];
+	struct ifreq ifr;
+	int sock_fd;
+	ssize_t n;
+
+	if ((sock_fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0) {
+		perror("socket() error");
+		exit(-1);
+	}
+
+	strncpy(ifr.ifr_name, ifname, IFNAMSIZ - 1);
+	ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+
+	/* Get the interface index */
+	if (ioctl(sock_fd, SIOCGIFINDEX, &ifr) < 0) {
+		perror("ioctl(SIOCGIFINDEX) error");
+		exit(-1);
+	}
+
+	sll.sll_family = AF_PACKET;
+	sll.sll_protocol = htons(ETH_P_ALL);
+	sll.sll_ifindex = ifr.ifr_ifindex;
+
+	if (bind(sock_fd, (struct sockaddr *)&sll, sizeof(sll)) < 0) {
+		perror("bind() error");
+		exit(-1);
+	}
+
+	while (1) {
+		socklen = sizeof(sll);
+		n = recvfrom(sock_fd, buffer, sizeof(buffer), 0,
+			     (struct sockaddr *)&sll, &socklen);
+		if (n < 0) {
+			perror("socket recvfrom");
+			exit(-1);
+		}
+
+		if (!show_outgoing && sll.sll_pkttype == PACKET_OUTGOING)
+			continue;
+
+		memset(&pmetadata, 0, sizeof(pmetadata));
+
+		XDP2_SET_BASIC_PDATA_LEN_SEQNO(pdata, buffer, n,
+					       buffer, n, seq++);
+
+		xdp2_parse(parser, &pdata, &pmetadata, flags);
+	}
+}
+
 XDP2_PARSER_EXTERN(parse_dump);
 XDP2_PARSER_EXTERN(parse_dump_opt);
 
@@ -174,7 +239,7 @@ static void set_use_colors_from_cli(void *cli,
 
 XDP2_CLI_ADD_SET_CONFIG("colors", set_use_colors_from_cli, 0xffff);
 
-#define ARGS "c:v:I:C:RdP:UO"
+#define ARGS "c:v:I:C:RdP:UOi:x"
 
 static void *usage(char *prog)
 {
@@ -182,13 +247,19 @@ static void *usage(char *prog)
 	fprintf(stderr, "Usage: %s [ -c <test-count> ] [ -v <verbose> ]\n",
 		prog);
 	fprintf(stderr, "\t[ -I <report-interval> ][ -C <cli_port_num> ]\n");
+	fprintf(stderr, "\t[-R] [-d] [ -P <prompt-color>] [-U]");
 #ifdef BUILD_OPT_PARSER
-	fprintf(stderr, "\t[-R] [-d] [ -P <prompt-color>] [-U] [-O] "
-			"<pcap_file> ...\n");
-#else
-	fprintf(stderr, "\t[-R] [-d] [ -P <prompt-color>] [-U] "
-			"<pcap_file> ...\n");
+	fprintf(stderr, " [-O] ");
 #endif
+	fprintf(stderr, "<pcap_file> ...\n");
+
+	fprintf(stderr, "      %s -i <iface> [-x] [ -v <verbose> ] "
+			"-C <cli_port_num> ]\n", prog);
+	fprintf(stderr, "\t[-R] [-d] [ -P <prompt-color>] [-U]");
+#ifdef BUILD_OPT_PARSER
+	fprintf(stderr, " [-O] ");
+#endif
+	fprintf(stderr, "\n");
 
 	exit(-1);
 }
@@ -197,12 +268,15 @@ int main(int argc, char *argv[])
 {
 	static struct xdp2_cli_thread_info cli_thread_info;
 	unsigned int cli_port_num = 0, interval = 0;
+	const struct xdp2_parser *parser;
 	const char *prompt_color = "";
+	bool show_outgoing = false;
 	bool random_seed = false;
 #ifdef BUILD_OPT_PARSER
 	bool opt_parser = false;
 #endif
 	unsigned long count = 0;
+	char *iface = NULL;
 	bool debug= false;
 	int c;
 
@@ -232,6 +306,12 @@ int main(int argc, char *argv[])
 		case 'U':
 			use_colors = true;
 			break;
+		case 'i':
+			iface = optarg;
+			break;
+		case 'x':
+			show_outgoing = true;
+			break;
 #ifdef BUILD_OPT_PARSER
 		case 'O':
 			opt_parser = true;
@@ -242,7 +322,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (optind >= argc)
+	if (!iface && optind >= argc)
 		usage(argv[0]);
 
 	if (random_seed)
@@ -256,11 +336,16 @@ int main(int argc, char *argv[])
 
 		xdp2_cli_start(&cli_thread_info);
 	}
+
 #ifdef BUILD_OPT_PARSER
-	run_parser(opt_parser ? parse_dump_opt : parse_dump, &argv[optind],
-		   argc - optind, count, interval, debug);
+	parser = opt_parser ? parse_dump_opt : parse_dump;
 #else
-	run_parser(parse_dump, &argv[optind], argc - optind, count,
-		   interval, debug);
+	parser = parse_dump;
 #endif
+
+	if (iface)
+		run_parser_iface(parse_dump, iface, show_outgoing, debug);
+	else
+		run_parser(parser, &argv[optind],
+		   argc - optind, count, interval, debug);
 }
