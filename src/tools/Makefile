@@ -4,7 +4,7 @@ TOPTARGETS := all clean install
 
 SUBDIRS = pmacro packets
 
-ifeq ($(BUILD_OPT_PARSER),y)
+ifneq ($(NO_BUILD_COMPILER),y)
 	SUBDIRS += compiler
 endif
 

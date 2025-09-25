@@ -287,10 +287,10 @@ usage()
 	fi
 
 	echo " [--config-defines <defines>] [--ccarch <arch>]"
-	echo " [--arch <arch>] [--compiler <compiler>]"
-	echo " [--installdir <dir>] [--build-opt-parser]"
-	echo " [--pkg-config-path <path>]"
-	echo " [--llvm-config <llvm-config>]"
+	echo " [--arch <arch>] [--compiler <compiler>] [--installdir <dir>]"
+	echo " [--build-opt-parser] [--build-parser-json]"
+	echo " [--no-build-compiler] [--pkg-config-path <path>]"
+	echo " [--python-ver <version>] [--llvm-config <llvm-config>]"
 
 	platform_usage
 
@@ -313,6 +313,9 @@ while [ -n "$1" ]; do
 		"--pkg-config-path") MY_PKG_CONFIG_PATH=$2; shift;;
 		"--installdir") INSTALLDIR=$2; shift;;
 		"--build-opt-parser") BUILD_OPT_PARSER="y";;
+		"--build-parser-json") BUILD_PARSER_JSON="y";;
+		"--no-build-compiler") NO_BUILD_COMPILER="y";;
+		"--python-ver") PYTHON_VER=$2; shift;;
 		"--llvm-config") HOST_LLVM_CONFIG=$2; shift;;
 		*) parse_platform_opts $1;;
 	esac
@@ -324,6 +327,19 @@ if [ -n "$MY_PKG_CONFIG_PATH" ]; then
 		export PKG_CONFIG_PATH="$MY_PKG_CONFIG_PATH:$PKG_CONFIG_PATH"
 	else
 		export PKG_CONFIG_PATH="$MY_PKG_CONFIG_PATH"
+	fi
+fi
+
+if [ "$NO_BUILD_COMPILER" == "y" ]; then
+	if [ "$BUILD_OPT_PARSER" == "y" ]; then
+		echo -n "No build compiler and optimized parser cannot be "
+		echo "configured at the same time"
+		exit -1
+	fi
+	if [ "$BUILD_PARSER_JSON" == "y" ]; then
+		echo -n "No build compiler an build parser .json cannot be "
+		echo "configured at the same time"
+		exit -1
 	fi
 fi
 
@@ -372,6 +388,7 @@ set_platform_opts
 : ${AR:="$CC_AR"}
 : ${HOST_CC:=gcc}
 : ${HOST_CXX:=g++}
+: ${HOST_CLANG:=clang}
 : ${LDLIBS:="$LIBS_N $LIBS_NL"}
 
 echo "CC_ISA_EXT_FLAGS := $CC_ISA_EXT_FLAGS" >> $CONFIG
@@ -380,6 +397,7 @@ echo "C_MARCH_FLAGS := $C_MARCH_FLAGS" >>$CONFIG
 echo "ASM_MARCH_FLAGS := $ASM_MARCH_FLAGS" >>$CONFIG
 echo "HOST_CC := gcc" >> $CONFIG
 echo "HOST_CXX := g++" >> $CONFIG
+echo "HOST_CLANG := clang" >> $CONFIG
 echo "CC_ELF := $CC_ELF" >> $CONFIG
 echo "LDLIBS = $LDLIBS" >> $CONFIG
 echo "LDLIBS += \$(LDLIBS_LOCAL) -ldl" >> $CONFIG
@@ -495,6 +513,10 @@ echo '	$(QUIET_CXX)$(HOST_CXX) $(XDP2_CXXFLAGS) $(CXXFLAGS) $(EXTRA_CXXFLAGS)		\
 
 echo "endif" >> $CONFIG
 
+echo "%.ll: %.c" >> $CONFIG
+echo '	$(QUIET_CC)$(HOST_CLANG) $(CFLAGS) $(XDP2_CFLAGS) $(EXTRA_CFLAGS) $(C_MARCH_FLAGS)\
+					-S $< -emit-llvm' >> $CONFIG
+
 echo >> $CONFIG
 if [ -f ${HOST_LLVM_CONFIG} ]; then
 XDP2_CLANG_VERSION=`${HOST_LLVM_CONFIG} --version`
@@ -524,4 +546,7 @@ echo >> $CONFIG
 echo "INSTALLDIR ?= $INSTALLDIR" >> $CONFIG
 echo "INSTALLTARNAME ?= $INSTALLTARNAME" >> $CONFIG
 echo "BUILD_OPT_PARSER ?= $BUILD_OPT_PARSER" >> $CONFIG
+echo "BUILD_PARSER_JSON ?= $BUILD_PARSER_JSON" >> $CONFIG
+echo "NO_BUILD_COMPILER ?= $NO_BUILD_COMPILER" >> $CONFIG
+
 echo "CONFIG_DEFINES := $CONFIG_DEFINES" >> $CONFIG
