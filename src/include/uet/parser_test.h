@@ -24,8 +24,10 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __XDP2_TEST_PARSE_DUMP_UET_H__
-#define __XDP2_TEST_PARSE_DUMP_UET_H__
+#ifndef __UET_PARSER_TEST_H__
+#define __UET_PARSER_TEST_H__
+
+/* Defines UET parser nodes for common parser test framework */
 
 #include "uet/pds.h"
 #include "uet/ses.h"
@@ -35,7 +37,7 @@
 #include "uet/proto_uet_ses.h"
 #undef XDP2_DEFINE_PARSE_NODE
 
-#include "parse_helpers.h"
+#include "xdp2/parser_test_helpers.h"
 
 /* Parser definitions in parse_dump for UET */
 
@@ -48,36 +50,36 @@ static void print_pds_rud_rod_request(
 {
 	__u8 next_hdr = uet_pds_common_get_next_hdr(rhdr);
 
-	LOC_PRINTFC(ctrl, "\t\tType: %s (%u)\n",
-		    uet_pkt_type_to_text(rhdr->type), rhdr->type);
-	LOC_PRINTFC(ctrl, "\t\tNext header: %s (%u)\n",
-		    uet_next_header_type_to_text(next_hdr), next_hdr);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tType: %s (%u)\n",
+			     uet_pkt_type_to_text(rhdr->type), rhdr->type);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tNext header: %s (%u)\n",
+			     uet_next_header_type_to_text(next_hdr), next_hdr);
 
-	LOC_PRINTFC(ctrl, "\t\tRetransmission: %s\n",
-		    rhdr->retrans ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tAck requested: %s\n",
-		    rhdr->ackreq ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tSYN: %s\n",
-		    rhdr->syn ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRetransmission: %s\n",
+			     rhdr->retrans ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tAck requested: %s\n",
+			     rhdr->ackreq ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tSYN: %s\n",
+			     rhdr->syn ? "yes" : "no");
 
-	LOC_PRINTFC(ctrl, "\t\tClear PSN offset: %u (0x%x)\n",
-		    ntohs(rhdr->clear_psn_offset),
-		    ntohs(rhdr->clear_psn_offset));
-	LOC_PRINTFC(ctrl, "\t\tPSN: %u (0x%x)\n",
-		    ntohl(rhdr->psn), ntohl(rhdr->psn));
-	LOC_PRINTFC(ctrl, "\t\tSPDcid: %u (0x%x)\n",
-		    ntohs(rhdr->spdcid), ntohs(rhdr->spdcid));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tClear PSN offset: %u (0x%x)\n",
+			     ntohs(rhdr->clear_psn_offset),
+			     ntohs(rhdr->clear_psn_offset));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPSN: %u (0x%x)\n",
+			     ntohl(rhdr->psn), ntohl(rhdr->psn));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tSPDcid: %u (0x%x)\n",
+			     ntohs(rhdr->spdcid), ntohs(rhdr->spdcid));
 
 	if (rhdr->syn) {
-		LOC_PRINTFC(ctrl, "\t\tPSN offset %u (0x%x)\n",
-			    uet_pds_rud_rod_request_get_psn_offset(rhdr),
-			    uet_pds_rud_rod_request_get_psn_offset(rhdr));
-		LOC_PRINTFC(ctrl, "\t\tPDC source %s\n",
-			    rhdr->use_rsv_pdc ? "PDC from reserved pool" :
-						"PDC from global shared ppol");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPSN offset %u (0x%x)\n",
+				uet_pds_rud_rod_request_get_psn_offset(rhdr),
+				uet_pds_rud_rod_request_get_psn_offset(rhdr));
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPDC source %s\n",
+			rhdr->use_rsv_pdc ? "PDC from reserved pool" :
+					    "PDC from global shared ppol");
 	} else {
-		LOC_PRINTFC(ctrl, "\t\tDPDcid: %u (0x%x)\n",
-			    ntohs(rhdr->dpdcid), ntohs(rhdr->dpdcid));
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tDPDcid: %u (0x%x)\n",
+				     ntohs(rhdr->dpdcid), ntohs(rhdr->dpdcid));
 	}
 }
 
@@ -88,14 +90,14 @@ static void print_pds_rud_rod_request_cc(
 {
 	print_pds_rud_rod_request(&pkt->req, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\t--- CC\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- CC\n");
 
-	LOC_PRINTFC(ctrl, "\t\tCCC ID: %u (0x%x)\n",
-		    pkt->req_cc_state.ccc_id,
-		    pkt->req_cc_state.ccc_id);
-	LOC_PRINTFC(ctrl, "\t\tCredit target %u (0x%x)\n",
-		    xdp2_ntohl24(pkt->req_cc_state.credit_target),
-		    xdp2_ntohl24(pkt->req_cc_state.credit_target));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tCCC ID: %u (0x%x)\n",
+			     pkt->req_cc_state.ccc_id,
+			     pkt->req_cc_state.ccc_id);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tCredit target %u (0x%x)\n",
+			     xdp2_ntohl24(pkt->req_cc_state.credit_target),
+			     xdp2_ntohl24(pkt->req_cc_state.credit_target));
 }
 
 /* Handle plain RUD request */
@@ -106,7 +108,7 @@ static int handler_pds_rud_request(const void *hdr, size_t hdr_len,
 	const struct uet_pds_rud_rod_request *pkt = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS RUD request\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS RUD request\n");
 
 	if (verbose < 10)
 		return 0;
@@ -125,7 +127,7 @@ static int handler_pds_rud_request_syn(const void *hdr, size_t hdr_len,
 	const struct uet_pds_rud_rod_request *pkt = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS RUD request SYN\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS RUD request SYN\n");
 
 	if (verbose < 10)
 		return 0;
@@ -144,7 +146,7 @@ static int handler_pds_rud_request_cc(const void *hdr, size_t hdr_len,
 	const struct uet_pds_rud_rod_request_cc *pkt = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS RUD request CC\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS RUD request CC\n");
 
 	if (verbose < 10)
 		return 0;
@@ -163,7 +165,7 @@ static int handler_pds_rud_request_cc_syn(const void *hdr, size_t hdr_len,
 	const struct uet_pds_rud_rod_request_cc *pkt = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS RUD request CC SYN\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS RUD request CC SYN\n");
 
 	if (verbose < 10)
 		return 0;
@@ -182,7 +184,7 @@ static int handler_pds_rod_request(const void *hdr, size_t hdr_len,
 	const struct uet_pds_rud_rod_request *pkt = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS ROD request\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS ROD request\n");
 
 	if (verbose < 10)
 		return 0;
@@ -201,7 +203,7 @@ static int handler_pds_rod_request_syn(const void *hdr, size_t hdr_len,
 	const struct uet_pds_rud_rod_request *pkt = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS ROD request SYN\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS ROD request SYN\n");
 
 	if (verbose < 10)
 		return 0;
@@ -220,7 +222,7 @@ static int handler_pds_rod_request_cc(const void *hdr, size_t hdr_len,
 	const struct uet_pds_rud_rod_request_cc *pkt = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS ROD request CC\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS ROD request CC\n");
 
 	if (verbose < 10)
 		return 0;
@@ -239,7 +241,7 @@ static int handler_pds_rod_request_cc_syn(const void *hdr, size_t hdr_len,
 	const struct uet_pds_rud_rod_request_cc *pkt = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS ROD request CC SYN\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS ROD request CC SYN\n");
 
 	if (verbose < 10)
 		return 0;
@@ -255,35 +257,36 @@ static void print_pds_common_ack(const struct uet_pds_ack *pkt,
 {
 	__u8 next_hdr = uet_pds_common_get_next_hdr(pkt);
 
-	LOC_PRINTFC(ctrl, "\t\tType: %s (%u)\n",
-		    uet_pkt_type_to_text(pkt->type), pkt->type);
-	LOC_PRINTFC(ctrl, "\t\tNext header: %s (%u)\n",
-		    uet_next_header_type_to_text(next_hdr), next_hdr);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tType: %s (%u)\n",
+			     uet_pkt_type_to_text(pkt->type), pkt->type);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tNext header: %s (%u)\n",
+			     uet_next_header_type_to_text(next_hdr), next_hdr);
 
-	LOC_PRINTFC(ctrl, "\t\tECN marked: %s\n",
-		    pkt->ecn_marked ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tRetransmission: %s\n",
-		    pkt->retrans ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tProbe: %s\n",
-		    pkt->probe ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tRequest type: %s (%u)\n",
-		    uet_pds_ack_request_type_to_text(pkt->request),
-		    pkt->request);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tECN marked: %s\n",
+			     pkt->ecn_marked ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRetransmission: %s\n",
+			     pkt->retrans ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tProbe: %s\n",
+			     pkt->probe ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRequest type: %s (%u)\n",
+			     uet_pds_ack_request_type_to_text(pkt->request),
+			     pkt->request);
 
 	if (pkt->probe)
-		LOC_PRINTFC(ctrl, "\t\tProbe opaque: %u (0x%x)\n",
-			    ntohs(pkt->probe_opaque), ntohs(pkt->probe_opaque));
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tProbe opaque: %u (0x%x)\n",
+				     ntohs(pkt->probe_opaque),
+				     ntohs(pkt->probe_opaque));
 	else
-		LOC_PRINTFC(ctrl, "\t\tACK PSN offset: %u (0x%x)\n",
-			    ntohs(pkt->ack_psn_offset),
-			    ntohs(pkt->ack_psn_offset));
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tACK PSN offset: %u (0x%x)\n",
+				     ntohs(pkt->ack_psn_offset),
+				     ntohs(pkt->ack_psn_offset));
 
-	LOC_PRINTFC(ctrl, "\t\tCACK PSN: %u (0x%x)\n",
-		    ntohl(pkt->cack_psn), ntohl(pkt->cack_psn));
-	LOC_PRINTFC(ctrl, "\t\tSPDcid: %u (0x%x)\n",
-		    ntohs(pkt->spdcid), ntohs(pkt->spdcid));
-	LOC_PRINTFC(ctrl, "\t\tDPDcid: %u (0x%x)\n",
-		    ntohs(pkt->dpdcid), ntohs(pkt->dpdcid));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tCACK PSN: %u (0x%x)\n",
+			     ntohl(pkt->cack_psn), ntohl(pkt->cack_psn));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tSPDcid: %u (0x%x)\n",
+			     ntohs(pkt->spdcid), ntohs(pkt->spdcid));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tDPDcid: %u (0x%x)\n",
+			     ntohs(pkt->dpdcid), ntohs(pkt->dpdcid));
 }
 
 /* Print common PDS ACK CC info */
@@ -295,7 +298,7 @@ static int handler_pds_ack(const void *hdr, size_t hdr_len,
 	const struct uet_pds_ack *pkt = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS ACK\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS ACK\n");
 
 	if (verbose < 10)
 		return 0;
@@ -311,18 +314,20 @@ static void print_pds_common_ack_cc(const struct uet_pds_ack_cc *pkt,
 {
 	print_pds_common_ack(&pkt->ack, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\t--- Common ACK\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- Common ACK\n");
 
-	LOC_PRINTFC(ctrl, "\t\tCC type: %s (%u)\n",
-		    uet_pds_cc_type_to_text(pkt->cc_type), pkt->cc_type);
-	LOC_PRINTFC(ctrl, "\t\tCC flags: %u (0x%x)\n", pkt->cc_flags,
-		    pkt->cc_flags);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tCC type: %s (%u)\n",
+			     uet_pds_cc_type_to_text(pkt->cc_type),
+			     pkt->cc_type);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tCC flags: %u (0x%x)\n",
+			     pkt->cc_flags, pkt->cc_flags);
 
-	LOC_PRINTFC(ctrl, "\t\tMPR: %u (0x%x)\n", pkt->mpr, pkt->mpr);
-	LOC_PRINTFC(ctrl, "\t\tSACK PSN offset: %u (0x%x)\n",
-		    ntohs(pkt->sack_psn_offset), ntohs(pkt->sack_psn_offset));
-	LOC_PRINTFC(ctrl, "\t\tSACK bitmap: 0x%llx\n",
-		    ntohll(pkt->sack_bitmap));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tMPR: %u (0x%x)\n", pkt->mpr, pkt->mpr);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tSACK PSN offset: %u (0x%x)\n",
+			     ntohs(pkt->sack_psn_offset),
+			     ntohs(pkt->sack_psn_offset));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tSACK bitmap: 0x%llx\n",
+			     ntohll(pkt->sack_bitmap));
 }
 
 /* PDS ACK handler with CC NSCC */
@@ -334,29 +339,30 @@ static int handler_pds_ack_cc_nscc(const void *hdr, size_t hdr_len,
 	const struct uet_pds_ack_cc *pkt = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS ACK CC NSCC\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS ACK CC NSCC\n");
 
 	if (verbose < 10)
 		return 0;
 
 	print_pds_common_ack_cc(pkt, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\t--- NSCC\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- NSCC\n");
 
-	LOC_PRINTFC(ctrl, "\t\tService time: %u (0x%x)\n",
-		    ntohs(pkt->nscc.service_time),
-		    ntohs(pkt->nscc.service_time));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tService time: %u (0x%x)\n",
+			     ntohs(pkt->nscc.service_time),
+			     ntohs(pkt->nscc.service_time));
 
-	LOC_PRINTFC(ctrl, "\t\tRestore cwnd: %s\n",
-		    pkt->nscc.restore_cwnd ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tRecv cwnd pending: %u (0x%x)\n",
-		    pkt->nscc.rcv_cwnd_pend, pkt->nscc.rcv_cwnd_pend);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRestore cwnd: %s\n",
+			     pkt->nscc.restore_cwnd ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRecv cwnd pending: %u (0x%x)\n",
+			     pkt->nscc.rcv_cwnd_pend, pkt->nscc.rcv_cwnd_pend);
 
-	LOC_PRINTFC(ctrl, "\t\tReceived bytes: %u (0x%x)\n",
-		    xdp2_ntohl24(pkt->nscc.rcvd_bytes),
-		    xdp2_ntohl24(pkt->nscc.rcvd_bytes));
-	LOC_PRINTFC(ctrl, "\t\tOOO count: %u (0x%x)\n",
-		    ntohs(pkt->nscc.ooo_count), ntohs(pkt->nscc.ooo_count));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tReceived bytes: %u (0x%x)\n",
+			     xdp2_ntohl24(pkt->nscc.rcvd_bytes),
+			     xdp2_ntohl24(pkt->nscc.rcvd_bytes));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tOOO count: %u (0x%x)\n",
+			     ntohs(pkt->nscc.ooo_count),
+			     ntohs(pkt->nscc.ooo_count));
 
 	return 0;
 }
@@ -370,20 +376,21 @@ static int handler_pds_ack_cc_credit(const void *hdr, size_t hdr_len,
 	const struct uet_pds_ack_cc *pkt = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS ACK CC credit\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS ACK CC credit\n");
 
 	if (verbose < 10)
 		return 0;
 
 	print_pds_common_ack_cc(pkt, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\t--- Credit\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- Credit\n");
 
-	LOC_PRINTFC(ctrl, "\t\tCredit: %u (0x%x)\n",
-		    xdp2_ntohl24(pkt->credit.credit),
-		    xdp2_ntohl24(pkt->credit.credit));
-	LOC_PRINTFC(ctrl, "\t\tOOO count: %u (0x%x)\n",
-		    ntohs(pkt->credit.ooo_count), ntohs(pkt->credit.ooo_count));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tCredit: %u (0x%x)\n",
+			     xdp2_ntohl24(pkt->credit.credit),
+			     xdp2_ntohl24(pkt->credit.credit));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tOOO count: %u (0x%x)\n",
+			     ntohs(pkt->credit.ooo_count),
+			     ntohs(pkt->credit.ooo_count));
 
 	return 0;
 }
@@ -397,33 +404,34 @@ static int handler_pds_ack_ccx(const void *hdr, size_t hdr_len,
 	int i;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS ACK CCX\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS ACK CCX\n");
 
 	if (verbose < 10)
 		return 0;
 
 	print_pds_common_ack(&pkt->ack, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\t--- ACK CCX\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- ACK CCX\n");
 
-	LOC_PRINTFC(ctrl, "\t\tCCX type: %u\n", pkt->ccx_type);
-	LOC_PRINTFC(ctrl, "\t\tCCX flags: %u\n", pkt->cc_flags);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tCCX type: %u\n", pkt->ccx_type);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tCCX flags: %u\n", pkt->cc_flags);
 
-	LOC_PRINTFC(ctrl, "\t\tMPR: %u (0x%x)\n", pkt->mpr, pkt->mpr);
-	LOC_PRINTFC(ctrl, "\t\tSACK PSN offset: %u (0x%x)\n",
-		    ntohs(pkt->sack_psn_offset), ntohs(pkt->sack_psn_offset));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tMPR: %u (0x%x)\n", pkt->mpr, pkt->mpr);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tSACK PSN offset: %u (0x%x)\n",
+			     ntohs(pkt->sack_psn_offset),
+			     ntohs(pkt->sack_psn_offset));
 
-	LOC_PRINTFC(ctrl, "\t\tSACK bitmap: 0x%llx\n",
-		    ntohll(pkt->sack_bitmap));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tSACK bitmap: 0x%llx\n",
+			     ntohll(pkt->sack_bitmap));
 
-	LOC_PRINTFC(ctrl, "\t\tAck CC state: ");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tAck CC state: ");
 	for (i = 0; i < 8; i++) {
 		if (i)
-			LOC_PRINTFC(ctrl, " ");
-		LOC_PRINTFC(ctrl, "%02x", pkt->ack_cc_state[i]);
+			XDP2_PTH_LOC_PRINTFC(ctrl, " ");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "%02x", pkt->ack_cc_state[i]);
 	}
 
-	LOC_PRINTFC(ctrl, "\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\n");
 
 	return 0;
 }
@@ -434,41 +442,41 @@ static void print_pds_common_nack(const struct uet_pds_nack *hdr,
 {
 	__u8 next_hdr = uet_pds_common_get_next_hdr(hdr);
 
-	LOC_PRINTFC(ctrl, "\t\tType: %s (%u)\n",
-		    uet_pkt_type_to_text(hdr->type), hdr->type);
-	LOC_PRINTFC(ctrl, "\t\tNext header: %s (%u)\n",
-		    uet_next_header_type_to_text(next_hdr), next_hdr);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tType: %s (%u)\n",
+			     uet_pkt_type_to_text(hdr->type), hdr->type);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tNext header: %s (%u)\n",
+			     uet_next_header_type_to_text(next_hdr), next_hdr);
 
-	LOC_PRINTFC(ctrl, "\t\tECN marked: %s\n",
-		    hdr->ecn_marked ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tRetransmission: %s\n",
-		    hdr->retrans ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tECN marked: %s\n",
+			     hdr->ecn_marked ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRetransmission: %s\n",
+			     hdr->retrans ? "yes" : "no");
 
-	LOC_PRINTFC(ctrl, "\t\tNack type: %s (%u)\n",
-		    uet_pds_nack_type_to_text(hdr->nack_type),
-		    hdr->nack_type);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tNack type: %s (%u)\n",
+			     uet_pds_nack_type_to_text(hdr->nack_type),
+			     hdr->nack_type);
 
-	LOC_PRINTFC(ctrl, "\t\tNack code: %s (%u)\n",
-		    uet_pds_nack_code_to_text(hdr->nack_code),
-		    hdr->nack_code);
-	LOC_PRINTFC(ctrl, "\t\tVendor code: %u (%x)\n",
-		    hdr->vendor_code, hdr->vendor_code);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tNack code: %s (%u)\n",
+			     uet_pds_nack_code_to_text(hdr->nack_code),
+			     hdr->nack_code);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tVendor code: %u (%x)\n",
+			     hdr->vendor_code, hdr->vendor_code);
 
 	if (hdr->nack_type == UET_PDS_NACK_TYPE_RUD_ROD)
-		LOC_PRINTFC(ctrl, "\t\tNack PSN: %u (%x)\n",
-			    ntohl(hdr->nack_psn),
-			    ntohl(hdr->nack_psn));
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tNack PSN: %u (%x)\n",
+				     ntohl(hdr->nack_psn),
+				     ntohl(hdr->nack_psn));
 	else
-		LOC_PRINTFC(ctrl, "\t\tNack packet ID: %u (%x)\n",
-			    ntohl(hdr->nack_pkt_id),
-			    ntohl(hdr->nack_pkt_id));
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tNack packet ID: %u (%x)\n",
+				     ntohl(hdr->nack_pkt_id),
+				     ntohl(hdr->nack_pkt_id));
 
-	LOC_PRINTFC(ctrl, "\t\tSPDcid: %u (0x%x)\n",
-		    ntohs(hdr->spdcid), ntohs(hdr->spdcid));
-	LOC_PRINTFC(ctrl, "\t\tDPDcid: %u (0x%x)\n",
-		    ntohs(hdr->dpdcid), ntohs(hdr->dpdcid));
-	LOC_PRINTFC(ctrl, "\t\tPayload: %u (0x%x)\n",
-		    ntohl(hdr->payload), ntohl(hdr->payload));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tSPDcid: %u (0x%x)\n",
+			     ntohs(hdr->spdcid), ntohs(hdr->spdcid));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tDPDcid: %u (0x%x)\n",
+			     ntohs(hdr->dpdcid), ntohs(hdr->dpdcid));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPayload: %u (0x%x)\n",
+			     ntohl(hdr->payload), ntohl(hdr->payload));
 }
 
 /* PDS NACK handler */
@@ -479,7 +487,7 @@ static int handler_pds_nack(const void *hdr, size_t hdr_len,
 	const struct uet_pds_nack *pkt = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS NACK\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS NACK\n");
 
 	if (verbose < 10)
 		return 0;
@@ -498,27 +506,27 @@ static int handler_pds_nack_ccx(const void *hdr, size_t hdr_len,
 	int i;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS NACK CCX\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS NACK CCX\n");
 
 	if (verbose < 10)
 		return 0;
 
 	print_pds_common_nack(&pkt->nack, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\t--- NACK CCX\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- NACK CCX\n");
 
-	LOC_PRINTFC(ctrl, "\t\tNack CCX type: 0x%x\n",
-		    pkt->nccx_type);
-	LOC_PRINTFC(ctrl, "\t\tNack CCX state: 0x%x ",
-		    pkt->nccx_ccx_state1);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tNack CCX type: 0x%x\n",
+			     pkt->nccx_type);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tNack CCX state: 0x%x ",
+			     pkt->nccx_ccx_state1);
 
 	for (i = 0; i < 15; i++) {
 		if (i)
-			LOC_PRINTFC(ctrl, " ");
-		LOC_PRINTFC(ctrl, "%02x", pkt->nack_ccx_state2[i]);
+			XDP2_PTH_LOC_PRINTFC(ctrl, " ");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "%02x", pkt->nack_ccx_state2[i]);
 	}
 
-	LOC_PRINTFC(ctrl, "\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\n");
 
 	return 0;
 }
@@ -529,38 +537,40 @@ static void print_pds_common_control(const struct uet_pds_control_pkt *pkt,
 {
 	__u8 ctl_type = uet_pds_control_pkt_get_ctl_type(pkt);
 
-	LOC_PRINTFC(ctrl, "\t\tControl type: %s (%u)\n",
-		    uet_pds_control_pkt_type_to_text(ctl_type),
-		    ctl_type);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tControl type: %s (%u)\n",
+			     uet_pds_control_pkt_type_to_text(ctl_type),
+			     ctl_type);
 
 	if (pkt->rsvd_isrod) {
-		 LOC_PRINTFC(ctrl, "\t\tPDC is ROD\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPDC is ROD\n");
 	} else {
 		if (ctl_type == UET_PDS_CTL_TYPE_NOOP ||
 		    ctl_type == UET_PDS_CTL_TYPE_NEGOTIATION)
-			LOC_PRINTFC(ctrl, "\t\tPDC is RUD for NOOP "
-					  "and Negotiation\n");
+			XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPDC is RUD for NOOP "
+						   "and Negotiation\n");
 		else
-			LOC_PRINTFC(ctrl, "\t\tRsvd_isrod for delivery mode\n");
+			XDP2_PTH_LOC_PRINTFC(ctrl,
+					"\t\tRsvd_isrod for delivery mode\n");
 	}
 
-	LOC_PRINTFC(ctrl, "\t\tRetransmission: %s\n",
-		    pkt->retrans ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tAck requested: %s\n",
-		    pkt->ackreq ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tSYN: %s\n",
-		    pkt->syn ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRetransmission: %s\n",
+			     pkt->retrans ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tAck requested: %s\n",
+			     pkt->ackreq ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tSYN: %s\n",
+			     pkt->syn ? "yes" : "no");
 
-	LOC_PRINTFC(ctrl, "\t\tProbe opaque: %u (0x%x)\n",
-		    ntohs(pkt->probe_opaque), ntohs(pkt->probe_opaque));
-	LOC_PRINTFC(ctrl, "\t\tPSN: %u (0x%x)\n",
-		    ntohl(pkt->psn), ntohl(pkt->psn));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tProbe opaque: %u (0x%x)\n",
+			     ntohs(pkt->probe_opaque),
+			     ntohs(pkt->probe_opaque));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPSN: %u (0x%x)\n",
+			     ntohl(pkt->psn), ntohl(pkt->psn));
 
-	LOC_PRINTFC(ctrl, "\t\tSPDcid: %u (0x%x)\n",
-		    ntohs(pkt->spdcid), ntohs(pkt->spdcid));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tSPDcid: %u (0x%x)\n",
+			     ntohs(pkt->spdcid), ntohs(pkt->spdcid));
 
-	LOC_PRINTFC(ctrl, "\t\tPayload: %u (0x%x)\n",
-		    ntohl(pkt->payload), ntohl(pkt->payload));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPayload: %u (0x%x)\n",
+			     ntohl(pkt->payload), ntohl(pkt->payload));
 }
 
 /* PDS Control handler */
@@ -571,17 +581,17 @@ static int handler_pds_control(const void *hdr, size_t hdr_len,
 	const struct uet_pds_control_pkt *pkt = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS Control\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS Control\n");
 
 	if (verbose < 10)
 		return 0;
 
 	print_pds_common_control(pkt, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\t--- No SYN\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- No SYN\n");
 
-	LOC_PRINTFC(ctrl, "\t\tDPDcid: %u (0x%x)\n",
-		    ntohs(pkt->dpdcid), ntohs(pkt->dpdcid));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tDPDcid: %u (0x%x)\n",
+			     ntohs(pkt->dpdcid), ntohs(pkt->dpdcid));
 
 	return 0;
 }
@@ -596,19 +606,19 @@ static int handler_pds_control_syn(const void *hdr, size_t hdr_len,
 	__u16 psn_offset = uet_pds_control_pkt_get_psn_offset(pkt);
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS Control SYN\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS Control SYN\n");
 
 	if (verbose < 10)
 		return 0;
 
 	print_pds_common_control(pkt, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\t--- SYN\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- SYN\n");
 
-	LOC_PRINTFC(ctrl, "\t\tUse reserved PDC: %s\n",
-		    pkt->use_rsv_pdc ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tPSN offset: %u (0x%x)\n",
-		    psn_offset, psn_offset);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tUse reserved PDC: %s\n",
+			     pkt->use_rsv_pdc ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPSN offset: %u (0x%x)\n",
+			     psn_offset, psn_offset);
 
 	return 0;
 }
@@ -620,7 +630,7 @@ static int handler_pds_uud_req(const void *hdr, size_t hdr_len,
 			       const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS UUD request\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS UUD request\n");
 
 	return 0;
 }
@@ -632,18 +642,18 @@ static void print_common_rudi_req_resp(
 {
 	__u8 next_hdr = uet_pds_common_get_next_hdr(rhdr);
 
-	LOC_PRINTFC(ctrl, "\t\tType: %s (%u)\n",
-		    uet_pkt_type_to_text(rhdr->type), rhdr->type);
-	LOC_PRINTFC(ctrl, "\t\tNext header: %s (%u)\n",
-		    uet_next_header_type_to_text(next_hdr), next_hdr);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tType: %s (%u)\n",
+			     uet_pkt_type_to_text(rhdr->type), rhdr->type);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tNext header: %s (%u)\n",
+			     uet_next_header_type_to_text(next_hdr), next_hdr);
 
-	LOC_PRINTFC(ctrl, "\t\tECN marked: %s\n",
-		    rhdr->ecn_marked ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tRetransmission: %s\n",
-		    rhdr->retrans ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tECN marked: %s\n",
+			     rhdr->ecn_marked ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRetransmission: %s\n",
+			     rhdr->retrans ? "yes" : "no");
 
-	LOC_PRINTFC(ctrl, "\t\tPacket ID: %u (0x%x)\n",
-		    ntohl(rhdr->pkt_id), ntohl(rhdr->pkt_id));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPacket ID: %u (0x%x)\n",
+			     ntohl(rhdr->pkt_id), ntohl(rhdr->pkt_id));
 }
 
 /* PDS RUDI request handler */
@@ -655,7 +665,7 @@ static int handler_pds_rudi_req(const void *hdr, size_t hdr_len,
 	const struct uet_pds_rudi_req_resp *rhdr = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS RUDI request\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS RUDI request\n");
 
 	if (verbose < 10)
 		return 0;
@@ -674,7 +684,7 @@ static int handler_pds_rudi_resp(const void *hdr, size_t hdr_len,
 	const struct uet_pds_rudi_req_resp *rhdr = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET PDS RUDI response\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS RUDI response\n");
 
 	if (verbose < 10)
 		return 0;
@@ -816,37 +826,38 @@ XDP2_MAKE_PROTO_TABLE(pds_packet_type_table,
 static void print_ses_common_hdr(const struct uet_ses_common_hdr *chdr,
 				 const struct xdp2_ctrl_data *ctrl)
 {
-	LOC_PRINTFC(ctrl, "\t\tVersion: %u\n", chdr->version);
-	LOC_PRINTFC(ctrl, "\t\tOpcode: %s (%u)\n",
-		    uet_ses_request_msg_type_to_text(chdr->opcode),
-		    chdr->opcode);
-	LOC_PRINTFC(ctrl, "\t\tDelivery complete: %s\n",
-		    chdr->delivery_complete ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tInitiator error: %s\n",
-		    chdr->initiator_error ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tRelative addressing: %s\n",
-		    chdr->relative_addressing ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tHeader data present: %s\n",
-		    chdr->hdr_data_present ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tEnd of message: %s\n",
-		    chdr->end_of_msg ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tStart of message: %s\n",
-		    chdr->start_of_msg ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tVersion: %u\n", chdr->version);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tOpcode: %s (%u)\n",
+			     uet_ses_request_msg_type_to_text(chdr->opcode),
+			     chdr->opcode);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tDelivery complete: %s\n",
+			     chdr->delivery_complete ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tInitiator error: %s\n",
+			     chdr->initiator_error ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRelative addressing: %s\n",
+			     chdr->relative_addressing ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tHeader data present: %s\n",
+			     chdr->hdr_data_present ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tEnd of message: %s\n",
+			     chdr->end_of_msg ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tStart of message: %s\n",
+			     chdr->start_of_msg ? "yes" : "no");
 
-	LOC_PRINTFC(ctrl, "\t\tMessage ID: %u (0x%x)\n",
-		    ntohs(chdr->message_id), ntohs(chdr->message_id));
-	LOC_PRINTFC(ctrl, "\t\tRI generation: %u (0x%x)\n",
-		    chdr->ri_generation, chdr->ri_generation);
-	LOC_PRINTFC(ctrl, "\t\tJob ID: %u (0x%x)\n",
-		    xdp2_ntohl24(chdr->job_id), xdp2_ntohl24(chdr->job_id));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tMessage ID: %u (0x%x)\n",
+			     ntohs(chdr->message_id), ntohs(chdr->message_id));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRI generation: %u (0x%x)\n",
+			     chdr->ri_generation, chdr->ri_generation);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tJob ID: %u (0x%x)\n",
+			     xdp2_ntohl24(chdr->job_id),
+			     xdp2_ntohl24(chdr->job_id));
 
-	LOC_PRINTFC(ctrl, "\t\tPID on FEP: %u (0x%x)\n",
-		    uet_ses_common_get_pid_on_fep(chdr),
-		    uet_ses_common_get_pid_on_fep(chdr));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPID on FEP: %u (0x%x)\n",
+			     uet_ses_common_get_pid_on_fep(chdr),
+			     uet_ses_common_get_pid_on_fep(chdr));
 
-	LOC_PRINTFC(ctrl, "\t\tResource index: %u (0x%x)\n",
-		    uet_ses_common_get_resource_index(chdr),
-		    uet_ses_common_get_resource_index(chdr));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tResource index: %u (0x%x)\n",
+			     uet_ses_common_get_resource_index(chdr),
+			     uet_ses_common_get_resource_index(chdr));
 }
 
 /* NO-OP standard size handler */
@@ -856,7 +867,7 @@ static int handler_uet_ses_no_op_std(const void *hdr, size_t hdr_len,
 				     const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES NO-OP std\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET SES NO-OP std\n");
 
 	return 0;
 }
@@ -868,24 +879,29 @@ static void print_ses_common_std_nosom_hdr(
 {
 	print_ses_common_hdr(&shdr->cmn, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\t--- No SOM\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- No SOM\n");
 
-	LOC_PRINTFC(ctrl, "\t\tBuffer offset: %llu (0x%llx)\n",
-		    ntohll(shdr->buffer_offset), ntohll(shdr->buffer_offset));
-	LOC_PRINTFC(ctrl, "\t\tInitiator: %u (0x%x)\n",
-		    ntohl(shdr->initiator), ntohl(shdr->initiator));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tBuffer offset: %llu (0x%llx)\n",
+			     ntohll(shdr->buffer_offset),
+			     ntohll(shdr->buffer_offset));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tInitiator: %u (0x%x)\n",
+			     ntohl(shdr->initiator),
+			     ntohl(shdr->initiator));
 
-	LOC_PRINTFC(ctrl, "\t\tMemory key/match bits: %llu (0x%llx)\n",
-		    ntohll(shdr->memory_key), ntohll(shdr->memory_key));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tMemory key/match bits: %llu (0x%llx)\n",
+			     ntohll(shdr->memory_key),
+			     ntohll(shdr->memory_key));
 
-	LOC_PRINTFC(ctrl, "\t\tPayload length: %u (0x%x)\n",
-		    uet_ses_request_std_hdr_get_payload_length(shdr),
-		    uet_ses_request_std_hdr_get_payload_length(shdr));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPayload length: %u (0x%x)\n",
+			     uet_ses_request_std_hdr_get_payload_length(shdr),
+			     uet_ses_request_std_hdr_get_payload_length(shdr));
 
-	LOC_PRINTFC(ctrl, "\t\tMessage offset: %u (0x%x)\n",
-		    ntohl(shdr->buffer_offset), ntohl(shdr->buffer_offset));
-	LOC_PRINTFC(ctrl, "\t\tRequest length: %u (0x%x)\n",
-		    ntohl(shdr->request_length), ntohl(shdr->request_length));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tMessage offset: %u (0x%x)\n",
+			     ntohl(shdr->buffer_offset),
+			     ntohl(shdr->buffer_offset));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRequest length: %u (0x%x)\n",
+			     ntohl(shdr->request_length),
+			     ntohl(shdr->request_length));
 }
 
 /* Common print start of standard message header */
@@ -897,23 +913,27 @@ static void print_ses_common_std_som_hdr(
 
 	print_ses_common_hdr(&shdr->cmn, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\t--- SOM\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- SOM\n");
 
-	LOC_PRINTFC(ctrl, "\t\tBuffer offset: %llu (0x%llx)\n",
-		    ntohll(shdr->buffer_offset), ntohll(shdr->buffer_offset));
-	LOC_PRINTFC(ctrl, "\t\tInitiator: %u (0x%x)\n",
-		    ntohl(shdr->initiator), ntohl(shdr->initiator));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tBuffer offset: %llu (0x%llx)\n",
+			     ntohll(shdr->buffer_offset),
+			     ntohll(shdr->buffer_offset));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tInitiator: %u (0x%x)\n",
+			     ntohl(shdr->initiator), ntohl(shdr->initiator));
 
-	LOC_PRINTFC(ctrl, "\t\tMemory key/match bits: %llu (0x%llx)\n",
-		    ntohll(shdr->memory_key), ntohll(shdr->memory_key));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tMemory key/match bits: %llu (0x%llx)\n",
+			     ntohll(shdr->memory_key),
+			     ntohll(shdr->memory_key));
 
-	LOC_PRINTFC(ctrl, "\t\tPayload length: %u (0x%x)\n",
-		    payload_length, payload_length);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPayload length: %u (0x%x)\n",
+			     payload_length, payload_length);
 
-	LOC_PRINTFC(ctrl, "\t\tMessage offset: %u (0x%x)\n",
-		    ntohl(shdr->buffer_offset), ntohl(shdr->buffer_offset));
-	LOC_PRINTFC(ctrl, "\t\tRequest length: %u (0x%x)\n",
-		    ntohl(shdr->request_length), ntohl(shdr->request_length));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tMessage offset: %u (0x%x)\n",
+			     ntohl(shdr->buffer_offset),
+			     ntohl(shdr->buffer_offset));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRequest length: %u (0x%x)\n",
+			     ntohl(shdr->request_length),
+			     ntohl(shdr->request_length));
 }
 
 /* Common handler for non start of standard message header */
@@ -924,14 +944,14 @@ static int handler_uet_ses_request_nosom_std(const void *hdr,
 	const struct uet_ses_request_std_hdr *shdr = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES %s std no SOM\n", label);
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET SES %s std no SOM\n", label);
 
 	if (verbose < 10)
 		return 0;
 
 	print_ses_common_std_nosom_hdr(shdr, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\t--- %s\n", label);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- %s\n", label);
 
 
 	return 0;
@@ -945,14 +965,14 @@ static int handler_uet_ses_request_som_std(const void *hdr,
 	const struct uet_ses_request_std_hdr *shdr = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES %s std SOM\n", label);
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET SES %s std SOM\n", label);
 
 	if (verbose < 10)
 		return 0;
 
 	print_ses_common_std_som_hdr(shdr, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\t--- %s\n", label);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- %s\n", label);
 
 
 	return 0;
@@ -1048,28 +1068,27 @@ static void print_ses_common_deferable_std(
 {
 	print_ses_common_hdr(&dhdr->cmn, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\tInitiator restart token: %u (0x%x)\n",
-			ntohl(dhdr->initiator_restart_token),
-			ntohl(dhdr->initiator_restart_token));
-	LOC_PRINTFC(ctrl, "\t\tTarget restart token: %u (0x%x)\n",
-			ntohl(dhdr->target_restart_token),
-			ntohl(dhdr->target_restart_token));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tInitiator restart token: %u (0x%x)\n",
+			     ntohl(dhdr->initiator_restart_token),
+			     ntohl(dhdr->initiator_restart_token));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tTarget restart token: %u (0x%x)\n",
+			     ntohl(dhdr->target_restart_token),
+			     ntohl(dhdr->target_restart_token));
 
-	LOC_PRINTFC(ctrl, "\t\tInitiator: %u (0x%x)\n",
-			ntohl(dhdr->initiator),
-			ntohl(dhdr->initiator));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tInitiator: %u (0x%x)\n",
+			     ntohl(dhdr->initiator), ntohl(dhdr->initiator));
 
-	LOC_PRINTFC(ctrl, "\t\tMatch bits: %llu (0x%llx)\n",
-			ntohll(dhdr->match_bits),
-			ntohll(dhdr->match_bits));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tMatch bits: %llu (0x%llx)\n",
+			     ntohll(dhdr->match_bits),
+			     ntohll(dhdr->match_bits));
 
-	LOC_PRINTFC(ctrl, "\t\tHeader data: %llu (0x%llx)\n",
-			ntohll(dhdr->header_data),
-			ntohll(dhdr->header_data));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tHeader data: %llu (0x%llx)\n",
+			     ntohll(dhdr->header_data),
+			     ntohll(dhdr->header_data));
 
-	LOC_PRINTFC(ctrl, "\t\tRequest length: %u (0x%x)\n",
-			ntohl(dhdr->request_length),
-			ntohl(dhdr->request_length));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRequest length: %u (0x%x)\n",
+			     ntohl(dhdr->request_length),
+			     ntohl(dhdr->request_length));
 }
 
 /* SES deferrable standard send handler */
@@ -1080,12 +1099,12 @@ static int handler_uet_ses_request_deferrable_send_std(
 	const struct uet_ses_defer_send_std_hdr *dhdr = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES deferred send\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET SES deferred send\n");
 
 	if (verbose < 10)
 		return 0;
 
-	LOC_PRINTFC(ctrl, "\t\t--- deferrable send\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- deferrable send\n");
 
 	print_ses_common_deferable_std(dhdr, ctrl);
 
@@ -1100,9 +1119,9 @@ static int handler_uet_ses_request_deferrable_tsend_std(
 	const struct uet_ses_defer_send_std_hdr *dhdr = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES deferred tsend\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET SES deferred tsend\n");
 
-	LOC_PRINTFC(ctrl, "\t\t--- deferrable tsend\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- deferrable tsend\n");
 
 	print_ses_common_deferable_std(dhdr, ctrl);
 
@@ -1125,37 +1144,37 @@ static int handler_uet_ses_request_ready_restart(
 	const struct uet_ses_ready_to_restart_std_hdr *rhdr = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES ready to restart\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET SES ready to restart\n");
 
 	if (verbose < 10)
 		return 0;
 
 	print_ses_common_hdr(&rhdr->cmn, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\t--- Restart\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- Restart\n");
 
-	LOC_PRINTFC(ctrl, "\t\tBuffer offset: %llu (0x%llx)\n",
-			ntohll(rhdr->buffer_offset),
-			ntohll(rhdr->buffer_offset));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tBuffer offset: %llu (0x%llx)\n",
+			     ntohll(rhdr->buffer_offset),
+			     ntohll(rhdr->buffer_offset));
 
-	LOC_PRINTFC(ctrl, "\t\tInitiator: %u (0x%x)\n",
-			ntohl(rhdr->initiator),
-			ntohl(rhdr->initiator));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tInitiator: %u (0x%x)\n",
+			     ntohl(rhdr->initiator),
+			     ntohl(rhdr->initiator));
 
-	LOC_PRINTFC(ctrl, "\t\tInitiator restart token: %u (0x%x)\n",
-			ntohl(rhdr->initiator_restart_token),
-			ntohl(rhdr->initiator_restart_token));
-	LOC_PRINTFC(ctrl, "\t\tTarget restart token: %u (0x%x)\n",
-			ntohl(rhdr->target_restart_token),
-			ntohl(rhdr->target_restart_token));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tInitiator restart token: %u (0x%x)\n",
+			     ntohl(rhdr->initiator_restart_token),
+			     ntohl(rhdr->initiator_restart_token));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tTarget restart token: %u (0x%x)\n",
+			     ntohl(rhdr->target_restart_token),
+			     ntohl(rhdr->target_restart_token));
 
-	LOC_PRINTFC(ctrl, "\t\tHeader data: %llu (0x%llx)\n",
-			ntohll(rhdr->header_data),
-			ntohll(rhdr->header_data));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tHeader data: %llu (0x%llx)\n",
+			     ntohll(rhdr->header_data),
+			     ntohll(rhdr->header_data));
 
-	LOC_PRINTFC(ctrl, "\t\tRequest length: %u (0x%x)\n",
-			ntohl(rhdr->request_length),
-			ntohl(rhdr->request_length));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRequest length: %u (0x%x)\n",
+			     ntohl(rhdr->request_length),
+			     ntohl(rhdr->request_length));
 
 	return 0;
 }
@@ -1177,36 +1196,37 @@ static int handler_uet_request_rendezvous_send_std(
 		uet_ses_rendezvous_ext_hdr_get_resource_index(reh);
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES redezvous send\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET SES redezvous send\n");
 
 	if (verbose < 10)
 		return 0;
 
 	print_ses_common_hdr(&rhdr->cmn, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\t--- Rendezvous\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- Rendezvous\n");
 
-	LOC_PRINTFC(ctrl, "\t\tBuffer offset: %llu (0x%llx)\n",
-		    ntohll(rhdr->buffer_offset), ntohll(rhdr->buffer_offset));
-	LOC_PRINTFC(ctrl, "\t\tInitiator: %u (0x%x)\n",
-			ntohl(rhdr->initiator),
-			ntohl(rhdr->initiator));
-	LOC_PRINTFC(ctrl, "\t\tMatch bits: %llu (0x%llx)\n",
-			ntohll(rhdr->match_bits),
-			ntohll(rhdr->match_bits));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tBuffer offset: %llu (0x%llx)\n",
+			     ntohll(rhdr->buffer_offset),
+			     ntohll(rhdr->buffer_offset));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tInitiator: %u (0x%x)\n",
+			     ntohl(rhdr->initiator),
+			     ntohl(rhdr->initiator));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tMatch bits: %llu (0x%llx)\n",
+			     ntohll(rhdr->match_bits),
+			     ntohll(rhdr->match_bits));
 
-	LOC_PRINTFC(ctrl, "\t\t--- Rendezvous ext hdr\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t--- Rendezvous ext hdr\n");
 
-	LOC_PRINTFC(ctrl, "\t\tEager length: %u (0x%x)\n",
-			ntohl(reh->eager_length),
-			ntohl(reh->eager_length));
-	LOC_PRINTFC(ctrl, "\t\tRI generation: %u (0x%x)\n",
-		    reh->ri_generation, reh->ri_generation);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tEager length: %u (0x%x)\n",
+			     ntohl(reh->eager_length),
+			     ntohl(reh->eager_length));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRI generation: %u (0x%x)\n",
+			     reh->ri_generation, reh->ri_generation);
 
-	LOC_PRINTFC(ctrl, "\t\tPID on FEP: %u (0x%x)\n",
-		    pid_on_fep, pid_on_fep);
-	LOC_PRINTFC(ctrl, "\t\tResource index: %u (0x%x)\n",
-		    resource_index, resource_index);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPID on FEP: %u (0x%x)\n",
+			     pid_on_fep, pid_on_fep);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tResource index: %u (0x%x)\n",
+			     resource_index, resource_index);
 
 	return 0;
 }
@@ -1219,7 +1239,7 @@ static int handler_uet_request_rendezvous_tsend_std(
 	const struct uet_ses_ready_to_restart_std_hdr *rhdr = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES redezvous tsend\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET SES redezvous tsend\n");
 
 	if (verbose < 10)
 		return 0;
@@ -1244,19 +1264,20 @@ static void print_ses_common_atomic(
 		const struct uet_ses_atomic_op_ext_hdr *ehdr,
 		const struct xdp2_ctrl_data *ctrl)
 {
-	LOC_PRINTFC(ctrl, "\t\tAtomic code: %s (%u)\n",
-		    uet_ses_amo_to_text(ehdr->atomic_code),
-		    ehdr->atomic_code);
-	LOC_PRINTFC(ctrl, "\t\tAtomic datatype: %s (%u)\n",
-		    uet_ses_amo_datatype_to_text(ehdr->atomic_datatype),
-		    ehdr->atomic_datatype);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tAtomic code: %s (%u)\n",
+			     uet_ses_amo_to_text(ehdr->atomic_code),
+			     ehdr->atomic_code);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tAtomic datatype: %s (%u)\n",
+			     uet_ses_amo_datatype_to_text(
+							ehdr->atomic_datatype),
+							ehdr->atomic_datatype);
 
-	LOC_PRINTFC(ctrl, "\t\tCacheable: %s\n",
-		    ehdr->ctrl_cacheable ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tCPU coherent: %s\n",
-		    ehdr->cpu_coherent ? "yes" : "no");
-	LOC_PRINTFC(ctrl, "\t\tVendor defined: %u\n",
-		    ehdr->vendor_defined);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tCacheable: %s\n",
+			     ehdr->ctrl_cacheable ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tCPU coherent: %s\n",
+			     ehdr->cpu_coherent ? "yes" : "no");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tVendor defined: %u\n",
+			     ehdr->vendor_defined);
 }
 
 /* Atomic extension header handler */
@@ -1267,12 +1288,12 @@ static int handler_uet_ses_atomic(
 	const struct uet_ses_atomic_op_ext_hdr *ext_hdr = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES atomic operation\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET SES atomic operation\n");
 
 	if (verbose < 10)
 		return 0;
 
-	LOC_PRINTFC(ctrl, "\tAtomic extension header\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\tAtomic extension header\n");
 
 	print_ses_common_atomic(ext_hdr, ctrl);
 
@@ -1289,31 +1310,32 @@ static int handler_uet_ses_atomic_cmp_swp(
 	int i;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES atomic cmpswap operation\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl,
+				     "\tUET SES atomic cmpswap operation\n");
 
 	if (verbose < 10)
 		return 0;
 
 	print_ses_common_atomic(&ext_hdr->cmn, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\tCompare value: ");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tCompare value: ");
 
 	for (i = 0; i < 16; i++) {
 		if (i)
-			LOC_PRINTFC(ctrl, " ");
+			XDP2_PTH_LOC_PRINTFC(ctrl, " ");
 
-		LOC_PRINTFC(ctrl, "%02x", ext_hdr->compare_value[i]);
+		XDP2_PTH_LOC_PRINTFC(ctrl, "%02x", ext_hdr->compare_value[i]);
 	}
 
-	LOC_PRINTFC(ctrl, "\n\t\tSwap value: ");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\n\t\tSwap value: ");
 	for (i = 0; i < 16; i++) {
 		if (i)
-			LOC_PRINTFC(ctrl, " ");
+			XDP2_PTH_LOC_PRINTFC(ctrl, " ");
 
-		LOC_PRINTFC(ctrl, "%02x", ext_hdr->swap_value[i]);
+		XDP2_PTH_LOC_PRINTFC(ctrl, "%02x", ext_hdr->swap_value[i]);
 	}
 
-	LOC_PRINTFC(ctrl, "\n");
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\n");
 
 	return 0;
 }
@@ -1389,24 +1411,25 @@ static void handler_ses_request_medium(
 		const char *label)
 {
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES request medium %s\n", label);
+		XDP2_PTH_LOC_PRINTFC(ctrl,
+				     "\tUET SES request medium %s\n", label);
 
 	if (verbose < 10)
 		return;
 
 	print_ses_common_hdr(&shdr->cmn, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\tHeader data: %llu (0x%llx)\n",
-			ntohll(shdr->header_data),
-			ntohll(shdr->header_data));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tHeader data: %llu (0x%llx)\n",
+			     ntohll(shdr->header_data),
+			     ntohll(shdr->header_data));
 
-	LOC_PRINTFC(ctrl, "\t\tMatch bits: %llu (0x%llx)\n",
-			ntohll(shdr->match_bits),
-			ntohll(shdr->match_bits));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tMatch bits: %llu (0x%llx)\n",
+			     ntohll(shdr->match_bits),
+			     ntohll(shdr->match_bits));
 
-	LOC_PRINTFC(ctrl, "\t\tInitiator: %u (0x%x)\n",
-			ntohl(shdr->initiator),
-			ntohl(shdr->initiator));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tInitiator: %u (0x%x)\n",
+			     ntohl(shdr->initiator),
+			     ntohl(shdr->initiator));
 }
 
 /* Medium no-op */
@@ -1415,7 +1438,7 @@ static int handler_uet_ses_msg_no_op_medium(
 		void *metadata, void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES NO-OP medium\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET SES NO-OP medium\n");
 
 	return 0;
 }
@@ -1488,15 +1511,16 @@ static void handler_ses_request_small(
 		const char *label)
 {
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES request small %s\n", label);
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET SES request small %s\n", label);
 
 	if (verbose < 10)
 		return;
 
 	print_ses_common_hdr(&shdr->cmn, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\tBuffer offset: %llu (0x%llx)\n",
-		    ntohll(shdr->buffer_offset), ntohll(shdr->buffer_offset));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tBuffer offset: %llu (0x%llx)\n",
+			     ntohll(shdr->buffer_offset),
+			     ntohll(shdr->buffer_offset));
 }
 
 #define MAKE_REQUEST_HANDLER_SMALL(NAME, LABEL)				\
@@ -1537,7 +1561,7 @@ static int handler_uet_ses_msg_no_op_small(const void *hdr, size_t hdr_len,
 					   const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES NO-OP small\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET SES NO-OP small\n");
 
 	return 0;
 }
@@ -1562,7 +1586,7 @@ static int handler_uet_ses_no_next_hdr(const void *hdr, size_t hdr_len,
 				       const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES no next header\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET SES no next header\n");
 
 	return 0;
 }
@@ -1596,26 +1620,26 @@ static void print_ses_common_response(const struct uet_ses_common_response_hdr
 								*resp,
 				      const struct xdp2_ctrl_data *ctrl)
 {
-	LOC_PRINTFC(ctrl, "\t\tPayload delivered to list: %s (%u)\n",
-		    uet_ses_list_delivered_to_text(resp->list),
-		    resp->list);
-	LOC_PRINTFC(ctrl, "\t\tOpcode: %s (%u)\n",
-		    uet_ses_reponse_msg_type_to_text(resp->opcode),
-		    resp->opcode);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPayload delivered to list: %s (%u)\n",
+			     uet_ses_list_delivered_to_text(resp->list),
+			     resp->list);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tOpcode: %s (%u)\n",
+			     uet_ses_reponse_msg_type_to_text(resp->opcode),
+			     resp->opcode);
 
-	LOC_PRINTFC(ctrl, "\t\tVersion: %x\n", resp->ver);
-	LOC_PRINTFC(ctrl, "\t\tReturn code: %s (%u)\n",
-		    uet_ses_return_code_to_text(resp->return_code),
-		    resp->return_code);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tVersion: %x\n", resp->ver);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tReturn code: %s (%u)\n",
+			     uet_ses_return_code_to_text(resp->return_code),
+			     resp->return_code);
 
-	LOC_PRINTFC(ctrl, "\t\tMessage ID: %u (0x%x)\n",
-		    ntohs(resp->message_id), ntohs(resp->message_id));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tMessage ID: %u (0x%x)\n",
+			     ntohs(resp->message_id), ntohs(resp->message_id));
 
-	LOC_PRINTFC(ctrl, "\t\tRI generation: %u (0x%x)\n",
-		    resp->ri_generation, resp->ri_generation);
-	LOC_PRINTFC(ctrl, "\t\tJob ID: %u (0x%x)\n",
-		    xdp2_ntohl24(resp->job_id),
-		    xdp2_ntohl24(resp->job_id));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRI generation: %u (0x%x)\n",
+			     resp->ri_generation, resp->ri_generation);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tJob ID: %u (0x%x)\n",
+			     xdp2_ntohl24(resp->job_id),
+			     xdp2_ntohl24(resp->job_id));
 }
 
 /* Handler for response with no data headers */
@@ -1626,16 +1650,16 @@ static void handler_uet_ses_nodata_response(const void *hdr,
 	const struct uet_ses_nodata_response_hdr *resp = hdr;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES response %s\n", label);
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET SES response %s\n", label);
 
 	if (verbose < 10)
 		return;
 
 	print_ses_common_response(&resp->cmn, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\tModified length: %u (0x%x)\n",
-		    ntohl(resp->modified_length),
-		    ntohl(resp->modified_length));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tModified length: %u (0x%x)\n",
+			     ntohl(resp->modified_length),
+			     ntohl(resp->modified_length));
 }
 
 #define MAKE_RESPONSE(NAME, LABEL)					\
@@ -1675,23 +1699,25 @@ static int handler_uet_ses_with_data_response(const void *hdr, size_t hdr_len,
 		uet_ses_response_with_data_hdr_get_payload_length(resp);
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES response with data\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET SES response with data\n");
 
 	if (verbose < 10)
 		return 0;
 
 	print_ses_common_response(&resp->cmn, ctrl);
 
-	LOC_PRINTFC(ctrl, "\t\tRead request message ID: %u (%x)\n",
-		    ntohs(resp->read_request_message_id),
-		    ntohs(resp->read_request_message_id));
-	LOC_PRINTFC(ctrl, "\t\tPayload length: %u (%x)\n",
-		   payload_length, payload_length);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRead request message ID: %u (%x)\n",
+			     ntohs(resp->read_request_message_id),
+			     ntohs(resp->read_request_message_id));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPayload length: %u (%x)\n",
+			     payload_length, payload_length);
 
-	LOC_PRINTFC(ctrl, "\t\tModified length: %u (%x)\n",
-		    ntohl(resp->modified_length), ntohl(resp->modified_length));
-	LOC_PRINTFC(ctrl, "\t\tModified length: %u (%x)\n",
-		    ntohl(resp->message_offset), ntohs(resp->message_offset));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tModified length: %u (%x)\n",
+			     ntohl(resp->modified_length),
+			     ntohl(resp->modified_length));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tModified length: %u (%x)\n",
+			     ntohl(resp->message_offset),
+			     ntohs(resp->message_offset));
 	return 0;
 }
 
@@ -1714,33 +1740,34 @@ static int handler_uet_ses_with_small_data_response(
 		uet_ses_with_small_data_response_hdr_get_payload_length(resp);
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tUET SES response with small data\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl,
+				     "\tUET SES response with small data\n");
 
 	if (verbose < 10)
 		return 0;
 
-	LOC_PRINTFC(ctrl, "\t\tPayload delivered to list: %s (%u)\n",
-		    uet_ses_list_delivered_to_text(resp->list),
-		    resp->list);
-	LOC_PRINTFC(ctrl, "\t\tOpcode: %s (%u)\n",
-		    uet_ses_reponse_msg_type_to_text(resp->opcode),
-		    resp->opcode);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPayload delivered to list: %s (%u)\n",
+			     uet_ses_list_delivered_to_text(resp->list),
+			     resp->list);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tOpcode: %s (%u)\n",
+			     uet_ses_reponse_msg_type_to_text(resp->opcode),
+			     resp->opcode);
 
-	LOC_PRINTFC(ctrl, "\t\tVersion: %x\n", resp->ver);
-	LOC_PRINTFC(ctrl, "\t\tReturn code: %s (%u)\n",
-		    uet_ses_return_code_to_text(resp->return_code),
-		    resp->return_code);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tVersion: %x\n", resp->ver);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tReturn code: %s (%u)\n",
+			     uet_ses_return_code_to_text(resp->return_code),
+			     resp->return_code);
 
-	LOC_PRINTFC(ctrl, "\t\tPayload length: %u (0x%x)\n",
-		    payload_length, payload_length);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPayload length: %u (0x%x)\n",
+			     payload_length, payload_length);
 
-	LOC_PRINTFC(ctrl, "\t\tJob ID: %u (0x%x)\n",
-		    xdp2_ntohl24(resp->job_id),
-		    xdp2_ntohl24(resp->job_id));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tJob ID: %u (0x%x)\n",
+			     xdp2_ntohl24(resp->job_id),
+			     xdp2_ntohl24(resp->job_id));
 
-	LOC_PRINTFC(ctrl, "\t\tOriginal request PSN: %u (%x)\n",
-		    ntohl(resp->original_request_psn),
-		    ntohl(resp->original_request_psn));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tOriginal request PSN: %u (%x)\n",
+			     ntohl(resp->original_request_psn),
+			     ntohl(resp->original_request_psn));
 	return 0;
 }
 
@@ -1774,4 +1801,4 @@ XDP2_MAKE_PROTO_TABLE(pds_next_hdr_response_table,
 	( UET_HDR_RESPONSE_DATA_SMALL, uet_ses_response_with_data_small_tnode )
 );
 
-#endif /* __XDP2_TEST_PARSE_DUMP_UET_H__ */
+#endif /* __UET_PARSER_TEST_H__ */
