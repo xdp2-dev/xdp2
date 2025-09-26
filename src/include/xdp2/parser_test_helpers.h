@@ -43,14 +43,15 @@ extern bool use_colors;
 #define XDP2_PTH_LOC_PRINTFC(CTRL, ...) do {				\
 	int _i;								\
 									\
-	for (_i = 0; _i < (CTRL).hdr.tlv_levels; _i++)			\
-		XDP2_PTH_PRINTFC((CTRL).pkt.seqno, "\t\t");		\
-	XDP2_PTH_PRINTFC((CTRL).pkt.seqno, __VA_ARGS__);		\
+	for (_i = 0; _i < (CTRL)->var.tlv_levels; _i++)			\
+		XDP2_PTH_PRINTFC((CTRL)->pkt.seqno, "\t\t");		\
+	XDP2_PTH_PRINTFC((CTRL)->pkt.seqno, __VA_ARGS__);		\
 } while (0)
 
 #define XDP2_PTH_MAKE_SIMPLE_TCP_OPT_HANDLER(NAME, TEXT)		\
-static int handler_##NAME(const void *hdr, void *frame,			\
-			  const struct xdp2_ctrl_data ctrl)		\
+static int handler_##NAME(const void *hdr, size_t hdr_len,		\
+			  size_t hdr_off, void *metadata, void *frame,	\
+			  const struct xdp2_ctrl_data *ctrl)		\
 {									\
 	const __u8 *tcp_opt = hdr;					\
 									\
@@ -63,8 +64,9 @@ static int handler_##NAME(const void *hdr, void *frame,			\
 }
 
 #define XDP2_PTH_MAKE_SIMPLE_HANDLER(NAME, TEXT)			\
-static int handler_##NAME(const void *hdr, void *frame,			\
-			  const struct xdp2_ctrl_data ctrl)		\
+static int handler_##NAME(const void *hdr, size_t hdr_len,		\
+			  size_t hdr_off, void *metadata, void *frame,	\
+			  const struct xdp2_ctrl_data *ctrl)		\
 {									\
 									\
 	if (verbose >= 5)						\
@@ -74,8 +76,9 @@ static int handler_##NAME(const void *hdr, void *frame,			\
 }
 
 #define XDP2_PTH_MAKE_SIMPLE_FLAG_FIELD_HANDLER(NAME, TEXT)		\
-static int handler_##NAME(const void *hdr, void *frame,			\
-			  const struct xdp2_ctrl_data ctrl)		\
+static int handler_##NAME(const void *hdr, size_t hdr_len,		\
+			  size_t hdr_off, void *metadata, void *frame,	\
+			  const struct xdp2_ctrl_data *ctrl)		\
 {									\
 	if (verbose >= 5)						\
 		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t" TEXT "\n");		\
@@ -84,8 +87,10 @@ static int handler_##NAME(const void *hdr, void *frame,			\
 }
 
 #define XDP2_PTH_MAKE_SACK_HANDLER(NUM)					\
-static int handler_tcp_sack_##NUM(const void *hdr, void *frame,		\
-				  const struct xdp2_ctrl_data ctrl)	\
+static int handler_tcp_sack_##NUM(const void *hdr, size_t hdr_len,	\
+				  size_t hdr_off, void *metadata,	\
+				  void *frame,				\
+				  const struct xdp2_ctrl_data *ctrl)	\
 {									\
 	const __u8 *tcp_opt = hdr;					\
 									\
@@ -98,8 +103,9 @@ static int handler_tcp_sack_##NUM(const void *hdr, void *frame,		\
 }
 
 #define XDP2_PTH_MAKE_SIMPLE_EH_HANDLER(NAME, TEXT)			\
-static int handler_##NAME(const void *hdr, void *frame,			\
-			  const struct xdp2_ctrl_data ctrl)		\
+static int handler_##NAME(const void *hdr, size_t hdr_len,		\
+			  size_t hdr_off, void *metadata, void *frame,	\
+			  const struct xdp2_ctrl_data *ctrl)		\
 {									\
 	if (verbose >= 5)						\
 		XDP2_PTH_LOC_PRINTFC(ctrl, "\t" TEXT "length %u\n",	\
