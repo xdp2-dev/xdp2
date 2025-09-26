@@ -24,8 +24,10 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __XDP2_TEST_PARSE_DUMP_SUE_H__
-#define __XDP2_TEST_PARSE_DUMP_SUE_H__
+#ifndef __SUE_PARSER_TEST_H__
+#define __SUE_PARSER_TEST_H__
+
+/* Defines Scale Up Ethernet parser nodes for common parser test framework */
 
 #include "sue/sue.h"
 
@@ -33,12 +35,12 @@
 #include "sue/proto_sue.h"
 #undef XDP2_DEFINE_PARSE_NODE
 
-#include "xdp2/utility.h"
+#include "xdp2/parser_test_helpers.h"
 
-#include "parse_helpers.h"
+/* Parser definitions in parse_dump for scale up Ethernet */
 
-MAKE_SIMPLE_HANDLER(sue_base_node, "SUE base node")
-MAKE_SIMPLE_HANDLER(sue_v0_node, "SUE version 0")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(sue_base_node, "SUE base node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(sue_v0_node, "SUE version 0")
 
 static void print_sue_reliability_header(const void *vhdr,
 					 const struct xdp2_ctrl_data *ctrl)
@@ -47,23 +49,23 @@ static void print_sue_reliability_header(const void *vhdr,
 	__u16 xpuid = sue_get_xpuid(rhdr);
 	__u16 partition = sue_get_partition(rhdr);
 
-	LOC_PRINTFC(ctrl, "\t\tVersion: %u\n", rhdr->ver);
-	LOC_PRINTFC(ctrl, "\t\tOpcode: %s (%u)\n",
-		    sue_opcodeto_text(rhdr->op), rhdr->op);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tVersion: %u\n", rhdr->ver);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tOpcode: %s (%u)\n",
+			     sue_opcodeto_text(rhdr->op), rhdr->op);
 
-	LOC_PRINTFC(ctrl, "\t\tXPUID: %u (0x%x)\n", xpuid, xpuid);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tXPUID: %u (0x%x)\n", xpuid, xpuid);
 
-	LOC_PRINTFC(ctrl, "\t\tPSN: %u (%x)\n",
-		    ntohs(rhdr->npsn), ntohs(rhdr->npsn));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPSN: %u (%x)\n",
+			     ntohs(rhdr->npsn), ntohs(rhdr->npsn));
 
-	LOC_PRINTFC(ctrl, "\t\tVirtual channel: %u (%x)\n",
-		    rhdr->vc, rhdr->vc);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tVirtual channel: %u (%x)\n",
+			     rhdr->vc, rhdr->vc);
 
-	LOC_PRINTFC(ctrl, "\t\tPartition: %u (%x)\n",
-		    partition, partition);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tPartition: %u (%x)\n",
+			     partition, partition);
 
-	LOC_PRINTFC(ctrl, "\t\tACK PSN: %u (%x)\n",
-		    ntohs(rhdr->apsn), ntohs(rhdr->apsn));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tACK PSN: %u (%x)\n",
+			     ntohs(rhdr->apsn), ntohs(rhdr->apsn));
 }
 
 static int handler_sue_rh(const void *hdr, void *frame,
@@ -71,7 +73,7 @@ static int handler_sue_rh(const void *hdr, void *frame,
 			  char *text)
 {
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\t\tSUE APSN is %s\n", text);
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tSUE APSN is %s\n", text);
 
 	if (verbose < 10)
 		return 0;
@@ -116,4 +118,4 @@ XDP2_MAKE_PROTO_TABLE(sue_opcode_table,
 	( SUE_OPCODE_INVALID2, sue_rh_invalid2 )
 );
 
-#endif /* __XDP2_TEST_PARSE_DUMP_SUE_H__ */
+#endif /* __SUE_PARSER_TEST_H__ */
