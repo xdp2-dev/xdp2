@@ -28,7 +28,7 @@
 #include <alloca.h>
 #include <netinet/ether.h>
 
-
+#include "xdp2/parser_test_helpers.h"
 #include "xdp2/parser_metadata.h"
 #include "xdp2/dtable.h"
 #include "xdp2/stable.h"
@@ -41,7 +41,7 @@ static void miss(struct metadata *frame)
 
 static void hit(struct metadata *frame, int seqno, char *text)
 {
-	PRINTFC(seqno, "\tGot table hit: %s\n", text);
+	XDP2_PTH_PRINTFC(seqno, "\tGot table hit: %s\n", text);
 }
 
 XDP2_SFTABLE_PLAIN_TABLE_ENTS(

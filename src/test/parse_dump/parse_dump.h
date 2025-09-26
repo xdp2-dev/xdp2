@@ -31,8 +31,7 @@
 
 #include "xdp2/utility.h"
 #include "xdp2/parser.h"
-
-#include "parse_helpers.h"
+#include "xdp2/parser_test_helpers.h"
 
 #define MAX_VLAN_CNT 2
 

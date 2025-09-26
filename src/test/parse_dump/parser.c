@@ -42,6 +42,8 @@
 #include "sue_parse.h"
 #include "uet_parse.h"
 
+#include "parse_dump.h"
+
 /* Extract EtherType from Ethernet header */
 static void extract_ether(const void *hdr, size_t hdr_len, size_t hdr_off,
 			  void *metadata, void *_frame,
@@ -439,13 +441,13 @@ static int handler_ether_root(const void *hdr, size_t hdr_len,
 
 	if (verbose >= 5) {
 		/* Print banner for the packet instance */
-		LOC_PRINTFC(ctrl,
+		XDP2_PTH_LOC_PRINTFC(ctrl,
 			"------------------------------------\n");
 		if (pdata)
-			LOC_PRINTFC(ctrl, "File %s, packet #%u\n",
+			XDP2_PTH_LOC_PRINTFC(ctrl, "File %s, packet #%u\n",
 				    pdata->pcap_file, pdata->file_number);
-		LOC_PRINTFC(ctrl, "Nodes:\n");
-		LOC_PRINTFC(ctrl, "\tEther node\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "Nodes:\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tEther node\n");
 	}
 
 	return 0;
@@ -459,8 +461,8 @@ static int handler_icmpv6_nd_target_addr_opt(const void *hdr, size_t hdr_len,
 	const struct icmpv6_nd_opt *opt = hdr;
 
 	if (verbose >= 5 && hdr_len == 8) {
-		LOC_PRINTFC(ctrl, "\t\tTarget Link Local: %s\n",
-			    ether_ntoa((struct ether_addr *)opt->data));
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tTarget Link Local: %s\n",
+				ether_ntoa((struct ether_addr *)opt->data));
 	}
 
 	return 0;
@@ -474,9 +476,9 @@ static int handler_icmpv6_nd_source_addr_opt(const void *hdr, size_t hdr_len,
 {
 	const struct icmpv6_nd_opt *opt = hdr;
 
-	if (ctrl->hdr_len == 8) {
-		LOC_PRINTFC(ctrl, "\t\tSource Link Local: %s\n",
-                        ether_ntoa((struct ether_addr*)opt->data));
+	if (ctrl.hdr_len == 8) {
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tSource Link Local: %s\n",
+				ether_ntoa((struct ether_addr *)opt->data));
 	}
 
 	return 0;
@@ -496,11 +498,13 @@ static int handler_ipv6_neigh_solicit(const void *hdr, size_t hdr_len,
 	char sbuf[INET6_ADDRSTRLEN];
 
 	if (verbose >= 5) {
-		LOC_PRINTFC(ctrl, "\tICMPv6 neighbor solication node\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl,
+				     "\tICMPv6 neighbor solication node\n");
 
 		inet_ntop(AF_INET6, &ns->target, sbuf, sizeof(sbuf));
 
-		LOC_PRINTFC(ctrl, "\t\tTarget IPv6 address: %s\n", sbuf);
+		XDP2_PTH_LOC_PRINTFC(ctrl,
+				     "\t\tTarget IPv6 address: %s\n", sbuf);
 	}
 
 	return 0;
@@ -512,7 +516,8 @@ static int handler_ipv6_neigh_advert(const void *hdr, size_t hdr_len,
 				     const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tICMPv6 neighbor advertisement node\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl,
+				     "\tICMPv6 neighbor advertisement node\n");
 
 	return 0;
 }
@@ -522,45 +527,46 @@ static int handler_ospf(const void *hdr, size_t hdr_len, size_t hdr_off,
 			const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tOSPF node\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tOSPF node\n");
 
 	return 0;
 }
 
-MAKE_SIMPLE_HANDLER(ether, "Ether node")
-MAKE_SIMPLE_HANDLER(ip_overlay, "IP overlay node")
-MAKE_SIMPLE_HANDLER(ip_overlay_by_key, "IP overlay node by key")
-MAKE_SIMPLE_HANDLER(ipv4, "IPv4 node")
-MAKE_SIMPLE_HANDLER(ipv4_check, "IPv4 check node")
-MAKE_SIMPLE_HANDLER(ipv6, "IPv6 node")
-MAKE_SIMPLE_HANDLER(ipv6_check, "IPv6 check node")
-MAKE_SIMPLE_HANDLER(ipv6ip, "IPv6inIPv4")
-MAKE_SIMPLE_HANDLER(l2tp_base, "L2TP Base")
-MAKE_SIMPLE_HANDLER(geneve_base, "Geneve Base")
-MAKE_SIMPLE_HANDLER(geneve_class_0, "Geneve Class 0 option")
-MAKE_SIMPLE_HANDLER(geneve_class_0_type_80, "Geneve Class 0, type x80 option")
-MAKE_SIMPLE_HANDLER(geneve_v0, "Geneve version 0")
-MAKE_SIMPLE_HANDLER(l2tp_v0, "L2TP v0")
-MAKE_SIMPLE_HANDLER(l2tp_v1, "L2TP v1")
-MAKE_SIMPLE_HANDLER(l2tp_v2, "L2TP v2")
-MAKE_SIMPLE_HANDLER(l2tp_v3, "L2TP v3")
-MAKE_SIMPLE_HANDLER(ppp, "PPP node")
-MAKE_SIMPLE_HANDLER(pppoe, "PPPoE node")
-MAKE_SIMPLE_HANDLER(greov, "GRE node")
-MAKE_SIMPLE_HANDLER(icmpv4, "ICMPv4 node")
-MAKE_SIMPLE_HANDLER(vxlan, "VXLAN node")
-MAKE_SIMPLE_HANDLER(icmpv6, "ICMPv6 node")
-MAKE_SIMPLE_HANDLER(arp, "ARP node")
-MAKE_SIMPLE_HANDLER(udp, "UDP node")
-MAKE_SIMPLE_HANDLER(protobufs1, "Protobufs1 node")
-MAKE_SIMPLE_HANDLER(protobufs2, "Protobufs2 node")
-MAKE_SIMPLE_HANDLER(protobufs1_phones, "Protobufs1 phones")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(ether, "Ether node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(ip_overlay, "IP overlay node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(ip_overlay_by_key, "IP overlay node by key")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(ipv4, "IPv4 node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(ipv4_check, "IPv4 check node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(ipv6, "IPv6 node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(ipv6_check, "IPv6 check node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(ipv6ip, "IPv6inIPv4")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(l2tp_base, "L2TP Base")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(geneve_base, "Geneve Base")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(geneve_class_0, "Geneve Class 0 option")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(geneve_class_0_type_80,
+			     "Geneve Class 0, type x80 option")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(geneve_v0, "Geneve version 0")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(l2tp_v0, "L2TP v0")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(l2tp_v1, "L2TP v1")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(l2tp_v2, "L2TP v2")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(l2tp_v3, "L2TP v3")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(ppp, "PPP node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(pppoe, "PPPoE node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(greov, "GRE node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(icmpv4, "ICMPv4 node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(vxlan, "VXLAN node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(icmpv6, "ICMPv6 node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(arp, "ARP node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(udp, "UDP node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(protobufs1, "Protobufs1 node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(protobufs2, "Protobufs2 node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(protobufs1_phones, "Protobufs1 phones")
 
-MAKE_SIMPLE_TCP_OPT_HANDLER(tcp_timestamp, "TCP Timestamp")
-MAKE_SIMPLE_TCP_OPT_HANDLER(tcp_mss, "TCP MSS")
-MAKE_SIMPLE_TCP_OPT_HANDLER(tcp_wscale, "TCP window scaling")
-MAKE_SIMPLE_TCP_OPT_HANDLER(tcp_sack_permitted, "TCP sack permitted")
-MAKE_SIMPLE_TCP_OPT_HANDLER(tcp_unknown, "Unknown TCP")
+XDP2_PTH_MAKE_SIMPLE_TCP_OPT_HANDLER(tcp_timestamp, "TCP Timestamp")
+XDP2_PTH_MAKE_SIMPLE_TCP_OPT_HANDLER(tcp_mss, "TCP MSS")
+XDP2_PTH_MAKE_SIMPLE_TCP_OPT_HANDLER(tcp_wscale, "TCP window scaling")
+XDP2_PTH_MAKE_SIMPLE_TCP_OPT_HANDLER(tcp_sack_permitted, "TCP sack permitted")
+XDP2_PTH_MAKE_SIMPLE_TCP_OPT_HANDLER(tcp_unknown, "Unknown TCP")
 
 static int handler_protobufs1_name(const void *hdr, size_t hdr_len,
 				   size_t hdr_off, void *metadata,
@@ -580,7 +586,7 @@ static int handler_protobufs1_name(const void *hdr, size_t hdr_len,
 	buffer[len] = '\0';
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "Protobuf name: %s\n", buffer);
+		XDP2_PTH_LOC_PRINTFC(ctrl, "Protobuf name: %s\n", buffer);
 
 	return 0;
 }
@@ -603,7 +609,8 @@ static int handler_protobufs2_phone_number(const void *hdr, size_t hdr_len,
 	buffer[len] = '\0';
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "Protobuf phone number: %s\n", buffer);
+		XDP2_PTH_LOC_PRINTFC(ctrl,
+				     "Protobuf phone number: %s\n", buffer);
 
 	return 0;
 }
@@ -618,7 +625,8 @@ static int handler_protobufs2_phone_type(const void *hdr, size_t hdr_len,
 	parse_varint(&value, hdr, 0);
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "Protobuf phone type: %llu\n", value);
+		XDP2_PTH_LOC_PRINTFC(ctrl,
+				     "Protobuf phone type: %llu\n", value);
 
 	return 0;
 }
@@ -641,7 +649,7 @@ static int handler_protobufs1_email(const void *hdr, size_t hdr_len,
 	buffer[len] = '\0';
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "Protobuf email: %s\n", buffer);
+		XDP2_PTH_LOC_PRINTFC(ctrl, "Protobuf email: %s\n", buffer);
 
 	return 0;
 }
@@ -658,26 +666,26 @@ static int handler_protobufs1_id(const void *hdr, size_t hdr_len,
 	parse_varint(&value, hdr + len, 0);
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "Protobuf id: %llu\n", value);
+		XDP2_PTH_LOC_PRINTFC(ctrl, "Protobuf id: %llu\n", value);
 
 	return 0;
 }
 
-MAKE_SACK_HANDLER(1)
-MAKE_SACK_HANDLER(2)
-MAKE_SACK_HANDLER(3)
-MAKE_SACK_HANDLER(4)
+XDP2_PTH_MAKE_SACK_HANDLER(1)
+XDP2_PTH_MAKE_SACK_HANDLER(2)
+XDP2_PTH_MAKE_SACK_HANDLER(3)
+XDP2_PTH_MAKE_SACK_HANDLER(4)
 
-MAKE_SIMPLE_HANDLER(tcp, "TCP node")
-MAKE_SIMPLE_HANDLER(grev0, "GREv0 node")
-MAKE_SIMPLE_HANDLER(grev1, "GREv1 node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(tcp, "TCP node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(grev0, "GREv0 node")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(grev1, "GREv1 node")
 
 static int handler_okay(const void *hdr, size_t hdr_len,
 			size_t hdr_off, void *metadata, void *_frame,
 			const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\t** Okay node\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t** Okay node\n");
 
 	if (verbose >= 5)
 		print_metadata(metadata, ctrl);
@@ -690,7 +698,7 @@ static int handler_fail(const void *hdr, size_t hdr_len,
 			const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\t** Fail node\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t** Fail node\n");
 
 	if (verbose >= 5)
 		print_metadata(metadata, ctrl);
@@ -703,7 +711,7 @@ static int handler_atencap(const void *hdr, size_t hdr_len,
 			   const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\t** At encapsulation node\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t** At encapsulation node\n");
 
 	ctrl->key.counters[1] = 0;
 	ctrl->key.counters[2] = 0;
@@ -789,8 +797,8 @@ XDP2_MAKE_PARSE_NODE(icmpv6_node, xdp2_parse_icmpv6, icmpv6_table,
 		      .ops.handler = handler_icmpv6,
 		      .unknown_ret = XDP2_STOP_OKAY));
 
-MAKE_SIMPLE_TCP_OPT_HANDLER(icmpv6_nd_solicit_opt_unknown,
-			    "Unknown neighbor discovery solicitation option")
+XDP2_PTH_MAKE_SIMPLE_TCP_OPT_HANDLER(icmpv6_nd_solicit_opt_unknown,
+		"Unknown neighbor discovery solicitation option")
 
 XDP2_MAKE_TLV_PARSE_NODE(icmpv6_nd_solicit_opt_unknown_node,
 			 xdp2_parse_tlv_null,
@@ -958,9 +966,9 @@ XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_flag_seq_node,
 				(.ops.extract_metadata =
 						extract_gre_flag_seq));
 
-MAKE_SIMPLE_FLAG_FIELD_HANDLER(gre_pptp_key, "GRE PPTP key")
-MAKE_SIMPLE_FLAG_FIELD_HANDLER(gre_pptp_ack, "GRE PPTP ack")
-MAKE_SIMPLE_FLAG_FIELD_HANDLER(gre_pptp_seq, "GRE PPTP seq")
+XDP2_PTH_MAKE_SIMPLE_FLAG_FIELD_HANDLER(gre_pptp_key, "GRE PPTP key")
+XDP2_PTH_MAKE_SIMPLE_FLAG_FIELD_HANDLER(gre_pptp_ack, "GRE PPTP ack")
+XDP2_PTH_MAKE_SIMPLE_FLAG_FIELD_HANDLER(gre_pptp_seq, "GRE PPTP seq")
 
 XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_pptp_flag_ack_node,
 				(.ops.extract_metadata =
@@ -975,8 +983,8 @@ XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_pptp_flag_seq_node,
 						extract_gre_flag_seq,
 				 .ops.handler = handler_gre_pptp_seq));
 
-MAKE_SIMPLE_HANDLER(e8021AD, "VLAN e8021AD")
-MAKE_SIMPLE_HANDLER(e8021Q, "VLAN e8021Q")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(e8021AD, "VLAN e8021AD")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(e8021Q, "VLAN e8021Q")
 
 XDP2_MAKE_PARSE_NODE(e8021AD_node, xdp2_parse_vlan, ether_table,
 		     (.ops.extract_metadata = extract_e8021AD,
@@ -1022,12 +1030,13 @@ XDP2_MAKE_PROTO_TABLE(ip4_table,
 	( IPPROTO_OSPF, ospf_node )
 );
 
-MAKE_SIMPLE_EH_HANDLER(ipv6_hbh_options, "IPv6 HBH options")
-MAKE_SIMPLE_EH_HANDLER(ipv6_dest_options, "IPv6 Dest options")
-MAKE_SIMPLE_EH_HANDLER(ipv6_routing_header, "IPv6 Routing header")
-MAKE_SIMPLE_EH_HANDLER(ipv6_routing_header_check, "IPv6 Routing header check")
-MAKE_SIMPLE_EH_HANDLER(ipv6_fragment_header, "IPv6 Fragment header")
-MAKE_SIMPLE_EH_HANDLER(ipv6_ah_header, "IPv6 Authentication header")
+XDP2_PTH_MAKE_SIMPLE_EH_HANDLER(ipv6_hbh_options, "IPv6 HBH options")
+XDP2_PTH_MAKE_SIMPLE_EH_HANDLER(ipv6_dest_options, "IPv6 Dest options")
+XDP2_PTH_MAKE_SIMPLE_EH_HANDLER(ipv6_routing_header, "IPv6 Routing header")
+XDP2_PTH_MAKE_SIMPLE_EH_HANDLER(ipv6_routing_header_check,
+				"IPv6 Routing header check")
+XDP2_PTH_MAKE_SIMPLE_EH_HANDLER(ipv6_fragment_header, "IPv6 Fragment header")
+XDP2_PTH_MAKE_SIMPLE_EH_HANDLER(ipv6_ah_header, "IPv6 Authentication header")
 
 static int handler_ipv6_srv6_routing_header(const void *hdr, size_t hdr_len,
 					    size_t hdr_off, void *metadata,
@@ -1039,22 +1048,22 @@ static int handler_ipv6_srv6_routing_header(const void *hdr, size_t hdr_len,
 	int i;
 
 	if (verbose >= 5)
-		LOC_PRINTFC(ctrl, "\tSRv6 header length %u\n",
-			    ipv6_optlen((struct ipv6_opt_hdr *)hdr));
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\tSRv6 header length %u\n",
+				     ipv6_optlen((struct ipv6_opt_hdr *)hdr));
 
 	if (verbose >= 5) {
-		LOC_PRINTFC(ctrl, "\t\tSegments left: %u\n",
-			    srhdr->segments_left);
-		LOC_PRINTFC(ctrl, "\t\tFirst segment: %u\n",
-			    srhdr->first_segment);
-		LOC_PRINTFC(ctrl, "\t\tFlags: %u\n", srhdr->flags);
-		LOC_PRINTFC(ctrl, "\t\tTag: %u\n", srhdr->tag);
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tSegments left: %u\n",
+				     srhdr->segments_left);
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tFirst segment: %u\n",
+				     srhdr->first_segment);
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tFlags: %u\n", srhdr->flags);
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tTag: %u\n", srhdr->tag);
 
-		LOC_PRINTFC(ctrl, "\t\tSegments:\n");
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tSegments:\n");
 		for (i = 0; i <= srhdr->first_segment; i++) {
 			inet_ntop(AF_INET6, &srhdr->segments[i], sbuf,
 				  sizeof(sbuf));
-			LOC_PRINTFC(ctrl, "\t\t\t%u: %s\n", i, sbuf);
+			XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t\t%u: %s\n", i, sbuf);
 		}
 	}
 
@@ -1158,10 +1167,10 @@ XDP2_MAKE_TLV_TABLE(geneve_tlv_table,
 	( 0x80, geneve_class_0_tlv_80_node )
 );
 
-MAKE_SIMPLE_HANDLER(ppp_lcp, "PPP LCP")
-MAKE_SIMPLE_HANDLER(ppp_pap, "PPP PAP")
-MAKE_SIMPLE_HANDLER(ppp_chap, "PPP CHAP")
-MAKE_SIMPLE_HANDLER(ppp_icpc, "PPP ICPC")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(ppp_lcp, "PPP LCP")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(ppp_pap, "PPP PAP")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(ppp_chap, "PPP CHAP")
+XDP2_PTH_MAKE_SIMPLE_HANDLER(ppp_icpc, "PPP ICPC")
 
 XDP2_MAKE_LEAF_PARSE_NODE(ppp_lcp_node, xdp2_parse_null,
 			  (.ops.handler = handler_ppp_lcp));

@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "xdp2/parser_test_helpers.h"
 #include "xdp2/parser.h"
 #include "xdp2/parser_metadata.h"
 #include "xdp2/pcap.h"
@@ -48,14 +49,14 @@ static void print_vlan(struct metadata *frame, int seqno)
 	int i;
 
 	for (i = 0; i < frame->vlan_cnt; i++) {
-		PRINTFC(seqno, "\tVLAN #%u\n", i);
-		PRINTFC(seqno, "\t\tVLAN ID: %u\n", frame->vlan[i].id);
-		PRINTFC(seqno, "\t\tDEI: %u\n", frame->vlan[i].dei);
-		PRINTFC(seqno, "\t\tPriority: %u\n", frame->vlan[i].priority);
-		PRINTFC(seqno, "\t\tTCI: %u\n", frame->vlan[i].tci);
-		PRINTFC(seqno, "\t\tTPID: 0x%04x\n",
+		XDP2_PTH_PRINTFC(seqno, "\tVLAN #%u\n", i);
+		XDP2_PTH_PRINTFC(seqno, "\t\tVLAN ID: %u\n", frame->vlan[i].id);
+		XDP2_PTH_PRINTFC(seqno, "\t\tDEI: %u\n", frame->vlan[i].dei);
+		XDP2_PTH_PRINTFC(seqno, "\t\tPriority: %u\n", frame->vlan[i].priority);
+		XDP2_PTH_PRINTFC(seqno, "\t\tTCI: %u\n", frame->vlan[i].tci);
+		XDP2_PTH_PRINTFC(seqno, "\t\tTPID: 0x%04x\n",
 			ntohs(frame->vlan[i].tpid));
-		PRINTFC(seqno, "\t\tENC PROTO: 0x%04x\n",
+		XDP2_PTH_PRINTFC(seqno, "\t\tENC PROTO: 0x%04x\n",
 			frame->vlan[i].enc_proto);
 	}
 }
@@ -64,32 +65,32 @@ static void print_gre(struct metadata *frame, int seqno)
 {
 	unsigned int gre_version = frame->gre_version & 0x7f;
 
-	PRINTFC(seqno, "\tGRE version %u\n", gre_version);
+	XDP2_PTH_PRINTFC(seqno, "\tGRE version %u\n", gre_version);
 
 	switch (gre_version) {
 	case 0:
 		if (frame->gre.key_id.val)
-			PRINTFC(seqno, "Key ID: %u\n", frame->gre.key_id.val);
+			XDP2_PTH_PRINTFC(seqno, "Key ID: %u\n", frame->gre.key_id.val);
 
 		if (frame->gre.sequence)
-			PRINTFC(seqno, "Sequence: %u\n", frame->gre.sequence);
+			XDP2_PTH_PRINTFC(seqno, "Sequence: %u\n", frame->gre.sequence);
 
 		if (frame->gre.ack)
-			PRINTFC(seqno, "Ack: %u\n", frame->gre.ack);
+			XDP2_PTH_PRINTFC(seqno, "Ack: %u\n", frame->gre.ack);
 		break;
 	case 1:
 		if (frame->gre.key_id.val) {
-			PRINTFC(seqno, "\t\tPayload length: %u\n",
+			XDP2_PTH_PRINTFC(seqno, "\t\tPayload length: %u\n",
 				frame->gre.key_id.payload_len);
-			PRINTFC(seqno, "\t\tCall ID: %u\n",
+			XDP2_PTH_PRINTFC(seqno, "\t\tCall ID: %u\n",
 				frame->gre.key_id.callid);
 		}
 		if (frame->gre.sequence)
-			PRINTFC(seqno, "\t\tSequence: %u\n",
+			XDP2_PTH_PRINTFC(seqno, "\t\tSequence: %u\n",
 				frame->gre.sequence);
 
 		if (frame->gre.ack)
-			PRINTFC(seqno, "\t\tAck: %u\n", frame->gre.ack);
+			XDP2_PTH_PRINTFC(seqno, "\t\tAck: %u\n", frame->gre.ack);
 		break;
 	}
 }
@@ -100,29 +101,29 @@ static void print_arp(struct metametadata *metametadata, int seqno)
 
 	switch(metametadata->arp.op) {
 	case 1:
-		PRINTFC(seqno, "\tARP Request:\n");
-		PRINTFC(seqno, "\t\tSource: %s\n",
+		XDP2_PTH_PRINTFC(seqno, "\tARP Request:\n");
+		XDP2_PTH_PRINTFC(seqno, "\t\tSource: %s\n",
 			ether_ntoa((struct ether_addr *)metametadata->arp.sha));
 		ipaddr.s_addr = metametadata->arp.sip;
-		PRINTFC(seqno, "\t\tSource IP: %s\n", inet_ntoa(ipaddr));
-		PRINTFC(seqno, "\t\tDestination: %s\n",
+		XDP2_PTH_PRINTFC(seqno, "\t\tSource IP: %s\n", inet_ntoa(ipaddr));
+		XDP2_PTH_PRINTFC(seqno, "\t\tDestination: %s\n",
 			ether_ntoa((struct ether_addr *)metametadata->arp.tha));
 		ipaddr.s_addr = metametadata->arp.tip;
-		PRINTFC(seqno, "\t\tDestination IP: %s\n", inet_ntoa(ipaddr));
+		XDP2_PTH_PRINTFC(seqno, "\t\tDestination IP: %s\n", inet_ntoa(ipaddr));
 		break;
 	case 2:
-		PRINTFC(seqno, "\tARP Reply:\n");
-		PRINTFC(seqno, "\t\tSource: %s\n",
+		XDP2_PTH_PRINTFC(seqno, "\tARP Reply:\n");
+		XDP2_PTH_PRINTFC(seqno, "\t\tSource: %s\n",
 			ether_ntoa((struct ether_addr *)metametadata->arp.sha));
 		ipaddr.s_addr = metametadata->arp.sip;
-		PRINTFC(seqno, "\t\tSource IP: %s\n", inet_ntoa(ipaddr));
-		PRINTFC(seqno, "\t\tDestination: %s\n",
+		XDP2_PTH_PRINTFC(seqno, "\t\tSource IP: %s\n", inet_ntoa(ipaddr));
+		XDP2_PTH_PRINTFC(seqno, "\t\tDestination: %s\n",
 			ether_ntoa((struct ether_addr *)metametadata->arp.tha));
 		ipaddr.s_addr = metametadata->arp.tip;
-		PRINTFC(seqno, "\t\tDestination IP: %s\n", inet_ntoa(ipaddr));
+		XDP2_PTH_PRINTFC(seqno, "\t\tDestination IP: %s\n", inet_ntoa(ipaddr));
 		break;
 	default:
-		PRINTFC(seqno, "\tARP Unknown operation: %u\n",
+		XDP2_PTH_PRINTFC(seqno, "\tARP Unknown operation: %u\n",
 			metametadata->arp.op);
 		break;
 	}
@@ -136,16 +137,16 @@ static void print_icmp(struct metametadata *metametadata, int seqno)
 		__be16 seq;
 	} *echo;
 
-	PRINTFC(seqno, "\tICMP:\n");
-	PRINTFC(seqno, "\t\tType: %u\n", metametadata->icmp.type);
-	PRINTFC(seqno, "\t\tCode: %u\n", metametadata->icmp.code);
+	XDP2_PTH_PRINTFC(seqno, "\tICMP:\n");
+	XDP2_PTH_PRINTFC(seqno, "\t\tType: %u\n", metametadata->icmp.type);
+	XDP2_PTH_PRINTFC(seqno, "\t\tCode: %u\n", metametadata->icmp.code);
 
 	type = metametadata->icmp.is_ipv6 ? 128 : 8;
 	if (metametadata->icmp.type == type &&
 	    metametadata->icmp.code == 0) {
 		echo = (typeof(echo))&metametadata->icmp.data;
 
-		PRINTFC(seqno, "\t\tEcho Request ID: %u Seq: %u\n",
+		XDP2_PTH_PRINTFC(seqno, "\t\tEcho Request ID: %u Seq: %u\n",
 			ntohs(echo->id), ntohs(echo->seq));
 	}
 
@@ -154,7 +155,7 @@ static void print_icmp(struct metametadata *metametadata, int seqno)
 	    metametadata->icmp.code == 0) {
 		echo = (typeof(echo))&metametadata->icmp.data;
 
-		PRINTFC(seqno, "\t\tEcho Reply ID: %u Seq: %u\n",
+		XDP2_PTH_PRINTFC(seqno, "\t\tEcho Reply ID: %u Seq: %u\n",
 			ntohs(echo->id), ntohs(echo->seq));
 	}
 }
@@ -164,27 +165,27 @@ static void print_tcp(struct metametadata *metametadata, int seqno)
 	/* If data is present for TCP timestamp option then print */
 	if (metametadata->tcp_options.timestamp.value ||
 	    metametadata->tcp_options.timestamp.echo) {
-		PRINTFC(seqno, "\tTCP timestamps value: %u, echo %u\n",
+		XDP2_PTH_PRINTFC(seqno, "\tTCP timestamps value: %u, echo %u\n",
 		       metametadata->tcp_options.timestamp.value,
 		       metametadata->tcp_options.timestamp.echo);
 	}
 
 	/* If data is present for MSS option then print */
 	if (metametadata->tcp_options.mss)
-		PRINTFC(seqno, "\tTCP MSS: %u\n",
+		XDP2_PTH_PRINTFC(seqno, "\tTCP MSS: %u\n",
 			metametadata->tcp_options.mss);
 
 	if (metametadata->tcp_options.have_window_scaling)
-		PRINTFC(seqno, "\tTCP window scaling: %u\n",
+		XDP2_PTH_PRINTFC(seqno, "\tTCP window scaling: %u\n",
 			metametadata->tcp_options.window_scaling);
 
 	if (metametadata->tcp_options.num_sacks) {
 		int i;
 
-		PRINTFC(seqno, "\tSACKs %u:\n",
+		XDP2_PTH_PRINTFC(seqno, "\tSACKs %u:\n",
 			metametadata->tcp_options.num_sacks);
 		for (i = 0; i < metametadata->tcp_options.num_sacks; i++)
-			PRINTFC(seqno, "\t\t%u:%u\n",
+			XDP2_PTH_PRINTFC(seqno, "\t\t%u:%u\n",
 				metametadata->tcp_options.sack[i].left_edge,
 				metametadata->tcp_options.sack[i].right_edge);
 	}
@@ -195,7 +196,7 @@ static void print_frame(struct metadata *frame, int seqno)
 	bool is_ip = false, is_ipv4 = false;
 
 	if (frame->ether_type)
-		PRINTFC(seqno, "\tEthertype: 0x%04x\n", frame->ether_type);
+		XDP2_PTH_PRINTFC(seqno, "\tEthertype: 0x%04x\n", frame->ether_type);
 
 	/* Print IP addresses and ports in the metadata */
 	switch (frame->addr_type) {
@@ -210,11 +211,11 @@ static void print_frame(struct metadata *frame, int seqno)
 
 		if (frame->port_pair.sport ||
 		    frame->port_pair.dport)
-			PRINTFC(seqno, "\tIPv4: %s:%u->%s:%u\n", sbuf,
+			XDP2_PTH_PRINTFC(seqno, "\tIPv4: %s:%u->%s:%u\n", sbuf,
 			       ntohs(frame->port_pair.sport), dbuf,
 			       ntohs(frame->port_pair.dport));
 		else
-			PRINTFC(seqno, "\tIPv4: %s->%s\n", sbuf, dbuf);
+			XDP2_PTH_PRINTFC(seqno, "\tIPv4: %s->%s\n", sbuf, dbuf);
 
 		is_ip = true;
 		is_ipv4 = true;
@@ -234,11 +235,11 @@ static void print_frame(struct metadata *frame, int seqno)
 
 		if (frame->port_pair.sport ||
 		    frame->port_pair.dport)
-			PRINTFC(seqno, "\tIPv6: %s:%u->%s:%u\n", sbuf,
+			XDP2_PTH_PRINTFC(seqno, "\tIPv6: %s:%u->%s:%u\n", sbuf,
 			       ntohs(frame->port_pair.sport), dbuf,
 			       ntohs(frame->port_pair.dport));
 		else
-			PRINTFC(seqno, "\tIPv6: %s->%s\n", sbuf, dbuf);
+			XDP2_PTH_PRINTFC(seqno, "\tIPv6: %s->%s\n", sbuf, dbuf);
 
 		is_ip = true;
 
@@ -247,10 +248,10 @@ static void print_frame(struct metadata *frame, int seqno)
 		break;
 	}
 	case 0:
-		PRINTFC(seqno, "\tNo addresses\n");
+		XDP2_PTH_PRINTFC(seqno, "\tNo addresses\n");
 		break;
 	default:
-		PRINTFC(seqno, "\tUnknown addr type %u\n", frame->addr_type);
+		XDP2_PTH_PRINTFC(seqno, "\tUnknown addr type %u\n", frame->addr_type);
 	}
 
 	if (is_ip) {
@@ -258,32 +259,32 @@ static void print_frame(struct metadata *frame, int seqno)
 
 		pent = getprotobynumber(frame->ip_proto);
 
-		PRINTFC(seqno, "\tIP protocol %u (%s)\n", frame->ip_proto,
+		XDP2_PTH_PRINTFC(seqno, "\tIP protocol %u (%s)\n", frame->ip_proto,
 			pent ? pent->p_name : "unknown");
 	}
 
 	if (is_ipv4 && frame->ip_frag_off & htons(IP_MF | IP_OFFSET)) {
 		if (frame->ip_frag_off & htons(IP_OFFSET))
-			PRINTFC(seqno, "\tNon-first fragment ID: %u "
+			XDP2_PTH_PRINTFC(seqno, "\tNon-first fragment ID: %u "
 				       "offset:%u\n", ntohs(frame->ip_frag_id),
 				(ntohs(frame->ip_frag_off) & IP_OFFSET) >> 3);
 		else
-			PRINTFC(seqno, "\tFirst fragment ID: %u\n",
+			XDP2_PTH_PRINTFC(seqno, "\tFirst fragment ID: %u\n",
 				ntohs(frame->ip_frag_id));
 	}
 
 	if (frame->is_ipv6_frag) {
 		if (frame->ip_frag_off & htons(IP6_OFFSET))
-			PRINTFC(seqno, "\tNon-first fragment ID: %u "
+			XDP2_PTH_PRINTFC(seqno, "\tNon-first fragment ID: %u "
 				       "offset:%u\n", ntohl(frame->ip_frag_id),
 				(ntohs(frame->ip_frag_off) & IP6_OFFSET) >> 3);
 		else
-				PRINTFC(seqno, "\tFirst fragment ID: %u\n",
-					ntohl(frame->ip_frag_id));
+			XDP2_PTH_PRINTFC(seqno, "\tFirst fragment ID: %u\n",
+					 ntohl(frame->ip_frag_id));
 	}
 
 	/* Compute and print hash over addresses and port numbers */
-	PRINTFC(seqno, "\tHash 0x%08x\n",
+	XDP2_PTH_PRINTFC(seqno, "\tHash 0x%08x\n",
 		       XDP2_COMMON_COMPUTE_HASH(frame, HASH_START_FIELD));
 
 	if (frame->gre_version)
@@ -302,16 +303,16 @@ void print_metadata(void *_metadata, const struct xdp2_ctrl_data *ctrl)
 
 	for (i = 0; i < xdp2_min(ctrl->var.encaps + 1,
 				 METADATA_FRAME_COUNT); i++) {
-		PRINTFC(seqno, "Frame #%u:\n", i);
+		XDP2_PTH_PRINTFC(seqno, "Frame #%u:\n", i);
 		print_frame(&pmetadata->metadata[i], seqno);
 	}
 
-	PRINTFC(seqno, "Summary:\n");
+	XDP2_PTH_PRINTFC(seqno, "Summary:\n");
 
-	PRINTFC(seqno, "\tReturn code: %s\n",
+	XDP2_PTH_PRINTFC(seqno, "\tReturn code: %s\n",
 		xdp2_get_text_code(ctrl->var.ret_code));
 
-	PRINTFC(seqno, "\tLast node: %s\n", ctrl->var.last_node->text_name);
+	XDP2_PTH_PRINTFC(seqno, "\tLast node: %s\n", ctrl->var.last_node->text_name);
 
 	if (metametadata->arp_present)
 		print_arp(metametadata, seqno);
@@ -322,9 +323,9 @@ void print_metadata(void *_metadata, const struct xdp2_ctrl_data *ctrl)
 	if (metametadata->icmp_present)
 		print_icmp(metametadata, seqno);
 
-	PRINTFC(seqno, "\tCounters:\n");
+	XDP2_PTH_PRINTFC(seqno, "\tCounters:\n");
 
 	for (i = 0; i < 3; i++)
-		PRINTFC(seqno, "\t\tCounter #%u: %u\n", i,
-			ctrl->key.counters[i]);
+		XDP2_PTH_PRINTFC(seqno, "\t\tCounter #%u: %u\n",
+				 i, ctrl->key.counters[i]);
 }

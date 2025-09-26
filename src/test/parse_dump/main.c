@@ -35,6 +35,7 @@
 #include <sys/ioctl.h>
 
 #include "xdp2/cli.h"
+#include "xdp2/parser_test_helpers.h"
 #include "xdp2/parser.h"
 #include "xdp2/parser_metadata.h"
 #include "xdp2/pcap.h"
@@ -132,7 +133,7 @@ static void run_parser(const struct xdp2_parser *parser, char **pcap_files,
 	else
 		count = total_packets;
 
-	XDP2_CTRL_INIT_KEY_DATA(ctrl, parser, NULL);
+	XDP2_CTRL_INIT_KEY_DATA(&ctrl, parser, NULL);
 
 	for (i = 0; i < count; i++) {
 		if (interval && !(i % interval))
@@ -144,8 +145,8 @@ static void run_parser(const struct xdp2_parser *parser, char **pcap_files,
 
 		memset(&pmetadata, 0, sizeof(pmetadata));
 
-		XDP2_CTRL_RESET_VAR_DATA(ctrl);
-		XDP2_CTRL_SET_BASIC_PKT_DATA(ctrl, packets[pn].packet,
+		XDP2_CTRL_RESET_VAR_DATA(&ctrl);
+		XDP2_CTRL_SET_BASIC_PKT_DATA(&ctrl, packets[pn].packet,
 					     packets[pn].cap_len, i);
 		ctrl.key.arg = &packets[pn];
 
@@ -159,8 +160,8 @@ static void run_parser_iface(const struct xdp2_parser *parser,
 			     bool debug)
 {
 	__u32 flags = (debug ? XDP2_F_DEBUG : 0);
-	struct xdp2_packet_data pdata;
 	struct pmetadata pmetadata;
+	struct xdp2_ctrl_data ctrl;
 	struct sockaddr_ll sll;
 	unsigned int seq = 0;
 	socklen_t socklen;
@@ -192,6 +193,8 @@ static void run_parser_iface(const struct xdp2_parser *parser,
 		exit(-1);
 	}
 
+	XDP2_CTRL_INIT_KEY_DATA(&ctrl, parser, NULL);
+
 	while (1) {
 		socklen = sizeof(sll);
 		n = recvfrom(sock_fd, buffer, sizeof(buffer), 0,
@@ -206,10 +209,10 @@ static void run_parser_iface(const struct xdp2_parser *parser,
 
 		memset(&pmetadata, 0, sizeof(pmetadata));
 
-		XDP2_SET_BASIC_PDATA_LEN_SEQNO(pdata, buffer, n,
-					       buffer, n, seq++);
+		XDP2_CTRL_RESET_VAR_DATA(&ctrl);
+		XDP2_CTRL_SET_BASIC_PKT_DATA(&ctrl, buffer, n, seq++);
 
-		xdp2_parse(parser, &pdata, &pmetadata, flags);
+		xdp2_parse(parser, buffer, n,  &pmetadata, &ctrl, flags);
 	}
 }
 
@@ -233,7 +236,7 @@ static void set_use_colors_from_cli(void *cli,
 		use_colors = true;
 	else if (!strcmp(args, "no")) {
 		use_colors = false;
-		PRINTFC(0, XDP2_NULL_TERM_COLOR);
+		XDP2_PTH_PRINTFC(0, XDP2_NULL_TERM_COLOR);
 	}
 }
 
