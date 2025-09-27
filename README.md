@@ -117,21 +117,21 @@ Prerequisites
 To install the basic development prerequisites on Ubuntu 20.10 or up we need to install the following packages:
 
 ```
-# apt-get install -y build-essential gcc-multilib pkg-config bison flex libboost-all-dev libpcap-dev
+sudo apt-get install -y build-essential gcc-multilib pkg-config bison flex libboost-all-dev libpcap-dev python3-scapy
 ```
 
 If you want to generate graph visualizations from the xdp2 compiler you must
 install the graphviz package:
 
 ```
-# apt-get install -y graphviz
+sudo apt-get install -y graphviz
 ```
 
 If you intend use the optimized compiler or build XDP samples then you must
 install the dependencies to compile and load BPF programs as described below:
 
 ```
-# apt-get install -y libelf-dev clang llvm libbpf-dev linux-tools-$(uname -r)
+sudo apt-get install -y libelf-dev clang clang-tools libclang-dev llvm llvm-dev libbpf-dev linux-tools-$(uname -r)
 ```
 
 Because the linux tools is dependent on the kernel version, you should use the
@@ -173,7 +173,7 @@ below)
 * **--python-ver <version>** sets the Python version
 * **--llvm-config <llvm-config>** set the LLVM config command. The default
 is */usr/bin/llvm-config*. This is only used if **--build-opt-parser** is set
- 
+
 Examples:
 
 Run configure with no arguments
@@ -186,7 +186,7 @@ Setting default compiler as gcc for native builds
 Platform is default
 Architecture is x86_64
 Architecture includes for x86_64 not found, using generic
-Target Architecture is 
+Target Architecture is
 COMPILER is gcc
 XDP2_CLANG_VERSION=14.0.0
 XDP2_C_INCLUDE_PATH=/usr/lib/llvm-14/lib/clang/14/include
@@ -202,7 +202,7 @@ an LLVM config program, and use clang as the compiler:
 Platform is default
 Architecture is x86_64
 Architecture includes for x86_64 not found, using generic
-Target Architecture is 
+Target Architecture is
 COMPILER is clang
 ^[[OXDP2_CLANG_VERSION=20.1.8
 XDP2_C_INCLUDE_PATH=/usr/lib/llvm-20/lib/clang/20/include
