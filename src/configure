@@ -11,7 +11,6 @@ CONFIG=config.mk
 TMPDIR=$(mktemp -d config.XXXXXX)
 trap 'status=$?; rm -rf $TMPDIR; exit $status' EXIT HUP INT QUIT TERM
 
-PYTHON_VER=3
 
 check_prog()
 {
@@ -184,7 +183,7 @@ int main(int argc, char **argv)
 }
 EOF
         $HOST_CXX -o $TMPDIR/check_python $TMPDIR/check_python.cpp	\
-			`$PKG_CONFIG --cflags --libs python$PYTHON_VER-embed`
+			`$PKG_CONFIG --cflags --libs python3-embed`
 	case $? in
 		0)	;;
 		*)	echo Python missing or broken\! 1>&2
@@ -192,6 +191,19 @@ EOF
 			;;
 	esac
 	rm -f $TMPDIR/check_python.cpp $TMPDIR/check_python
+}
+
+check_scapy()
+{
+	python3 -c "import scapy.all; print('scapy OK')" >/dev/null 2>&1
+	case $? in
+		0)	echo "HAVE_SCAPY:=y" >> $CONFIG
+			;;
+		*)	echo "ERROR: scapy is required but not found!" 1>&2
+			echo "Please install scapy: ( pip3 install scapy | apt install python3-scapy )" 1>&2
+			exit 1
+			;;
+	esac
 }
 
 check_cross_compiler_environment()
@@ -277,7 +289,7 @@ usage()
 	echo " [--config-defines <defines>] [--ccarch <arch>]"
 	echo " [--arch <arch>] [--compiler <compiler>]"
 	echo " [--installdir <dir>] [--build-opt-parser]"
-	echo " [--pkg-config-path <path>] [--python-ver <version>]"
+	echo " [--pkg-config-path <path>]"
 	echo " [--llvm-config <llvm-config>]"
 
 	platform_usage
@@ -301,7 +313,6 @@ while [ -n "$1" ]; do
 		"--pkg-config-path") MY_PKG_CONFIG_PATH=$2; shift;;
 		"--installdir") INSTALLDIR=$2; shift;;
 		"--build-opt-parser") BUILD_OPT_PARSER="y";;
-		"--python-ver") PYTHON_VER=$2; shift;;
 		"--llvm-config") HOST_LLVM_CONFIG=$2; shift;;
 		*) parse_platform_opts $1;;
 	esac
@@ -320,7 +331,6 @@ echo "# Generated config based on" $INCLUDE >$CONFIG
 echo "ifneq (\$(TOP_LEVEL_MAKE),y)" >> $CONFIG
 quiet_config >> $CONFIG
 
-echo "PYTHON_VER:=$PYTHON_VER" >> $CONFIG
 if [ -n "$PKG_CONFIG_PATH" ]; then
 	echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $CONFIG
 	echo "PATH_ARG=\"--with-path=$PKG_CONFIG_PATH\"" >> $CONFIG
@@ -329,9 +339,9 @@ else
 fi
 
 echo -n 'CFLAGS_PYTHON=`$(PKG_CONFIG) $(PATH_ARG)' >> $CONFIG
-echo ' --cflags python$(PYTHON_VER)-embed`' >> $CONFIG
+echo ' --cflags python3-embed`' >> $CONFIG
 echo -n 'LDFLAGS_PYTHON=`$(PKG_CONFIG) $(PATH_ARG) --libs' >> $CONFIG
-echo ' python$(PYTHON_VER)-embed`' >> $CONFIG
+echo ' python3-embed`' >> $CONFIG
 echo 'CAT=cat' >> $CONFIG
 
 # Set up architecture variables
@@ -441,7 +451,7 @@ echo "CXX := $CXX" >> $CONFIG
 echo "HOST_LLVM_CONFIG := $HOST_LLVM_CONFIG" >> $CONFIG
 echo "LLVM_CONFIG := $LLVM_CONFIG" >> $CONFIG
 echo "LDFLAGS := $LDFLAGS" >> $CONFIG
-echo "PYTHON := python$PYTHON_VER" >> $CONFIG
+echo "PYTHON := python3" >> $CONFIG
 
 # If we didn't get an architecture from the command line set it base
 # on the running host
@@ -454,6 +464,7 @@ check_boostthread
 check_boostfilesystem
 check_clang_lib
 check_python
+check_scapy
 
 echo "ifneq (\$(USE_HOST_TOOLS),y)" >> $CONFIG
 
