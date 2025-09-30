@@ -70,12 +70,10 @@ XDP2_PARSER_EXTERN(xdp2_parser_simple_hash_ether_opt);
 static inline __u32 xdp2_parser_hash_hash_ether(void *p, size_t len, void *arg)
 {
 	struct xdp2_parser_simple_hash_metadata mdata;
-	struct xdp2_packet_data pdata;
+	struct xdp2_ctrl_data ctrl;
 
-	XDP2_SET_BASIC_PDATA(pdata, p, len);
-
-	if (xdp2_parse(xdp2_parser_simple_hash_ether, &pdata,
-			&mdata, 0) != XDP2_STOP_OKAY)
+	if (xdp2_parse(xdp2_parser_simple_hash_ether, p, len,
+		       &mdata, &ctrl, 0) != XDP2_STOP_OKAY)
 		return 0;
 
 	XDP2_HASH_CONSISTENTIFY(&mdata);
