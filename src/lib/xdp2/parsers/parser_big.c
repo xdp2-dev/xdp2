@@ -354,11 +354,11 @@ bool xdp2_parser_big_parse_l3(void *p, size_t len, __be16 proto,
 			      struct xdp2_parser_big_metadata *mdata,
 			      void *arg)
 {
-	struct xdp2_packet_data pdata;
+	struct xdp2_ctrl_data ctrl;
 
-	XDP2_SET_BASIC_PDATA(pdata, p, len);
+	XDP2_CTRL_RESET_VAR_DATA(ctrl);
 
-	return (xdp2_parse_from_table(&l3_parser_table, proto, &pdata,
+	return (xdp2_parse_from_table(&l3_parser_table, proto, &ctrl,
 				      mdata, 0) == XDP2_STOP_OKAY);
 }
 

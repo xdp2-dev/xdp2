@@ -77,11 +77,9 @@ static inline bool xdp2_parser_big_parse_ether(void *p, size_t len,
 				struct xdp2_parser_big_metadata *mdata,
 				void *arg)
 {
-	struct xdp2_packet_data pdata;
+	struct xdp2_ctrl_data ctrl;
 
-	XDP2_SET_BASIC_PDATA(pdata, p, len);
-
-	return (xdp2_parse(xdp2_parser_big_ether, &pdata, mdata, 0) ==
+	return (xdp2_parse(xdp2_parser_big_ether, p, len, mdata, &ctrl, 0) ==
 							XDP2_STOP_OKAY);
 }
 
@@ -101,11 +99,11 @@ static inline bool xdp2_parser_big_parse_ip(void *p, size_t len,
 				struct xdp2_parser_big_metadata *mdata,
 				void *arg)
 {
-	struct xdp2_packet_data pdata;
+	struct xdp2_ctrl_data ctrl;
 
-	XDP2_SET_BASIC_PDATA(pdata, p, len);
+	XDP2_CTRL_RESET_VAR_DATA(ctrl);
 
-	return (xdp2_parse(xdp2_parser_big_ip, &pdata, mdata, 0) ==
+	return (xdp2_parse(xdp2_parser_big_ip, p, len, mdata, &ctrl, 0) ==
 							XDP2_STOP_OKAY);
 }
 
