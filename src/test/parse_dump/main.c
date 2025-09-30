@@ -64,7 +64,7 @@ static void run_parser(const struct xdp2_parser *parser, char **pcap_files,
 		       unsigned int interval, bool debug)
 {
 	__u32 flags = (debug ? XDP2_F_DEBUG : 0);
-	struct xdp2_packet_data pdata;
+	struct xdp2_ctrl_data ctrl;
 	struct pmetadata pmetadata;
 	struct one_packet *packets;
 	int total_packets = 0, pn;
@@ -126,22 +126,25 @@ static void run_parser(const struct xdp2_parser *parser, char **pcap_files,
 	else
 		count = total_packets;
 
+	XDP2_CTRL_INIT_KEY_DATA(ctrl, parser, NULL);
+
 	for (i = 0; i < count; i++) {
 		if (interval && !(i % interval))
 			printf("I: %lu\n", i);
 
-		pn = randomize ? random() % total_packets : i;
+		pn = randomize ? random() : i;
+
+		pn %= total_packets;
 
 		memset(&pmetadata, 0, sizeof(pmetadata));
 
-		XDP2_SET_BASIC_PDATA_LEN_SEQNO(pdata,
-					       packets[pn].packet,
-					       packets[pn].cap_len,
-					       packets[pn].packet,
-					       packets[pn].hdr_size,
-					       i);
+		XDP2_CTRL_RESET_VAR_DATA(ctrl);
+		XDP2_CTRL_SET_BASIC_PKT_DATA(ctrl, packets[pn].packet,
+					     packets[pn].cap_len, i);
+		ctrl.key.arg = &packets[pn];
 
-		xdp2_parse(parser, &pdata, &pmetadata, flags);
+		xdp2_parse(parser, packets[pn].packet,
+			   packets[pn].cap_len, &pmetadata, &ctrl, flags);
 	}
 }
 

@@ -44,7 +44,7 @@
 /* Print ROD/RUD request */
 static void print_pds_rud_rod_request(
 		const struct uet_pds_rud_rod_request *rhdr,
-		const struct xdp2_ctrl_data ctrl)
+		const struct xdp2_ctrl_data *ctrl)
 {
 	__u8 next_hdr = uet_pds_common_get_next_hdr(rhdr);
 
@@ -84,7 +84,7 @@ static void print_pds_rud_rod_request(
 /* Print ROD/RUD request with CC */
 static void print_pds_rud_rod_request_cc(
 		const struct uet_pds_rud_rod_request_cc *pkt,
-		const struct xdp2_ctrl_data ctrl)
+		const struct xdp2_ctrl_data *ctrl)
 {
 	print_pds_rud_rod_request(&pkt->req, ctrl);
 
@@ -99,8 +99,9 @@ static void print_pds_rud_rod_request_cc(
 }
 
 /* Handle plain RUD request */
-static int handler_pds_rud_request(const void *hdr, void *frame,
-				   const struct xdp2_ctrl_data ctrl)
+static int handler_pds_rud_request(const void *hdr, size_t hdr_len,
+				   size_t hdr_off, void *metadata, void *frame,
+				   const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_rud_rod_request *pkt = hdr;
 
@@ -116,8 +117,10 @@ static int handler_pds_rud_request(const void *hdr, void *frame,
 }
 
 /* Handle RUD request with a SYN */
-static int handler_pds_rud_request_syn(const void *hdr, void *frame,
-				       const struct xdp2_ctrl_data ctrl)
+static int handler_pds_rud_request_syn(const void *hdr, size_t hdr_len,
+				       size_t hdr_off, void *metadata,
+				       void *frame,
+				       const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_rud_rod_request *pkt = hdr;
 
@@ -133,8 +136,10 @@ static int handler_pds_rud_request_syn(const void *hdr, void *frame,
 }
 
 /* Handle RUD request with CC */
-static int handler_pds_rud_request_cc(const void *hdr, void *frame,
-				      const struct xdp2_ctrl_data ctrl)
+static int handler_pds_rud_request_cc(const void *hdr, size_t hdr_len,
+				      size_t hdr_off, void *metadata,
+				      void *frame,
+				      const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_rud_rod_request_cc *pkt = hdr;
 
@@ -150,8 +155,10 @@ static int handler_pds_rud_request_cc(const void *hdr, void *frame,
 }
 
 /* Handle a RUD request with a SYN and CC */
-static int handler_pds_rud_request_cc_syn(const void *hdr, void *frame,
-					  const struct xdp2_ctrl_data ctrl)
+static int handler_pds_rud_request_cc_syn(const void *hdr, size_t hdr_len,
+					  size_t hdr_off, void *metadata,
+					  void *frame,
+					  const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_rud_rod_request_cc *pkt = hdr;
 
@@ -167,8 +174,10 @@ static int handler_pds_rud_request_cc_syn(const void *hdr, void *frame,
 }
 
 /* Handle plain ROD request */
-static int handler_pds_rod_request(const void *hdr, void *frame,
-				   const struct xdp2_ctrl_data ctrl)
+static int handler_pds_rod_request(const void *hdr, size_t hdr_len,
+				   size_t hdr_off, void *metadata,
+				   void *frame,
+				   const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_rud_rod_request *pkt = hdr;
 
@@ -184,8 +193,10 @@ static int handler_pds_rod_request(const void *hdr, void *frame,
 }
 
 /* Handle ROD request with a SYN */
-static int handler_pds_rod_request_syn(const void *hdr, void *frame,
-				       const struct xdp2_ctrl_data ctrl)
+static int handler_pds_rod_request_syn(const void *hdr, size_t hdr_len,
+				       size_t hdr_off, void *metadata,
+				       void *frame,
+				       const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_rud_rod_request *pkt = hdr;
 
@@ -201,8 +212,10 @@ static int handler_pds_rod_request_syn(const void *hdr, void *frame,
 }
 
 /* Handle ROD request with CC */
-static int handler_pds_rod_request_cc(const void *hdr, void *frame,
-				      const struct xdp2_ctrl_data ctrl)
+static int handler_pds_rod_request_cc(const void *hdr, size_t hdr_len,
+				      size_t hdr_off, void *metadata,
+				      void *frame,
+				      const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_rud_rod_request_cc *pkt = hdr;
 
@@ -218,8 +231,10 @@ static int handler_pds_rod_request_cc(const void *hdr, void *frame,
 }
 
 /* Handle a ROD request with a SYN and CC */
-static int handler_pds_rod_request_cc_syn(const void *hdr, void *frame,
-					  const struct xdp2_ctrl_data ctrl)
+static int handler_pds_rod_request_cc_syn(const void *hdr, size_t hdr_len,
+					  size_t hdr_off, void *metadata,
+					  void *frame,
+					  const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_rud_rod_request_cc *pkt = hdr;
 
@@ -236,7 +251,7 @@ static int handler_pds_rod_request_cc_syn(const void *hdr, void *frame,
 
 /* Print common PSD ACK info */
 static void print_pds_common_ack(const struct uet_pds_ack *pkt,
-				 const struct xdp2_ctrl_data ctrl)
+				 const struct xdp2_ctrl_data *ctrl)
 {
 	__u8 next_hdr = uet_pds_common_get_next_hdr(pkt);
 
@@ -272,8 +287,10 @@ static void print_pds_common_ack(const struct uet_pds_ack *pkt,
 }
 
 /* Print common PDS ACK CC info */
-static int handler_pds_ack(const void *hdr, void *frame,
-			       const struct xdp2_ctrl_data ctrl)
+static int handler_pds_ack(const void *hdr, size_t hdr_len,
+			   size_t hdr_off, void *metadata,
+			   void *frame,
+			   const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_ack *pkt = hdr;
 
@@ -290,7 +307,7 @@ static int handler_pds_ack(const void *hdr, void *frame,
 
 /* PDS ACK handler */
 static void print_pds_common_ack_cc(const struct uet_pds_ack_cc *pkt,
-				    const struct xdp2_ctrl_data ctrl)
+				    const struct xdp2_ctrl_data *ctrl)
 {
 	print_pds_common_ack(&pkt->ack, ctrl);
 
@@ -309,8 +326,10 @@ static void print_pds_common_ack_cc(const struct uet_pds_ack_cc *pkt,
 }
 
 /* PDS ACK handler with CC NSCC */
-static int handler_pds_ack_cc_nscc(const void *hdr, void *frame,
-				   const struct xdp2_ctrl_data ctrl)
+static int handler_pds_ack_cc_nscc(const void *hdr, size_t hdr_len,
+				   size_t hdr_off, void *metadata,
+				   void *frame,
+				   const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_ack_cc *pkt = hdr;
 
@@ -343,8 +362,10 @@ static int handler_pds_ack_cc_nscc(const void *hdr, void *frame,
 }
 
 /* PDS ACK handler with CC credit */
-static int handler_pds_ack_cc_credit(const void *hdr, void *frame,
-				     const struct xdp2_ctrl_data ctrl)
+static int handler_pds_ack_cc_credit(const void *hdr, size_t hdr_len,
+				     size_t hdr_off, void *metadata,
+				     void *frame,
+				     const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_ack_cc *pkt = hdr;
 
@@ -368,8 +389,9 @@ static int handler_pds_ack_cc_credit(const void *hdr, void *frame,
 }
 
 /* PDS ACK handler with CCX */
-static int handler_pds_ack_ccx(const void *hdr, void *frame,
-			       const struct xdp2_ctrl_data ctrl)
+static int handler_pds_ack_ccx(const void *hdr, size_t hdr_len,
+			       size_t hdr_off, void *metadata,
+			       void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_ack_ccx *pkt = hdr;
 	int i;
@@ -408,7 +430,7 @@ static int handler_pds_ack_ccx(const void *hdr, void *frame,
 
 /* Print common PDS NACK info */
 static void print_pds_common_nack(const struct uet_pds_nack *hdr,
-				  const struct xdp2_ctrl_data ctrl)
+				  const struct xdp2_ctrl_data *ctrl)
 {
 	__u8 next_hdr = uet_pds_common_get_next_hdr(hdr);
 
@@ -450,8 +472,9 @@ static void print_pds_common_nack(const struct uet_pds_nack *hdr,
 }
 
 /* PDS NACK handler */
-static int handler_pds_nack(const void *hdr, void *frame,
-			    const struct xdp2_ctrl_data ctrl)
+static int handler_pds_nack(const void *hdr, size_t hdr_len,
+			    size_t hdr_off, void *metadata,
+			    void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_nack *pkt = hdr;
 
@@ -467,8 +490,9 @@ static int handler_pds_nack(const void *hdr, void *frame,
 }
 
 /* PDS NACK handler with CCX */
-static int handler_pds_nack_ccx(const void *hdr, void *frame,
-				const struct xdp2_ctrl_data ctrl)
+static int handler_pds_nack_ccx(const void *hdr, size_t hdr_len,
+				size_t hdr_off, void *metadata,
+				void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_nack_ccx *pkt = hdr;
 	int i;
@@ -501,7 +525,7 @@ static int handler_pds_nack_ccx(const void *hdr, void *frame,
 
 /* Print common Control info */
 static void print_pds_common_control(const struct uet_pds_control_pkt *pkt,
-				     const struct xdp2_ctrl_data ctrl)
+				     const struct xdp2_ctrl_data *ctrl)
 {
 	__u8 ctl_type = uet_pds_control_pkt_get_ctl_type(pkt);
 
@@ -540,8 +564,9 @@ static void print_pds_common_control(const struct uet_pds_control_pkt *pkt,
 }
 
 /* PDS Control handler */
-static int handler_pds_control(const void *hdr, void *frame,
-				   const struct xdp2_ctrl_data ctrl)
+static int handler_pds_control(const void *hdr, size_t hdr_len,
+			       size_t hdr_off, void *metadata,
+			       void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_control_pkt *pkt = hdr;
 
@@ -562,8 +587,10 @@ static int handler_pds_control(const void *hdr, void *frame,
 }
 
 /* PDS Control handler with SYN */
-static int handler_pds_control_syn(const void *hdr, void *frame,
-				       const struct xdp2_ctrl_data ctrl)
+static int handler_pds_control_syn(const void *hdr, size_t hdr_len,
+				   size_t hdr_off, void *metadata,
+				   void *frame,
+				   const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_control_pkt *pkt = hdr;
 	__u16 psn_offset = uet_pds_control_pkt_get_psn_offset(pkt);
@@ -587,8 +614,10 @@ static int handler_pds_control_syn(const void *hdr, void *frame,
 }
 
 /* PDS UUD request handler */
-static int handler_pds_uud_req(const void *hdr, void *frame,
-				   const struct xdp2_ctrl_data ctrl)
+static int handler_pds_uud_req(const void *hdr, size_t hdr_len,
+			       size_t hdr_off, void *metadata,
+			       void *frame,
+			       const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
 		LOC_PRINTFC(ctrl, "\tUET PDS UUD request\n");
@@ -599,7 +628,7 @@ static int handler_pds_uud_req(const void *hdr, void *frame,
 /* Print common RUDI request or response info */
 static void print_common_rudi_req_resp(
 		const struct uet_pds_rudi_req_resp *rhdr,
-		const struct xdp2_ctrl_data ctrl)
+		const struct xdp2_ctrl_data *ctrl)
 {
 	__u8 next_hdr = uet_pds_common_get_next_hdr(rhdr);
 
@@ -618,8 +647,10 @@ static void print_common_rudi_req_resp(
 }
 
 /* PDS RUDI request handler */
-static int handler_pds_rudi_req(const void *hdr, void *frame,
-				    const struct xdp2_ctrl_data ctrl)
+static int handler_pds_rudi_req(const void *hdr, size_t hdr_len,
+				size_t hdr_off, void *metadata,
+				void *frame,
+				const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_rudi_req_resp *rhdr = hdr;
 
@@ -635,8 +666,10 @@ static int handler_pds_rudi_req(const void *hdr, void *frame,
 }
 
 /* PDS RUDI response handler */
-static int handler_pds_rudi_resp(const void *hdr, void *frame,
-				     const struct xdp2_ctrl_data ctrl)
+static int handler_pds_rudi_resp(const void *hdr, size_t hdr_len,
+				 size_t hdr_off, void *metadata,
+				 void *frame,
+				 const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_pds_rudi_req_resp *rhdr = hdr;
 
@@ -781,7 +814,7 @@ XDP2_MAKE_PROTO_TABLE(pds_packet_type_table,
 
 /* Print common standard header */
 static void print_ses_common_hdr(const struct uet_ses_common_hdr *chdr,
-				 const struct xdp2_ctrl_data ctrl)
+				 const struct xdp2_ctrl_data *ctrl)
 {
 	LOC_PRINTFC(ctrl, "\t\tVersion: %u\n", chdr->version);
 	LOC_PRINTFC(ctrl, "\t\tOpcode: %s (%u)\n",
@@ -817,8 +850,10 @@ static void print_ses_common_hdr(const struct uet_ses_common_hdr *chdr,
 }
 
 /* NO-OP standard size handler */
-static int handler_uet_ses_no_op_std(const void *hdr, void *frame,
-				     const struct xdp2_ctrl_data ctrl)
+static int handler_uet_ses_no_op_std(const void *hdr, size_t hdr_len,
+				     size_t hdr_off, void *metadata,
+				     void *frame,
+				     const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
 		LOC_PRINTFC(ctrl, "\tUET SES NO-OP std\n");
@@ -829,7 +864,7 @@ static int handler_uet_ses_no_op_std(const void *hdr, void *frame,
 /* Common print non start of message header */
 static void print_ses_common_std_nosom_hdr(
 		const struct uet_ses_request_std_hdr *shdr,
-		const struct xdp2_ctrl_data ctrl)
+		const struct xdp2_ctrl_data *ctrl)
 {
 	print_ses_common_hdr(&shdr->cmn, ctrl);
 
@@ -856,7 +891,7 @@ static void print_ses_common_std_nosom_hdr(
 /* Common print start of standard message header */
 static void print_ses_common_std_som_hdr(
 		const struct uet_ses_request_std_hdr *shdr,
-		const struct xdp2_ctrl_data ctrl)
+		const struct xdp2_ctrl_data *ctrl)
 {
 	__u16 payload_length = uet_ses_request_std_hdr_get_payload_length(shdr);
 
@@ -883,8 +918,8 @@ static void print_ses_common_std_som_hdr(
 
 /* Common handler for non start of standard message header */
 static int handler_uet_ses_request_nosom_std(const void *hdr,
-					      const struct xdp2_ctrl_data ctrl,
-					      const char *label)
+					     const struct xdp2_ctrl_data *ctrl,
+					     const char *label)
 {
 	const struct uet_ses_request_std_hdr *shdr = hdr;
 
@@ -904,7 +939,7 @@ static int handler_uet_ses_request_nosom_std(const void *hdr,
 
 /* Common handler for start of standard message header */
 static int handler_uet_ses_request_som_std(const void *hdr,
-					   const struct xdp2_ctrl_data ctrl,
+					   const struct xdp2_ctrl_data *ctrl,
 					   const char *label)
 {
 	const struct uet_ses_request_std_hdr *shdr = hdr;
@@ -928,8 +963,10 @@ static int handler_uet_ses_request_som_std(const void *hdr,
  */
 #define __MAKE_REQUEST_STD1(NAME, LABEL)				\
 static int handler_uet_ses_request_nosom_##NAME##_std(			\
-		const void *hdr, void *frame,				\
-		const struct xdp2_ctrl_data ctrl)			\
+		const void *hdr, size_t hdr_len,			\
+		size_t hdr_off, void *metadata,				\
+		void *frame,						\
+		const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	handler_uet_ses_request_nosom_std(hdr, ctrl, LABEL);		\
 									\
@@ -937,8 +974,10 @@ static int handler_uet_ses_request_nosom_##NAME##_std(			\
 }									\
 									\
 static int handler_uet_ses_request_som_##NAME##_std(			\
-		const void *hdr, void *frame,				\
-		const struct xdp2_ctrl_data ctrl)			\
+		const void *hdr, size_t hdr_len,			\
+		size_t hdr_off, void *metadata,				\
+		void *frame,						\
+		const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	handler_uet_ses_request_som_std(hdr, ctrl, LABEL);		\
 									\
@@ -1005,7 +1044,7 @@ MAKE_REQUEST_AUTONEXT_STD(atomic_switch_node, atomic_switch_node,
 /* Common print deferrable standard message header */
 static void print_ses_common_deferable_std(
 		const struct uet_ses_defer_send_std_hdr *dhdr,
-		const struct xdp2_ctrl_data ctrl)
+		const struct xdp2_ctrl_data *ctrl)
 {
 	print_ses_common_hdr(&dhdr->cmn, ctrl);
 
@@ -1035,7 +1074,8 @@ static void print_ses_common_deferable_std(
 
 /* SES deferrable standard send handler */
 static int handler_uet_ses_request_deferrable_send_std(
-		const void *hdr, void *frame, const struct xdp2_ctrl_data ctrl)
+		const void *hdr, size_t hdr_len, size_t hdr_off,
+		void *metadata, void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_ses_defer_send_std_hdr *dhdr = hdr;
 
@@ -1054,7 +1094,8 @@ static int handler_uet_ses_request_deferrable_send_std(
 
 /* SES deferrable standard tagged send handler */
 static int handler_uet_ses_request_deferrable_tsend_std(
-		const void *hdr, void *frame, const struct xdp2_ctrl_data ctrl)
+		const void *hdr, size_t hdr_len, size_t hdr_off,
+		void *metadata, void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_ses_defer_send_std_hdr *dhdr = hdr;
 
@@ -1078,8 +1119,8 @@ XDP2_MAKE_LEAF_PARSE_NODE(uet_ses_request_deferrable_tsend_std,
 
 /* Ready to restart handler */
 static int handler_uet_ses_request_ready_restart(
-		const void *hdr, void *frame,
-		const struct xdp2_ctrl_data ctrl)
+		const void *hdr, size_t hdr_len, size_t hdr_off,
+		void *metadata, void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_ses_ready_to_restart_std_hdr *rhdr = hdr;
 
@@ -1125,8 +1166,8 @@ XDP2_MAKE_LEAF_PARSE_NODE(uet_ses_request_ready_restart_std,
 
 /* Rendezvous send handler */
 static int handler_uet_request_rendezvous_send_std(
-		const void *hdr, void *frame,
-		const struct xdp2_ctrl_data ctrl)
+		const void *hdr, size_t hdr_len, size_t hdr_off,
+		void *metadata, void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_ses_rendezvous_std_hdr *rhdr = hdr;
 	const struct uet_ses_rendezvous_ext_hdr *reh = &rhdr->ext_hdr;
@@ -1172,8 +1213,8 @@ static int handler_uet_request_rendezvous_send_std(
 
 /* Rendezvous tagged send handler */
 static int handler_uet_request_rendezvous_tsend_std(
-		const void *hdr, void *frame,
-		const struct xdp2_ctrl_data ctrl)
+		const void *hdr, size_t hdr_len, size_t hdr_off,
+		void *metadata, void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_ses_ready_to_restart_std_hdr *rhdr = hdr;
 
@@ -1201,7 +1242,7 @@ XDP2_MAKE_LEAF_PARSE_NODE(uet_ses_request_rendezvous_tsend_std,
 /* Print common atomic */
 static void print_ses_common_atomic(
 		const struct uet_ses_atomic_op_ext_hdr *ehdr,
-		const struct xdp2_ctrl_data ctrl)
+		const struct xdp2_ctrl_data *ctrl)
 {
 	LOC_PRINTFC(ctrl, "\t\tAtomic code: %s (%u)\n",
 		    uet_ses_amo_to_text(ehdr->atomic_code),
@@ -1220,8 +1261,8 @@ static void print_ses_common_atomic(
 
 /* Atomic extension header handler */
 static int handler_uet_ses_atomic(
-		const void *hdr, void *frame,
-		const struct xdp2_ctrl_data ctrl)
+		const void *hdr, size_t hdr_len, size_t hdr_off,
+		void *metadata, void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_ses_atomic_op_ext_hdr *ext_hdr = hdr;
 
@@ -1241,8 +1282,8 @@ static int handler_uet_ses_atomic(
 
 /* Compare and swap atomic extension header handler */
 static int handler_uet_ses_atomic_cmp_swp(
-		const void *hdr, void *frame,
-		const struct xdp2_ctrl_data ctrl)
+		const void *hdr, size_t hdr_len, size_t hdr_off,
+		void *metadata, void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_ses_atomic_cmp_and_swap_ext_hdr *ext_hdr = hdr;
 	int i;
@@ -1344,7 +1385,7 @@ XDP2_MAKE_PROTO_TABLE(pds_hdr_request_std_table,
 /* Common print medium request message */
 static void handler_ses_request_medium(
 		const struct uet_ses_request_medium_hdr *shdr,
-		const struct xdp2_ctrl_data ctrl,
+		const struct xdp2_ctrl_data *ctrl,
 		const char *label)
 {
 	if (verbose >= 5)
@@ -1369,8 +1410,9 @@ static void handler_ses_request_medium(
 }
 
 /* Medium no-op */
-static int handler_uet_ses_msg_no_op_medium(const void *hdr, void *frame,
-					    const struct xdp2_ctrl_data ctrl)
+static int handler_uet_ses_msg_no_op_medium(
+		const void *hdr, size_t hdr_len, size_t hdr_off,
+		void *metadata, void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
 		LOC_PRINTFC(ctrl, "\tUET SES NO-OP medium\n");
@@ -1380,8 +1422,9 @@ static int handler_uet_ses_msg_no_op_medium(const void *hdr, void *frame,
 
 #define MAKE_REQUEST_HANDLER_MEDIUM(NAME, LABEL)			\
 static int handler_uet_ses_request_##NAME##_medium(			\
-		const void *hdr, void *frame,				\
-		const struct xdp2_ctrl_data ctrl)			\
+		const void *hdr, size_t hdr_len, size_t hdr_off,	\
+		void *metadata, void *frame,				\
+		const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	handler_ses_request_medium(hdr, ctrl, LABEL);			\
 									\
@@ -1441,7 +1484,7 @@ XDP2_MAKE_PROTO_TABLE(pds_hdr_request_medium_table,
 /* Common print small request message */
 static void handler_ses_request_small(
 		const struct uet_ses_request_small_hdr *shdr,
-		const struct xdp2_ctrl_data ctrl,
+		const struct xdp2_ctrl_data *ctrl,
 		const char *label)
 {
 	if (verbose >= 5)
@@ -1458,8 +1501,9 @@ static void handler_ses_request_small(
 
 #define MAKE_REQUEST_HANDLER_SMALL(NAME, LABEL)				\
 static int handler_uet_ses_request_##NAME##_small(			\
-		const void *hdr, void *frame,				\
-		const struct xdp2_ctrl_data ctrl)			\
+		const void *hdr, size_t hdr_len, size_t hdr_off,	\
+		void *metadata, void *frame,				\
+		const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	handler_ses_request_small(hdr, ctrl, LABEL);			\
 									\
@@ -1487,8 +1531,10 @@ MAKE_REQUEST_AUTONEXT_SMALL(atomic_switch_node, atomic, "Atomic");
 MAKE_REQUEST_AUTONEXT_SMALL(atomic_switch_node, fetching_atomic,
 			    "Fetching atomic");
 
-static int handler_uet_ses_msg_no_op_small(const void *hdr, void *frame,
-					   const struct xdp2_ctrl_data ctrl)
+static int handler_uet_ses_msg_no_op_small(const void *hdr, size_t hdr_len,
+					   size_t hdr_off, void *metadata,
+					   void *frame,
+					   const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
 		LOC_PRINTFC(ctrl, "\tUET SES NO-OP small\n");
@@ -1510,8 +1556,10 @@ XDP2_MAKE_PROTO_TABLE(pds_hdr_request_small_table,
 );
 
 /* SES no next header */
-static int handler_uet_ses_no_next_hdr(const void *hdr, void *frame,
-				       const struct xdp2_ctrl_data ctrl)
+static int handler_uet_ses_no_next_hdr(const void *hdr, size_t hdr_len,
+				       size_t hdr_off, void *metadata,
+				       void *frame,
+				       const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
 		LOC_PRINTFC(ctrl, "\tUET SES no next header\n");
@@ -1546,7 +1594,7 @@ XDP2_MAKE_PROTO_TABLE(pds_next_hdr_request_table,
 /* Print common response */
 static void print_ses_common_response(const struct uet_ses_common_response_hdr
 								*resp,
-				      const struct xdp2_ctrl_data ctrl)
+				      const struct xdp2_ctrl_data *ctrl)
 {
 	LOC_PRINTFC(ctrl, "\t\tPayload delivered to list: %s (%u)\n",
 		    uet_ses_list_delivered_to_text(resp->list),
@@ -1572,7 +1620,7 @@ static void print_ses_common_response(const struct uet_ses_common_response_hdr
 
 /* Handler for response with no data headers */
 static void handler_uet_ses_nodata_response(const void *hdr,
-					    const struct xdp2_ctrl_data ctrl,
+					    const struct xdp2_ctrl_data *ctrl,
 					    const char *label)
 {
 	const struct uet_ses_nodata_response_hdr *resp = hdr;
@@ -1592,8 +1640,9 @@ static void handler_uet_ses_nodata_response(const void *hdr,
 
 #define MAKE_RESPONSE(NAME, LABEL)					\
 static int handler_uet_ses_##NAME##_nodata_response(			\
-		const void *hdr, void *frame,				\
-		const struct xdp2_ctrl_data ctrl)			\
+		const void *hdr, size_t hdr_len,			\
+		size_t hdr_off, void *metadata,				\
+		void *frame, const struct xdp2_ctrl_data *ctrl)		\
 {									\
 	handler_uet_ses_nodata_response(hdr, ctrl, LABEL);		\
 									\
@@ -1616,9 +1665,10 @@ XDP2_MAKE_PROTO_TABLE(uet_ses_response_nodata_table,
 );
 
 /* Handler for response with data */
-static int handler_uet_ses_with_data_response(const void *hdr,
-		void *frame,
-		const struct xdp2_ctrl_data ctrl)
+static int handler_uet_ses_with_data_response(const void *hdr, size_t hdr_len,
+					      size_t hdr_off, void *metadata,
+					      void *frame,
+					      const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_ses_with_data_response_hdr *resp = hdr;
 	unsigned int payload_length =
@@ -1655,9 +1705,9 @@ XDP2_MAKE_PROTO_TABLE(uet_ses_response_with_data_table,
 );
 
 /* Handler for response with small data */
-static int handler_uet_ses_with_small_data_response(const void *hdr,
-		void *frame,
-		const struct xdp2_ctrl_data ctrl)
+static int handler_uet_ses_with_small_data_response(
+		const void *hdr, size_t hdr_len, size_t hdr_off, void *metadata,
+		void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct uet_ses_with_small_data_response_hdr *resp = hdr;
 	__u16 payload_length =

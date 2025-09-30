@@ -41,7 +41,7 @@ MAKE_SIMPLE_HANDLER(falcon_base_node, "Falcon base node")
 MAKE_SIMPLE_HANDLER(falcon_v1_node, "Falcon version 1")
 
 static void print_falcon_base_header(const void *vhdr,
-				     const struct xdp2_ctrl_data ctrl)
+				     const struct xdp2_ctrl_data *ctrl)
 {
 	const struct falcon_base_hdr *bhdr = vhdr;
 
@@ -67,8 +67,10 @@ static void print_falcon_base_header(const void *vhdr,
 		    htonl(bhdr->req_seqno), htonl(bhdr->req_seqno));
 }
 
-static int handler_falcon_pull_request(const void *hdr, void *frame,
-				       const struct xdp2_ctrl_data ctrl)
+static int handler_falcon_pull_request(const void *hdr, size_t hdr_len,
+				       size_t hdr_off, void *frame,
+				       void *metadata,
+				       const struct xdp2_ctrl_data *ctrl)
 {
 	const struct falcon_pull_req_pkt *pkt = hdr;
 
@@ -86,8 +88,10 @@ static int handler_falcon_pull_request(const void *hdr, void *frame,
 	return 0;
 }
 
-static int handler_falcon_pull_data(const void *hdr, void *frame,
-				    const struct xdp2_ctrl_data ctrl)
+static int handler_falcon_pull_data(const void *hdr, size_t hdr_len,
+				    size_t hdr_off, void *frame,
+				    void *metadata,
+				    const struct xdp2_ctrl_data *ctrl)
 {
 	const struct falcon_pull_data_pkt *pkt = hdr;
 
@@ -102,8 +106,10 @@ static int handler_falcon_pull_data(const void *hdr, void *frame,
 	return 0;
 }
 
-static int handler_falcon_push_data(const void *hdr, void *frame,
-				    const struct xdp2_ctrl_data ctrl)
+static int handler_falcon_push_data(const void *hdr, size_t hdr_len,
+				    size_t hdr_off, void *frame,
+				    void *metadata,
+				    const struct xdp2_ctrl_data *ctrl)
 {
 	const struct falcon_push_data_pkt *pkt = hdr;
 
@@ -121,8 +127,10 @@ static int handler_falcon_push_data(const void *hdr, void *frame,
 	return 0;
 }
 
-static int handler_falcon_resync(const void *hdr, void *frame,
-				 const struct xdp2_ctrl_data ctrl)
+static int handler_falcon_resync(const void *hdr, size_t hdr_len,
+				 size_t hdr_off, void *frame,
+				 void *metadata,
+				 const struct xdp2_ctrl_data *ctrl)
 {
 	const struct falcon_resync_pkt *pkt = hdr;
 
@@ -147,7 +155,7 @@ static int handler_falcon_resync(const void *hdr, void *frame,
 }
 
 static void print_falcon_base_ack(const void *vhdr,
-				  const struct xdp2_ctrl_data ctrl)
+				  const struct xdp2_ctrl_data *ctrl)
 {
 	const struct falcon_base_ack_pkt *bhdr = vhdr;
 
@@ -183,8 +191,10 @@ static void print_falcon_base_ack(const void *vhdr,
 		    bhdr->oo_wind_notify, bhdr->oo_wind_notify);
 }
 
-static int handler_falcon_back(const void *hdr, void *frame,
-			       const struct xdp2_ctrl_data ctrl)
+static int handler_falcon_back(const void *hdr, size_t hdr_len,
+			       size_t hdr_off, void *frame,
+			       void *metadata,
+			       const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
 		LOC_PRINTFC(ctrl, "\t\tFalcon ack\n");
@@ -197,8 +207,10 @@ static int handler_falcon_back(const void *hdr, void *frame,
 	return 0;
 }
 
-static int handler_falcon_eack(const void *hdr, void *frame,
-			       const struct xdp2_ctrl_data ctrl)
+static int handler_falcon_eack(const void *hdr, size_t hdr_len,
+			       size_t hdr_off, void *frame,
+			       void *metadata,
+			       const struct xdp2_ctrl_data *ctrl)
 {
 	const struct falcon_ext_ack_pkt *eack = hdr;
 
@@ -224,8 +236,10 @@ static int handler_falcon_eack(const void *hdr, void *frame,
 	return 0;
 }
 
-static int handler_falcon_nack(const void *hdr, void *frame,
-			       const struct xdp2_ctrl_data ctrl)
+static int handler_falcon_nack(const void *hdr, size_t hdr_len,
+			       size_t hdr_off, void *frame,
+			       void *metadata,
+			       const struct xdp2_ctrl_data *ctrl)
 {
 	const struct falcon_nack_pkt *nack = hdr;
 

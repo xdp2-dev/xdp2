@@ -325,5 +325,6 @@ void print_metadata(void *_metadata, const struct xdp2_ctrl_data *ctrl)
 	PRINTFC(seqno, "\tCounters:\n");
 
 	for (i = 0; i < 3; i++)
-		PRINTFC(seqno, "\t\tCounter #%u: %u\n", i, ctrl->var.counters[i]);
+		PRINTFC(seqno, "\t\tCounter #%u: %u\n", i,
+			ctrl->key.counters[i]);
 }

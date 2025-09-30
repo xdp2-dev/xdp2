@@ -41,7 +41,7 @@ MAKE_SIMPLE_HANDLER(sue_base_node, "SUE base node")
 MAKE_SIMPLE_HANDLER(sue_v0_node, "SUE version 0")
 
 static void print_sue_reliability_header(const void *vhdr,
-					 const struct xdp2_ctrl_data ctrl)
+					 const struct xdp2_ctrl_data *ctrl)
 {
 	const struct sue_reliability_hdr *rhdr = vhdr;
 	__u16 xpuid = sue_get_xpuid(rhdr);
@@ -67,7 +67,7 @@ static void print_sue_reliability_header(const void *vhdr,
 }
 
 static int handler_sue_rh(const void *hdr, void *frame,
-			  const struct xdp2_ctrl_data ctrl,
+			  const struct xdp2_ctrl_data *ctrl,
 			  char *text)
 {
 	if (verbose >= 5)
@@ -89,8 +89,10 @@ XDP2_MAKE_PARSE_NODE(sue_v0_node, sue_parse_opcode_ov, sue_opcode_table,
 		     (.ops.handler = handler_sue_v0_node));
 
 #define MAKE_SUE_OPCODE_NODE(NAME, TEXT)				\
-static int handler_sue_rh_##NAME(const void *hdr, void *frame,		\
-				 const struct xdp2_ctrl_data ctrl)	\
+static int handler_sue_rh_##NAME(const void *hdr, size_t hdr_len,	\
+				 size_t hdr_off, void *metadata,	\
+				 void *frame,				\
+				 const struct xdp2_ctrl_data *ctrl)	\
 {									\
 	return handler_sue_rh(hdr, frame, ctrl, TEXT);			\
 }									\
