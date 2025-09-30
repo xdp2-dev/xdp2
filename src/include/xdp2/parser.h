@@ -61,19 +61,12 @@ static const struct {
 	{ XDP2_STOP_BAD_FLAG, "XDP2 stop bad flag" },
 };
 
-static inline ssize_t __xdp2_proto_null_all_len(const void *v, size_t max_len)
-{
-	return max_len;
-}
-
 static const struct xdp2_proto_def xdp2_parse_null __unused() = {
 	.name = "NULL-proto",
-	.ops.len_maxlen = __xdp2_proto_null_all_len,
 };
 
 static const struct xdp2_proto_def xdp2_parse_null_overlay __unused() = {
 	.name = "NULL-proto",
-	.ops.len_maxlen = __xdp2_proto_null_all_len,
 	.overlay = 1,
 };
 
@@ -262,17 +255,30 @@ struct xdp2_parse_user_node {
 
 #ifndef __KERNEL__
 /* Parse starting at the provided root node */
-int __xdp2_parse(const struct xdp2_parser *parser,
-		 const struct xdp2_packet_data *pdata, void *metadata,
-		 unsigned int flags);
+int __xdp2_parse(const struct xdp2_parser *parser, void *hdr,
+		 size_t len, void *metadata,
+		 struct xdp2_ctrl_data *ctrl, unsigned int flags);
+
+int __xdp2_parse_fast(const struct xdp2_parser *parser, void *hdr,
+		      size_t len, void *metadata,
+		      struct xdp2_ctrl_data *ctrl);
 #else
-static inline int __xdp2_parse(const struct xdp2_parser *parser,
-		 const struct xdp2_packet_data *pdata, void *metadata,
-		 unsigned int flags);
+static inline int __xdp2_parse(const struct xdp2_parser *parser, void *hdr,
+			       size_t len, void *metadata,
+			       struct xdp2_ctrl_data *ctrl, unsigned int flags)
+{
+	return 0;
+}
+
+static inline int __xdp2_parse_fast(const struct xdp2_parser *parser, void *hdr,
+			     size_t len, void *metadata,
+			     struct xdp2_ctrl_data *ctrl)
 {
 	return 0;
 }
 #endif
+
+bool xdp2_parse_validate_fast(const struct xdp2_parser *parser);
 
 /* Parse packet starting from a parser node
  *
@@ -287,18 +293,29 @@ static inline int __xdp2_parse(const struct xdp2_parser *parser,
  * Returns XDP2 return code value.
  */
 static inline int xdp2_parse(const struct xdp2_parser *parser,
-			     const struct xdp2_packet_data *pdata,
-			     void *metadata, unsigned int flags)
+			     void *hdr, size_t len,
+			     void *metadata,
+			     struct xdp2_ctrl_data *ctrl,
+			     unsigned int flags)
 {
 	switch (parser->parser_type) {
 	case XDP2_GENERIC:
-		return __xdp2_parse(parser, pdata, metadata, flags);
+		return __xdp2_parse(parser, hdr, len, metadata,
+				    ctrl, flags);
 	case XDP2_OPTIMIZED:
-		return (parser->parser_entry_point)(parser, pdata, metadata,
-						    flags);
+		return (parser->parser_entry_point)(parser, hdr, len,
+						    metadata, ctrl, flags);
 	default:
 		return XDP2_STOP_FAIL;
 	}
+}
+
+static inline int xdp2_parse_fast(const struct xdp2_parser *parser,
+			     void *hdr, size_t len,
+			     void *metadata,
+			     struct xdp2_ctrl_data *ctrl)
+{
+	return __xdp2_parse_fast(parser, hdr, len, metadata, ctrl);
 }
 
 #define __XDP2_PARSE_INIT_CTRL(PARSER, CTRL) do {			\
@@ -340,7 +357,7 @@ static inline const struct xdp2_parser *xdp2_lookup_parser_table(
 
 static inline int xdp2_parse_from_table(const struct xdp2_parser_table *table,
 					int key,
-					const struct xdp2_packet_data *pdata,
+					struct xdp2_ctrl_data *ctrl,
 					void *metadata, unsigned int flags)
 {
 	const struct xdp2_parser *parser;
@@ -348,7 +365,7 @@ static inline int xdp2_parse_from_table(const struct xdp2_parser_table *table,
 	if (!(parser = xdp2_lookup_parser_table(table, key)))
 		return XDP2_STOP_FAIL;
 
-	return xdp2_parse(parser, pdata,  metadata, flags);
+	return xdp2_parse(parser, NULL, 0, metadata, ctrl, flags);
 }
 
 
@@ -372,10 +389,11 @@ static inline int __xdp2_parse_run_exit_node(const struct xdp2_parser *parser,
 					     unsigned int flags)
 {
 	if (parse_node->ops.extract_metadata)
-		parse_node->ops.extract_metadata(NULL, _frame, *ctrl);
+		parse_node->ops.extract_metadata(NULL, 0, 0, metadata, _frame,
+						 ctrl);
 
 	if (parse_node->ops.handler)
-		parse_node->ops.handler(NULL, _frame, *ctrl);
+		parse_node->ops.handler(NULL, 0, 0, metadata, _frame, ctrl);
 
 	return 0;
 }

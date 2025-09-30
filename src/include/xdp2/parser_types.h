@@ -36,6 +36,7 @@
 #include <linux/types.h>
 
 #include "xdp2/compiler_helpers.h"
+#include "xdp2/utility.h"
 
 /* XDP2 parser return codes */
 enum {
@@ -79,11 +80,11 @@ enum {
 /* XDP2 parser type codes */
 enum xdp2_parser_type {
 	/* Use non-optimized loop xdp2 parser algorithm */
-	XDP2_GENERIC = 0,
+	XDP2_GENERIC,
 	/* Use optimized, generated, parser algorithm  */
-	XDP2_OPTIMIZED = 1,
+	XDP2_OPTIMIZED,
 	/* XDP parser */
-	XDP2_XDP = 2,
+	XDP2_XDP,
 };
 
 /* Parse and protocol defintion types */
@@ -111,8 +112,7 @@ enum xdp2_parser_node_type {
  *	to get the next layer protocol definition.
  */
 struct xdp2_parse_ops {
-	ssize_t (*len)(const void *hdr);
-	ssize_t (*len_maxlen)(const void *hdr, size_t max_len);
+	ssize_t (*len)(const void *hdr, size_t maxlen);
 	int (*next_proto)(const void *hdr);
 	int (*next_proto_keyin)(const void *hdr, __u32 key);
 };
@@ -132,13 +132,15 @@ struct xdp2_parse_ops {
  * ops: Operations to parse protocol header
  */
 struct xdp2_proto_def {
-	enum xdp2_parser_node_type node_type;
+	enum xdp2_parser_node_type node_type __attribute__((__packed__));
 	__u8 encap;
 	__u8 overlay;
+	__u16 min_len;
 	const char *name;
-	size_t min_len;
 	const struct xdp2_parse_ops ops;
-};
+} __aligned(XDP2_CACHELINE_SIZE) __packed;
+
+XDP2_BUILD_BUG_ON(sizeof(struct xdp2_proto_def) <= XDP2_CACHELINE_SIZE);
 
 struct xdp2_xdp_ctx {
 	__u32 frame_num;
@@ -153,8 +155,6 @@ struct xdp2_parse_node;
 struct xdp2_packet_data {
 	void *packet;		/* Packet handle */
 	size_t pkt_len;		/* Full length of packet */
-	void *hdrs;		/* Pointer to header bytes */
-	size_t hdrs_len;	/* Number of header bytes for parsing */
 	__u32 seqno;		/* Sequence number per interface */
 	__u32 timestamp;	/* Received timestamp */
 	__u32 in_port;		/* Received port number */
@@ -167,31 +167,24 @@ struct xdp2_packet_data {
 #define XDP2_SET_BASIC_PDATA(PDATA, PACKET, LENGTH) do {		\
 	memset(&PDATA, 0, sizeof(PDATA));				\
 	(PDATA).packet = PACKET;					\
-	(PDATA).hdrs = PACKET;						\
 	(PDATA).pkt_len = LENGTH;					\
-	(PDATA).hdrs_len = LENGTH;					\
 } while (0)
 
 #define XDP2_SET_BASIC_PDATA_LEN_SEQNO(PDATA, PACKET, LENGTH,		\
 				 HDRS, HDRS_LEN, SEQNO) do {		\
 	memset(&PDATA, 0, sizeof(PDATA));				\
 	(PDATA).packet = PACKET;					\
-	(PDATA).hdrs = HDRS;						\
 	(PDATA).pkt_len = LENGTH;					\
-	(PDATA).hdrs_len = HDRS_LEN;					\
 	(PDATA).seqno = SEQNO;						\
 } while (0)
 
 struct xdp2_hdr_data {
-	size_t hdr_len;		/* Header length */
-	size_t hdr_offset;	/* Header offset from beginning of packet */
-	__u8 tlv_levels;	/* Num. TVL levels (used with nested TLVs) */
+	__u8 tlv_levels;	/* Num. TLV levels (used with nested TLVs) */
 	__u16 pkt_csum;		/* Packet checksum to header start */
 	__u16 hdr_csum;		/* CHecksum of current header */
 };
 
 struct xdp2_var_data {
-	void *metadata;		/* Pointer to metadata structure */
 	int ret_code;		/* Return code */
 	const struct xdp2_parse_node *last_node; /* Last node parsed */
 	__u8 *counters;		/* Array of 8-bit counters */
@@ -201,9 +194,9 @@ struct xdp2_var_data {
 };
 
 struct xdp2_ctrl_data {
-	struct xdp2_packet_data pkt;
 	struct xdp2_hdr_data hdr;
 	struct xdp2_var_data var;
+	struct xdp2_packet_data pkt;
 };
 
 /* Parse node operations
@@ -220,12 +213,15 @@ struct xdp2_ctrl_data {
  *	values indicate to stop parsing
  */
 struct xdp2_parse_node_ops {
-	void (*extract_metadata)(const void *hdr, void *frame,
-				 const struct xdp2_ctrl_data ctrl);
-	int (*handler)(const void *hdr, void *frame,
-		       const struct xdp2_ctrl_data ctrl);
-	int (*post_handler)(const void *hdr, void *frame,
-			    const struct xdp2_ctrl_data ctrl);
+	void (*extract_metadata)(const void *hdr, size_t hdr_len,
+				 size_t hdr_off, void *metadata, void *frame,
+				 const struct xdp2_ctrl_data *ctrl);
+	int (*handler)(const void *hdr, size_t hdr_len, size_t hdr_off,
+		       void *metadata, void *frame,
+		       const struct xdp2_ctrl_data *ctrl);
+	int (*post_handler)(const void *hdr, size_t hdr_len, size_t hdr_off,
+			    void *metadata, void *frame,
+			    const struct xdp2_ctrl_data *ctrl);
 };
 
 /* Protocol definitions and parse node operations ordering. When processing a
@@ -268,24 +264,28 @@ struct xdp2_proto_table {
  * next_proto is not NULL
  */
 struct xdp2_parse_node {
-	enum xdp2_parser_node_type node_type;
-	char *text_name;
-	int unknown_ret;
+	enum xdp2_parser_node_type node_type __attribute__((__packed__));
+	__s8 unknown_ret;
+	__u8 key_sel;
+	__u8 flags;
+	__u8 rsvd;
 	const struct xdp2_proto_def *proto_def;
 	const struct xdp2_parse_node_ops ops;
 	const struct xdp2_proto_table *proto_table;
 	const struct xdp2_parse_node *wildcard_node;
-	__u8 key_sel;
-	__u32 flags;
-};
+	char *text_name;
+} __aligned(XDP2_CACHELINE_SIZE) __packed;
+
+XDP2_BUILD_BUG_ON(sizeof(struct xdp2_parse_node) <= XDP2_CACHELINE_SIZE);
 
 /* Declaration of a XDP2 parser */
 struct xdp2_parser;
 
 /* XDP2 entry-point for optimized parsers */
 typedef int (*xdp2_parser_opt_entry_point)(const struct xdp2_parser *parser,
-					   const struct xdp2_packet_data *pdata,
+					   void *hdr, size_t len,
 					   void *metadata,
+					   struct xdp2_ctrl_data *ctrl,
 					   unsigned int flags);
 
 /* XDP2 entry-point for XDP parsers */

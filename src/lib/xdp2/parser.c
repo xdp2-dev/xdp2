@@ -84,14 +84,14 @@ static const struct xdp2_parse_flag_field_node *lookup_flag_field_node(int idx,
 
 static int xdp2_parse_tlvs(const struct xdp2_parse_node *parse_node,
 			   const void *hdr, size_t hlen, size_t offset,
-			   void *frame, struct xdp2_ctrl_data *ctrl,
-			   unsigned int flags);
+			   void *metadata, void *frame,
+			   struct xdp2_ctrl_data *ctrl, unsigned int flags);
 
 static int xdp2_parse_one_tlv(
 		const struct xdp2_parse_tlvs_node *parse_tlvs_node,
 		const struct xdp2_parse_tlv_node *parse_tlv_node,
-		const void *hdr, void *frame, int type, size_t tlv_len,
-		size_t offset, struct xdp2_ctrl_data *ctrl,
+		const void *hdr, void *metadata, void *frame, int type,
+		size_t tlv_len, size_t offset, struct xdp2_ctrl_data *ctrl,
 		unsigned int flags)
 {
 	const struct xdp2_proto_tlv_def *proto_tlv_def =
@@ -116,15 +116,13 @@ parse_again:
 
 	ops = &parse_tlv_node->tlv_ops;
 
-	/* Set up header length and header offset as arguments */
-	ctrl->hdr.hdr_len = tlv_len;
-	ctrl->hdr.hdr_offset = offset;
-
 	if (ops->extract_metadata)
-		ops->extract_metadata(hdr, frame, *ctrl);
+		ops->extract_metadata(hdr, tlv_len, offset, metadata, frame,
+				      ctrl);
 
 	if (ops->handler) {
-		ret = ops->handler(hdr, frame, *ctrl);
+		ret = ops->handler(hdr, tlv_len, offset, metadata, frame,
+				   ctrl);
 		if (ret != XDP2_OKAY)
 			return ret;
 	}
@@ -138,7 +136,8 @@ parse_again:
 		ctrl->hdr.tlv_levels++;
 		ret = xdp2_parse_tlvs(parse_tlv_node->nested_node,
 			    hdr + nested_offset, tlv_len - nested_offset,
-			    offset + nested_offset, frame, ctrl, flags);
+			    offset + nested_offset, metadata, frame, ctrl,
+			    flags);
 		ctrl->hdr.tlv_levels--;
 
 		if (ret != XDP2_OKAY)
@@ -175,7 +174,7 @@ parse_again:
 
 static int xdp2_parse_tlvs(const struct xdp2_parse_node *parse_node,
 			   const void *hdr, size_t hlen,
-			   size_t offset, void *frame,
+			   size_t offset, void *metadata, void *frame,
 			   struct xdp2_ctrl_data *ctrl,
 			   unsigned int flags)
 {
@@ -220,7 +219,8 @@ static int xdp2_parse_tlvs(const struct xdp2_parse_node *parse_node,
 			break;
 		}
 
-		if (hlen < proto_tlvs_def->min_len) {
+		tlv_len = proto_tlvs_def->min_len;
+		if (hlen < tlv_len) {
 			/* Length error */
 			return XDP2_STOP_TLV_LENGTH;
 		}
@@ -229,19 +229,10 @@ static int xdp2_parse_tlvs(const struct xdp2_parse_node *parse_node,
 		 * array of fixed sized values (which maybe be useful in
 		 * itself now that I think about it)
 		 */
-		if (proto_tlvs_def->ops.len ||
-		    proto_tlvs_def->ops.len_maxlen) {
-			tlv_len = proto_tlvs_def->ops.len_maxlen ?
-				proto_tlvs_def->ops.len_maxlen(cp, hlen) :
-				proto_tlvs_def->ops.len(cp);
+		if (proto_tlvs_def->ops.len) {
+			tlv_len = proto_tlvs_def->ops.len(cp, hlen);
 			if (!tlv_len || hlen < tlv_len)
 				return XDP2_STOP_TLV_LENGTH;
-
-			if (tlv_len < proto_tlvs_def->min_len)
-				return tlv_len < 0 ? tlv_len :
-						XDP2_STOP_TLV_LENGTH;
-		} else {
-			tlv_len = proto_tlvs_def->min_len;
 		}
 
 		type = proto_tlvs_def->ops.type(cp);
@@ -256,7 +247,8 @@ static int xdp2_parse_tlvs(const struct xdp2_parse_node *parse_node,
 		if (parse_tlv_node) {
 parse_one_tlv:
 			ret = xdp2_parse_one_tlv(parse_tlvs_node,
-						  parse_tlv_node, cp, frame,
+						  parse_tlv_node, cp,
+						  metadata, frame,
 						  type, tlv_len, offset,
 						  ctrl, flags);
 			if (ret != XDP2_OKAY)
@@ -292,8 +284,8 @@ parse_one_tlv:
 
 static int xdp2_parse_flag_fields(const struct xdp2_parse_node *parse_node,
 				   const void *hdr, size_t hlen,
-				   size_t offset, void *frame,
-				   struct xdp2_ctrl_data *ctrl,
+				   size_t offset, void *metadata,
+				   void *frame, struct xdp2_ctrl_data *ctrl,
 				   unsigned int pflags)
 {
 	const struct xdp2_parse_flag_fields_node *parse_flag_fields_node;
@@ -338,17 +330,15 @@ static int xdp2_parse_flag_fields(const struct xdp2_parse_node *parse_node,
 				printf("XDP2 parsing flag-field %s\n",
 				      parse_flag_field_node->name);
 
-			/* Set up header length and header offset as
-			 * arguments
-			 */
-			ctrl->hdr.hdr_len = flag_fields->fields[i].size;
-			ctrl->hdr.hdr_offset = offset + off;
-
 			if (ops->extract_metadata)
-				ops->extract_metadata(cp, frame, *ctrl);
+				ops->extract_metadata(cp,
+					flag_fields->fields[i].size,
+					offset + off, metadata, frame, ctrl);
 
 			if (ops->handler)
-				ops->handler(cp, frame, *ctrl);
+				ops->handler(cp,
+					flag_fields->fields[i].size,
+					offset + off, metadata, frame, ctrl);
 		}
 	}
 
@@ -366,17 +356,14 @@ static int xdp2_parse_flag_fields(const struct xdp2_parse_node *parse_node,
  *   - start_node: first node (typically node_ether)
  *   - flags: allowed parameterized parsing
  */
-int __xdp2_parse(const struct xdp2_parser *parser,
-		 const struct xdp2_packet_data *pdata, void *metadata,
-		 unsigned int flags)
+int __xdp2_parse(const struct xdp2_parser *parser, void *hdr,
+		 size_t len, void *metadata,
+		 struct xdp2_ctrl_data *ctrl, unsigned int flags)
 {
-	ssize_t hlen, len = pdata->hdrs ? pdata->hdrs_len : pdata->pkt_len;
 	const struct xdp2_parse_node *parse_node = parser->root_node;
 	void *frame = metadata + parser->config.metameta_size;
 	const struct xdp2_parse_node *next_parse_node;
-	void *hdr = pdata->hdrs ? : pdata->packet;
-	const struct xdp2_proto_def *proto_def;
-	struct xdp2_ctrl_data ctrl;
+	unsigned int nodes = parser->config.max_nodes;
 	unsigned int frame_num = 0;
 	size_t offset = 0;
 	int type, ret;
@@ -388,21 +375,15 @@ int __xdp2_parse(const struct xdp2_parser *parser,
 	 * unknown protocol result in table lookup for next node.
 	 */
 
-	__XDP2_PARSE_INIT_CTRL(parser, ctrl);
-
-	ctrl.pkt = *pdata;
-	ctrl.var.metadata = metadata;
-
 	do {
-		proto_def = parse_node->proto_def;
+		const struct xdp2_proto_def *proto_def = parse_node->proto_def;
+		ssize_t hlen = proto_def->min_len;
 
 		if (flags & XDP2_F_DEBUG)
 			printf("XDP2 parsing %s, remaining length %lu\n",
 			       proto_def->name, len);
 
-		hlen = proto_def->min_len;
-
-		ctrl.var.last_node = parse_node;
+		ctrl->var.last_node = parse_node;
 
 		/* Protocol definition length checks */
 
@@ -411,10 +392,8 @@ int __xdp2_parse(const struct xdp2_parser *parser,
 			goto out;
 		}
 
-		if (proto_def->ops.len || proto_def->ops.len_maxlen) {
-			hlen = proto_def->ops.len_maxlen ?
-				proto_def->ops.len_maxlen(hdr, len) :
-				proto_def->ops.len(hdr);
+		if (proto_def->ops.len) {
+			hlen = proto_def->ops.len(hdr, len);
 			if (len < hlen) {
 				ret = XDP2_STOP_LENGTH;
 				goto out;
@@ -424,8 +403,6 @@ int __xdp2_parse(const struct xdp2_parser *parser,
 				ret = hlen < 0 ? hlen : XDP2_STOP_LENGTH;
 				goto out;
 			}
-		} else {
-			hlen = proto_def->min_len;
 		}
 
 		/* Callback processing order
@@ -437,17 +414,15 @@ int __xdp2_parse(const struct xdp2_parser *parser,
 		 *    4) Call post handler
 		 */
 
-		/* Set up header length and header offset as arguments */
-		ctrl.hdr.hdr_len = hlen;
-		ctrl.hdr.hdr_offset = offset;
-
 		/* Extract metadata */
 		if (parse_node->ops.extract_metadata)
-			parse_node->ops.extract_metadata(hdr, frame, ctrl);
+			parse_node->ops.extract_metadata(hdr, hlen, offset,
+							 metadata, frame, ctrl);
 
 		/* Call handler */
 		if (parse_node->ops.handler)
-			parse_node->ops.handler(hdr, frame, ctrl);
+			parse_node->ops.handler(hdr, hlen, offset, metadata,
+						frame, ctrl);
 
 		switch (parse_node->node_type) {
 		case XDP2_NODE_TYPE_PLAIN:
@@ -461,8 +436,8 @@ int __xdp2_parse(const struct xdp2_parser *parser,
 				 * but proto_def is not TLVs type
 				 */
 				ret = xdp2_parse_tlvs(parse_node, hdr, hlen,
-						      offset, frame, &ctrl,
-						      flags);
+						      offset, metadata,
+						      frame, ctrl, flags);
 				if (ret != XDP2_OKAY)
 					goto out;
 			}
@@ -476,8 +451,8 @@ int __xdp2_parse(const struct xdp2_parser *parser,
 				 */
 				ret = xdp2_parse_flag_fields(parse_node, hdr,
 							     hlen, offset,
-							     frame, &ctrl,
-							     flags);
+							     metadata, frame,
+							     ctrl, flags);
 				if (ret != XDP2_OKAY)
 					goto out;
 			}
@@ -486,7 +461,8 @@ int __xdp2_parse(const struct xdp2_parser *parser,
 
 		/* Call handler */
 		if (parse_node->ops.post_handler)
-			parse_node->ops.post_handler(hdr, frame, ctrl);
+			parse_node->ops.post_handler(hdr, hlen, offset,
+						     metadata, frame, ctrl);
 
 		/* Proceed to next protocol layer */
 
@@ -501,7 +477,7 @@ int __xdp2_parse(const struct xdp2_parser *parser,
 			if (parser->config.atencap_node) {
 				ret = __xdp2_parse_run_exit_node(parser,
 					parser->config.atencap_node,
-					metadata, frame, &ctrl, flags);
+					metadata, frame, ctrl, flags);
 				if (ret != XDP2_OKAY)
 					goto out;
 			}
@@ -510,7 +486,7 @@ int __xdp2_parse(const struct xdp2_parser *parser,
 			 * number of encap layers allowed and also
 			 * if we need a new metadata frame.
 			 */
-			if (++ctrl.var.encaps > parser->config.max_encaps) {
+			if (++ctrl->var.encaps > parser->config.max_encaps) {
 				ret = XDP2_STOP_ENCAP_DEPTH;
 				goto out;
 			}
@@ -528,7 +504,7 @@ int __xdp2_parse(const struct xdp2_parser *parser,
 
 			type = proto_def->ops.next_proto_keyin ?
 				proto_def->ops.next_proto_keyin(hdr,
-					ctrl.var.keys[parse_node->key_sel]) :
+					ctrl->var.keys[parse_node->key_sel]) :
 				proto_def->ops.next_proto(hdr);
 			if (type < 0) {
 				ret = type;
@@ -559,6 +535,20 @@ int __xdp2_parse(const struct xdp2_parser *parser,
 			goto out;
 		}
 
+		if (parse_node->proto_table &&
+		    proto_def->ops.next_proto) {
+			/* Lookup next proto */
+
+			type = proto_def->ops.next_proto(hdr);
+			if (type < 0) {
+				ret = type;
+				goto out;
+			}
+
+			/* Get next node */
+			next_parse_node = lookup_node(type,
+						parse_node->proto_table);
+		}
 found_next:
 		/* Found next parse node, set up to process */
 
@@ -575,6 +565,10 @@ found_next:
 			goto out;
 		}
 
+		if (!nodes)
+			return XDP2_STOP_MAX_NODES;
+		nodes--;
+
 		parse_node = next_parse_node;
 
 	} while (1);
@@ -583,11 +577,229 @@ out:
 	parse_node = XDP2_CODE_IS_OKAY(ret) ?
 			parser->config.okay_node : parser->config.fail_node;
 
-	ctrl.var.ret_code = ret;
+	ctrl->var.ret_code = ret;
 
 	if (parse_node)
 		__xdp2_parse_run_exit_node(parser, parse_node, metadata, frame,
-					   &ctrl, flags);
+					   ctrl, flags);
+
+	return ret;
+}
+
+int __xdp2_parse_fast(const struct xdp2_parser *parser, void *hdr,
+		      size_t len, void *metadata,
+		      struct xdp2_ctrl_data *ctrl)
+{
+	const struct xdp2_parse_node *parse_node = parser->root_node;
+	void *frame = metadata + parser->config.metameta_size;
+	const struct xdp2_parse_node *next_parse_node;
+	unsigned int frame_num = 0;
+	size_t offset = 0;
+	int type, ret;
+
+	/* Main parsing loop. The loop normal teminates when we encounter a
+	 * leaf node, an error condition, hitting limit on layers of
+	 * encapsulation, protocol condition to stop (i.e. flags that
+	 * indicate to stop at flow label or hitting fragment), or
+	 * unknown protocol result in table lookup for next node.
+	 */
+
+	do {
+		const struct xdp2_proto_def *proto_def = parse_node->proto_def;
+		ssize_t hlen = proto_def->min_len;
+
+		/* Protocol definition length checks */
+
+		if (len < hlen)
+			return XDP2_STOP_LENGTH;
+
+		if (proto_def->ops.len) {
+			hlen = proto_def->ops.len(hdr, len);
+			if (len < hlen)
+				return XDP2_STOP_LENGTH;
+		}
+
+		/* Callback processing order
+		 *    1) Extract Metadata
+		 *    2) Call handler
+		 *    3) Process TLVs or flag fields
+		 *	3.a) Extract metadata from each object
+		 *	3.b) Call handler for each object
+		 */
+
+		/* Extract metadata */
+		if (parse_node->ops.extract_metadata)
+			parse_node->ops.extract_metadata(hdr, hlen, offset,
+							 metadata, frame, ctrl);
+
+		/* Call handler */
+		if (parse_node->ops.handler)
+			parse_node->ops.handler(hdr, hlen, offset, metadata,
+						frame, ctrl);
+
+		switch (parse_node->node_type) {
+		case XDP2_NODE_TYPE_PLAIN:
+		default:
+			break;
+		case XDP2_NODE_TYPE_TLVS:
+			/* Process TLV nodes */
+			ret = xdp2_parse_tlvs(parse_node, hdr, hlen,
+					      offset, metadata,
+					      frame, ctrl, 0);
+			if (ret != XDP2_OKAY)
+				return ret;
+			break;
+		case XDP2_NODE_TYPE_FLAG_FIELDS:
+			/* Process flag-fields */
+			ret = xdp2_parse_flag_fields(parse_node, hdr,
+						     hlen, offset,
+						     metadata, frame,
+						     ctrl, 0);
+			if (ret != XDP2_OKAY)
+				return ret;
+			break;
+		}
+
+		/* Proceed to next protocol layer */
+		if (proto_def->encap) {
+			/* New encapsulation leyer. Check against
+			 * number of encap layers allowed and also
+			 * if we need a new metadata frame.
+			 */
+			if (++ctrl->var.encaps > parser->config.max_encaps)
+				return XDP2_STOP_ENCAP_DEPTH;
+
+			if (parser->config.max_frames > frame_num) {
+				frame += parser->config.frame_size;
+				frame_num++;
+			}
+		}
+
+		next_parse_node = NULL;
+		if (parse_node->proto_table) {
+			type = proto_def->ops.next_proto(hdr);
+			if (type < 0)
+				return type;
+
+			/* Get next node */
+			next_parse_node = lookup_node(type,
+						parse_node->proto_table);
+		}
+		if (!next_parse_node) {
+			next_parse_node = parse_node->wildcard_node;
+			if (!next_parse_node)
+				return XDP2_STOP_OKAY;
+		}
+
+		/* Found next parse node, set up to process */
+
+		if (!proto_def->overlay) {
+			/* Move over current header */
+			offset += hlen;
+			hdr += hlen;
+			len -= hlen;
+		}
+
+		parse_node = next_parse_node;
+	} while (1);
+}
+
+#define NUM_FAST_NODES 64
+
+/* Validate whether a parse node is compatible with xdp2_parse_fast
+ *
+ * Validation checks are
+ *     - If there is a post handler fail validation
+ *     - If there is no protocol definition then fail validation
+ *     - If next_proto_keyin operation is set then fail validation
+ *     - If parse node type is TLV or flag-field check that the
+ *	 protocol definition type matches, if not fail validation
+ *     - If there's a protocol table validate each node in the table
+ *	 by recursively calling validate_parse_fast_node
+ */
+static bool validate_parse_fast_node(const struct xdp2_parse_node **fast_nodes,
+				     const struct xdp2_parse_node *parse_node)
+{
+	const struct xdp2_proto_table *prot_table = parse_node->proto_table;
+	const struct xdp2_proto_def *proto_def = parse_node->proto_def;
+	const struct xdp2_proto_table_entry *entries;
+	int i;
+
+	for (i = 0; i < NUM_FAST_NODES && fast_nodes[i]; i++)
+		if (fast_nodes[i] == parse_node)
+			return true;
+
+	if (i >= NUM_FAST_NODES)
+		return false;
+
+	fast_nodes[i] = parse_node;
+
+	if (parse_node->ops.post_handler || !proto_def)
+		return false;
+
+	if (proto_def->ops.next_proto_keyin)
+		return false;
+
+	switch (parse_node->node_type) {
+	case XDP2_NODE_TYPE_PLAIN:
+	default:
+		break;
+	case XDP2_NODE_TYPE_TLVS:
+		if (parse_node->proto_def->node_type !=
+		    XDP2_NODE_TYPE_TLVS)
+			return false;
+		break;
+	case XDP2_NODE_TYPE_FLAG_FIELDS:
+		if (parse_node->proto_def->node_type !=
+		    XDP2_NODE_TYPE_FLAG_FIELDS)
+			return false;
+		break;
+	}
+
+	if (!prot_table)
+		return true;
+
+	entries = prot_table->entries;
+
+	for (i = 0; i < prot_table->num_ents; i++) {
+		if (entries[i].node) {
+			if (!validate_parse_fast_node(fast_nodes,
+						      entries[i].node))
+				return false;
+		}
+	}
+
+	return true;
+}
+
+/* Validate whether xdp2_parse_fast may be called for a parser
+ *
+ * Validation checks are
+ *     - okay_node, fail_node, and atencap_node are not set in
+ *	 parser conifiguratio-- if any are set then fail validation
+ *     - num_counters and num_keys are zero in parser configuration,
+ *	 if not fail validation
+ *     - Validate the root node by calling validate_parse_fast_node
+ */
+bool xdp2_parse_validate_fast(const struct xdp2_parser *parser)
+{
+	const struct xdp2_parse_node **fast_nodes;
+	bool ret;
+
+	fast_nodes = calloc(NUM_FAST_NODES, sizeof(*fast_nodes));
+	if (!fast_nodes)
+		return false;
+
+	if (parser->config.okay_node || parser->config.fail_node ||
+	    parser->config.atencap_node)
+		return false;
+
+	if (parser->config.num_counters || parser->config.num_keys)
+		return false;
+
+	ret = validate_parse_fast_node(fast_nodes, parser->root_node);
+
+	free(fast_nodes);
 
 	return ret;
 }

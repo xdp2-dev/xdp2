@@ -61,10 +61,9 @@
  *	input (i.e. the length of the encompassing protocol header)
  */
 struct xdp2_proto_tlvs_opts {
-	ssize_t (*len)(const void *hdr);
+	ssize_t (*len)(const void *hdr, size_t maxlen);
 	int (*type)(const void *hdr);
 	size_t (*start_offset)(const void *hdr);
-	ssize_t (*len_maxlen)(const void *hdr, size_t max_len);
 };
 
 /* TLV parse node operations
@@ -81,10 +80,12 @@ struct xdp2_proto_tlvs_opts {
  *	values indicate to stop parsing
  */
 struct xdp2_parse_tlv_node_ops {
-	void (*extract_metadata)(const void *hdr, void *frame,
-				 const struct xdp2_ctrl_data ctrl);
-	int (*handler)(const void *hdr, void *frame,
-		       const struct xdp2_ctrl_data ctrl);
+	void (*extract_metadata)(const void *hdr, size_t hdr_len,
+				 size_t hdr_off, void *metadata, void *frame,
+				 const struct xdp2_ctrl_data *ctrl);
+	int (*handler)(const void *hdr, size_t hdr_len, size_t hdr_off,
+		       void *metadata, void *frame,
+		       const struct xdp2_ctrl_data *ctrl);
 };
 
 /* Parse node for a single TLV. Use common parse node operations

@@ -178,10 +178,12 @@ struct xdp2_proto_flag_fields_ops {
  *	values indicate to stop parsing
  */
 struct xdp2_parse_flag_field_node_ops {
-	void (*extract_metadata)(const void *hdr, void *frame,
-				 struct xdp2_ctrl_data ctrl);
-	int (*handler)(const void *hdr, void *frame,
-		       struct xdp2_ctrl_data ctrl);
+	void (*extract_metadata)(const void *hdr, size_t hdr_len,
+				 size_t hdr_off, void *metameta, void *frame,
+				 const struct xdp2_ctrl_data *ctrl);
+	int (*handler)(const void *hdr, size_t hdr_len, size_t hdr_off,
+		       void *metadata, void *frame,
+		       const struct xdp2_ctrl_data *ctrl);
 };
 
 /* A parse node for a single flag field */
