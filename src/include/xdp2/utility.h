@@ -258,7 +258,7 @@ static inline unsigned int xdp2_get_log_round_up(unsigned long long x)
 	static bool warned;						\
 									\
 	if (!warned) {							\
-		XDP2_WARN(__VA_ARGS__);				\
+		XDP2_WARN(__VA_ARGS__);					\
 		warned = true;						\
 	}								\
 } while (0)
@@ -269,6 +269,9 @@ static inline unsigned int xdp2_get_log_round_up(unsigned long long x)
 } while (0)
 
 #endif
+
+#define XDP2_BUILD_BUG_ON(condition)					\
+	typedef char static_assertion_##__LINE__[(condition) ? 1 : -1]
 
 #ifndef __KERNEL__
 
@@ -393,7 +396,7 @@ static inline const char *xdp2_print_color_select(int sel)
 
 static inline char *xdp2_getline(void)
 {
-	char *line = malloc(100), *linep = line;
+	char *line = (char *)malloc(100), *linep = line;
 	size_t lenmax = 100, len = lenmax;
 	int c;
 
@@ -414,7 +417,7 @@ static inline char *xdp2_getline(void)
 			ptrdiff_t diff = line - linep;
 
 			len = lenmax;
-			linen = realloc(linep, lenmax *= 2);
+			linen = (char *)realloc(linep, lenmax *= 2);
 
 			if (linen == NULL) {
 				free(linep);
