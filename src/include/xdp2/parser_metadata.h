@@ -319,8 +319,9 @@ struct xdp2_metadata_all {
  * Uses common metadata fields: eth_proto, eth_addrs
  */
 #define XDP2_METADATA_TEMP_ether(NAME, STRUCT)				\
-static void NAME(const void *veth, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *veth, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 									\
@@ -332,24 +333,40 @@ static void NAME(const void *veth, void *iframe,			\
 /* Meta data helper for Ethernet with setting L2 offset.
  * Uses common metadata fields: eth_proto, eth_addrs, l2_off
  */
+#if 0
 #define XDP2_METADATA_TEMP_ether_off(NAME, STRUCT)			\
-static void NAME(const void *veth, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *veth, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 									\
-	frame->l2_off = ctrl.hdr.hdr_offset;				\
+	frame->l2_off = hdr_off;					\
 	frame->eth_proto = ((struct ethhdr *)veth)->h_proto;		\
 	memcpy(frame->eth_addrs, &((struct ethhdr *)veth)->h_dest,	\
 	       sizeof(frame->eth_addrs));				\
 }
+#endif
 
+#define XDP2_METADATA_TEMP_ether_off(NAME, STRUCT)			\
+static void NAME(const void *veth, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
+{									\
+	struct STRUCT *frame = iframe;					\
+									\
+	frame->l2_off = hdr_off;					\
+	frame->eth_proto = ((struct ethhdr *)veth)->h_proto;		\
+	memcpy(frame->eth_addrs, &((struct ethhdr *)veth)->h_dest,	\
+	       sizeof(frame->eth_addrs));				\
+}
 /* Meta data helper for Ethernet without extracting addresses.
  * Uses common metadata fields: eth_proto
  */
 #define XDP2_METADATA_TEMP_ether_noaddrs(NAME, STRUCT)			\
-static void NAME(const void *veth, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *veth, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 									\
@@ -361,8 +378,9 @@ static void NAME(const void *veth, void *iframe,			\
  * addr_type, addrs.v4_addrs, l3_off
  */
 #define XDP2_METADATA_TEMP_ipv4(NAME, STRUCT)				\
-static void NAME(const void *viph, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *viph, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 	const struct iphdr *iph = viph;					\
@@ -373,7 +391,7 @@ static void NAME(const void *viph, void *iframe,			\
 				!(iph->frag_off & htons(IP_OFFSET));	\
 	}								\
 									\
-	frame->l3_off = ctrl.hdr.hdr_offset;				\
+	frame->l3_off = hdr_off;					\
 	frame->addr_type = XDP2_ADDR_TYPE_IPV4;				\
 	frame->ip_proto = iph->protocol;				\
 	memcpy(frame->addrs.v4_addrs, &iph->saddr,			\
@@ -384,8 +402,9 @@ static void NAME(const void *viph, void *iframe,			\
  * Uses common meta * data fields: ip_proto, addr_type, addrs.v4_addrs
  */
 #define XDP2_METADATA_TEMP_ipv4_addrs(NAME, STRUCT)			\
-static void NAME(const void *viph, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *viph, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 	const struct iphdr *iph = viph;					\
@@ -401,13 +420,14 @@ static void NAME(const void *viph, void *iframe,			\
  * addrs.v6_addrs, l3_off
  */
 #define XDP2_METADATA_TEMP_ipv6(NAME, STRUCT)				\
-static void NAME(const void *viph, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *viph, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 	const struct ipv6hdr *iph = viph;				\
 									\
-	frame->l3_off = ctrl.hdr.hdr_offset;				\
+	frame->l3_off = hdr_off;					\
 	frame->ip_proto = iph->nexthdr;					\
 	frame->addr_type = XDP2_ADDR_TYPE_IPV6;				\
 	frame->flow_label = ntohl(ip6_flowlabel(iph));			\
@@ -419,8 +439,9 @@ static void NAME(const void *viph, void *iframe,			\
  * Uses common metadata fields: ip_proto, addr_type, addrs.v6_addrs
  */
 #define XDP2_METADATA_TEMP_ipv6_addrs(NAME, STRUCT)			\
-static void NAME(const void *viph, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *viph, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 	const struct ipv6hdr *iph = viph;				\
@@ -435,8 +456,9 @@ static void NAME(const void *viph, void *iframe,			\
  * Uses common metadata fields: ports
  */
 #define XDP2_METADATA_TEMP_ports(NAME, STRUCT)				\
-static void NAME(const void *vphdr, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vphdr, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 									\
@@ -447,13 +469,14 @@ static void NAME(const void *vphdr, void *iframe,			\
  * Uses common metadata fields: ports, l4_off
  */
 #define XDP2_METADATA_TEMP_ports_off(NAME, STRUCT)			\
-static void NAME(const void *vphdr, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vphdr, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 									\
 	frame->ports = ((struct port_hdr *)vphdr)->ports;		\
-	frame->l4_off = ctrl.hdr.hdr_offset;				\
+	frame->l4_off = hdr_off;					\
 }
 
 /* Meta data helpers for TCP options */
@@ -462,8 +485,9 @@ static void NAME(const void *vphdr, void *iframe,			\
  * Uses common metadata field: tcp_options
  */
 #define XDP2_METADATA_TEMP_tcp_option_mss(NAME, STRUCT)			\
-static void NAME(const void *vopt, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vopt, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	const struct tcp_opt_union *opt = vopt;				\
 	struct STRUCT *frame = iframe;					\
@@ -475,8 +499,9 @@ static void NAME(const void *vopt, void *iframe,			\
  * Uses common metadata field: tcp_options
  */
 #define XDP2_METADATA_TEMP_tcp_option_window_scaling(NAME, STRUCT)	\
-static void NAME(const void *vopt, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vopt, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	const struct tcp_opt_union *opt = vopt;				\
 	struct STRUCT *frame = iframe;					\
@@ -488,8 +513,9 @@ static void NAME(const void *vopt, void *iframe,			\
  * Uses common metadata field: tcp_options
  */
 #define XDP2_METADATA_TEMP_tcp_option_timestamp(NAME, STRUCT)		\
-static void NAME(const void *vopt, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vopt, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	const struct tcp_opt_union *opt = vopt;				\
 	struct STRUCT *frame = iframe;					\
@@ -517,8 +543,9 @@ static void NAME(const void *vopt, void *iframe,			\
  * Uses common metadata field: tcp_options.sack[0]
  */
 #define XDP2_METADATA_TEMP_tcp_option_sack_1(NAME, STRUCT)		\
-static void NAME(const void *vopt, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vopt, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	XDP2_METADATA_SET_TCP_SACK(0, vopt, iframe, STRUCT);		\
 }
@@ -527,8 +554,9 @@ static void NAME(const void *vopt, void *iframe,			\
  * Uses common metadata field: tcp_options.sack[0], tcp_options.sack[1]
  */
 #define XDP2_METADATA_TEMP_tcp_option_sack_2(NAME, STRUCT)		\
-static void NAME(const void *vopt, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vopt, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	XDP2_METADATA_SET_TCP_SACK(0, vopt, iframe, STRUCT);		\
 	XDP2_METADATA_SET_TCP_SACK(1, vopt, iframe, STRUCT);		\
@@ -539,8 +567,9 @@ static void NAME(const void *vopt, void *iframe,			\
  * tcp_options.sack[2]
  */
 #define XDP2_METADATA_TEMP_tcp_option_sack_3(NAME, STRUCT)		\
-static void NAME(const void *vopt, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vopt, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	XDP2_METADATA_SET_TCP_SACK(0, vopt, iframe, STRUCT);		\
 	XDP2_METADATA_SET_TCP_SACK(1, vopt, iframe, STRUCT);		\
@@ -552,8 +581,9 @@ static void NAME(const void *vopt, void *iframe,			\
  * tcp_options.sack[2], tcp_options.sack[3]
  */
 #define XDP2_METADATA_TEMP_tcp_option_sack_4(NAME, STRUCT)		\
-static void NAME(const void *vopt, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vopt, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	XDP2_METADATA_SET_TCP_SACK(0, vopt, iframe, STRUCT);		\
 	XDP2_METADATA_SET_TCP_SACK(1, vopt, iframe, STRUCT);		\
@@ -565,8 +595,9 @@ static void NAME(const void *vopt, void *iframe,			\
  * Uses common metadata fields: eth_proto
  */
 #define XDP2_METADATA_TEMP_ip_overlay(NAME, STRUCT)			\
-static void NAME(const void *viph, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *viph, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 									\
@@ -584,8 +615,9 @@ static void NAME(const void *viph, void *iframe,			\
  * Uses common metadata fields: ip_proto
  */
 #define XDP2_METADATA_TEMP_ipv6_eh(NAME, STRUCT)			\
-static void NAME(const void *vopt, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vopt, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	((struct STRUCT *)iframe)->ip_proto =				\
 			((struct ipv6_opt_hdr *)vopt)->nexthdr;		\
@@ -595,8 +627,9 @@ static void NAME(const void *vopt, void *iframe,			\
  * Uses common metadata fields: ip_proto, is_fragment, first_frag
  */
 #define XDP2_METADATA_TEMP_ipv6_frag(NAME, STRUCT)			\
-static void NAME(const void *vfrag, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vfrag, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 	const struct ipv6_frag_hdr *frag = vfrag;			\
@@ -610,16 +643,18 @@ static void NAME(const void *vfrag, void *iframe,			\
  * Uses common metadata fields: ip_proto
  */
 #define XDP2_METADATA_TEMP_ipv6_frag_noinfo(NAME, STRUCT)		\
-static void NAME(const void *vfrag, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vfrag, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	((struct STRUCT *)iframe)->ip_proto =				\
 			((struct ipv6_frag_hdr *)vfrag)->nexthdr;	\
 }
 
 #define XDP2_METADATA_TEMP_arp_rarp(NAME, STRUCT)			\
-static void NAME(const void *vearp, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vearp, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 	const struct earphdr *earp = vearp;				\
@@ -641,8 +676,9 @@ static void NAME(const void *vearp, void *iframe,			\
  * vlan[1].tpid
  */
 #define XDP2_METADATA_TEMP_vlan_set_tpid(NAME, STRUCT, TPID)		\
-static void NAME(const void *vvlan, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vvlan, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 	const struct vlan_hdr *vlan = vvlan;				\
@@ -666,8 +702,9 @@ static void NAME(const void *vvlan, void *iframe,			\
  * Uses common metadata fields: icmp.type, icmp.code, icmp.id
  */
 #define XDP2_METADATA_TEMP_icmp(NAME, STRUCT)				\
-static void NAME(const void *vicmp, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vicmp, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 	const struct icmphdr *icmp = vicmp;				\
@@ -684,8 +721,9 @@ static void NAME(const void *vicmp, void *iframe,			\
  * Uses common metadata fields: mpls.label, mpls.ttl, mpls.tc, mpls.bos, keyid
  */
 #define XDP2_METADATA_TEMP_mpls(NAME, STRUCT)				\
-static void NAME(const void *vmpls, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vmpls, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 	const struct mpls_label *mpls = vmpls;				\
@@ -713,8 +751,9 @@ static void NAME(const void *vmpls, void *iframe,			\
  * spread PROBE/PROBE_REPLY messages across cores.
  */
 #define XDP2_METADATA_TEMP_tipc(NAME, STRUCT)				\
-static void NAME(const void *vtipc, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vtipc, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 	const struct tipc_basic_hdr *tipc = vtipc;			\
@@ -725,15 +764,16 @@ static void NAME(const void *vtipc, void *iframe,			\
 	keepalive_msg = (w0 & TIPC_KEEPALIVE_MSG_MASK) ==		\
 					TIPC_KEEPALIVE_MSG_MASK;	\
 	frame->addrs.tipckey = keepalive_msg ? 0 : tipc->w[3];		\
-	frame->addr_type = XDP2_ADDR_TYPE_TIPC;			\
+	frame->addr_type = XDP2_ADDR_TYPE_TIPC;				\
 }
 
 /* Meta data helper for GRE (v0)
  * Uses common metadata field: gre.flags
  */
 #define XDP2_METADATA_TEMP_gre(NAME, STRUCT)				\
-static void NAME(const void *vhdr, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vhdr, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 									\
@@ -744,8 +784,9 @@ static void NAME(const void *vhdr, void *iframe,			\
  * Uses common metadata field: gre_pptp.flags
  */
 #define XDP2_METADATA_TEMP_gre_pptp(NAME, STRUCT)			\
-static void NAME(const void *vhdr, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vhdr, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 									\
@@ -756,8 +797,9 @@ static void NAME(const void *vhdr, void *iframe,			\
  * Uses common metadata field: gre.checksum
  */
 #define XDP2_METADATA_TEMP_gre_checksum(NAME, STRUCT)			\
-static void NAME(const void *vdata, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vdata, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 									\
@@ -768,8 +810,9 @@ static void NAME(const void *vdata, void *iframe,			\
  * Uses common metadata field: gre.keyid and keyid
  */
 #define XDP2_METADATA_TEMP_gre_keyid(NAME, STRUCT)			\
-static void NAME(const void *vdata, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vdata, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 	__u32 v = *(__u32 *)vdata;					\
@@ -782,8 +825,9 @@ static void NAME(const void *vdata, void *iframe,			\
  * Uses common metadata field: gre.seq
  */
 #define XDP2_METADATA_TEMP_gre_seq(NAME, STRUCT)			\
-static void NAME(const void *vdata, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vdata, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 									\
@@ -794,8 +838,9 @@ static void NAME(const void *vdata, void *iframe,			\
  * Uses common metadata field: gre.routing
  */
 #define XDP2_METADATA_TEMP_gre_routing(NAME, STRUCT)			\
-static void NAME(const void *vdata, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vdata, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 									\
@@ -807,8 +852,9 @@ static void NAME(const void *vdata, void *iframe,			\
  * Uses common metadata field: pptp.length, pptp.call_id, and keyid
  */
 #define XDP2_METADATA_TEMP_gre_pptp_key(NAME, STRUCT)			\
-static void NAME(const void *vdata, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vdata, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 	struct xdp2_pptp_id *key = (struct xdp2_pptp_id *)vdata;	\
@@ -822,8 +868,9 @@ static void NAME(const void *vdata, void *iframe,			\
  * Uses common metadata field: pptp.seq
  */
 #define XDP2_METADATA_TEMP_gre_pptp_seq(NAME, STRUCT)			\
-static void NAME(const void *vdata, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vdata, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 									\
@@ -834,8 +881,9 @@ static void NAME(const void *vdata, void *iframe,			\
  * Uses common metadata field: pptp.ack
  */
 #define XDP2_METADATA_TEMP_gre_pptp_ack(NAME, STRUCT)			\
-static void NAME(const void *vdata, void *iframe,			\
-		 struct xdp2_ctrl_data ctrl)				\
+static void NAME(const void *vdata, size_t hdr_len, size_t hdr_off,	\
+		 void *imetadata, void *iframe,				\
+		 const struct xdp2_ctrl_data *ctrl)			\
 {									\
 	struct STRUCT *frame = iframe;					\
 									\
@@ -843,7 +891,7 @@ static void NAME(const void *vdata, void *iframe,			\
 }
 
 /* Helper function to define a function to print common metadata */
-#define XDP2_PRINT_METADATA(FRAME) do {				\
+#define XDP2_PRINT_METADATA(FRAME) do {					\
 	char a4buf[INET_ADDRSTRLEN];					\
 	char a6buf[INET6_ADDRSTRLEN];					\
 									\
