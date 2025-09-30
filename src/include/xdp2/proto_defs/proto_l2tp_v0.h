@@ -77,7 +77,7 @@ static inline size_t l2tp_v0_base_len_from_flags(unsigned int flags)
 		xdp2_flag_fields_length(flags, &l2tp_v0_base_flag_fields);
 }
 
-static inline ssize_t l2tp_v0_base_len_check(const void *vl2tp)
+static inline ssize_t l2tp_v0_base_len_check(const void *vl2tp, size_t maxlen)
 {
 	return l2tp_v0_base_len_from_flags(*(__u16 *)vl2tp);
 }
@@ -87,7 +87,7 @@ static inline int l2tp_v0_base_proto_version(const void *vl2tp)
 	return !!(*(__u16 *)vl2tp & L2TP_F_OFFSZ);
 }
 
-static inline ssize_t l2tp_v0_offsz_len(const void *vl2tp)
+static inline ssize_t l2tp_v0_offsz_len(const void *vl2tp, size_t maxlen)
 {
 	return 2 + *(__u16 *)vl2tp;
 }

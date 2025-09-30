@@ -87,14 +87,14 @@ static inline int geneve_proto_v0(const void *vgeneve)
 	return ((struct geneve_hdr *)vgeneve)->protocol;
 }
 
-static inline ssize_t geneve_len_v0(const void *vgeneve)
+static inline ssize_t geneve_len_v0(const void *vgeneve, size_t max_len)
 {
 	const struct geneve_hdr *ghdr = vgeneve;
 
 	return sizeof(*ghdr) + (4 * ghdr->optlen);
 }
 
-static inline ssize_t geneve_tlv_len(const void *hdr)
+static inline ssize_t geneve_tlv_len(const void *hdr, size_t max_len)
 {
 	const struct geneve_opt *opt_hdr = hdr;
 

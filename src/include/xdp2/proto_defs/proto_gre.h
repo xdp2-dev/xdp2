@@ -166,7 +166,7 @@ static inline size_t gre_v0_len_from_flags(unsigned int flags)
 		xdp2_flag_fields_length(flags, &gre_flag_fields);
 }
 
-static inline ssize_t gre_v0_len_check(const void *vgre)
+static inline ssize_t gre_v0_len_check(const void *vgre, size_t maxlen)
 {
 	const struct gre_hdr *gre = vgre;
 
@@ -193,7 +193,7 @@ static inline size_t gre_v1_len_from_flags(unsigned int flags)
 		xdp2_flag_fields_length(flags, &pptp_gre_flag_fields);
 }
 
-static inline ssize_t gre_v1_len_check(const void *vgre)
+static inline ssize_t gre_v1_len_check(const void *vgre, size_t maxlen)
 {
 	const struct gre_hdr *gre = vgre;
 

@@ -72,12 +72,12 @@ struct tcp_opt_union {
 	} __packed;
 } __packed;
 
-static inline ssize_t tcp_len(const void *vtcp)
+static inline ssize_t tcp_len(const void *vtcp, size_t maxlen)
 {
 	return ((struct tcphdr *)vtcp)->doff * 4;
 }
 
-static inline ssize_t tcp_tlv_len(const void *hdr)
+static inline ssize_t tcp_tlv_len(const void *hdr, size_t maxlen)
 {
 	return ((struct tcp_opt *)hdr)->len;
 }

@@ -63,7 +63,7 @@ static inline int ipv6_proto_stopflowlabel(const void *viph)
 	return iph->nexthdr;
 }
 
-static inline ssize_t ipv6_length_check(const void *viph)
+static inline ssize_t ipv6_length_check(const void *viph, size_t max_len)
 {
 	const struct ipv6hdr *iph = viph;
 

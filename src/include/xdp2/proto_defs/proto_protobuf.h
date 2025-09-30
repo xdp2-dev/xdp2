@@ -167,9 +167,9 @@ static inline size_t protobuf_nested_offset(const void *hdr,
 static const struct xdp2_proto_tlvs_def xdp2_parse_protobufs __unused() = {
 	.proto_def.node_type = XDP2_NODE_TYPE_TLVS,
 	.proto_def.name = "Parse protobufs",
-	.proto_def.ops.len_maxlen = protobuf_top_len,
+	.proto_def.ops.len = protobuf_top_len,
 	.ops.start_offset = protobuf_start_offset,
-	.ops.len_maxlen = protobuf_len,
+	.ops.len = protobuf_len,
 	.ops.type = protobuf_type,
 };
 

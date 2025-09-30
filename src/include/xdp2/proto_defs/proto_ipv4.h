@@ -74,12 +74,12 @@ static inline int ipv4_proto_stop1stfrag(const void *viph)
 	return iph->protocol;
 }
 
-static inline ssize_t ipv4_length(const void *viph)
+static inline ssize_t ipv4_length(const void *viph, size_t maxlen)
 {
 	return ipv4_len(viph);
 }
 
-static inline ssize_t ipv4_length_check(const void *viph)
+static inline ssize_t ipv4_length_check(const void *viph, size_t maxlen)
 {
 	const struct iphdr *iph = viph;
 

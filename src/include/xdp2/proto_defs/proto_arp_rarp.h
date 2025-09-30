@@ -45,7 +45,7 @@ struct earphdr {
 	__u8 ar_tip[4];
 };
 
-static inline ssize_t arp_len_check(const void *vearp)
+static inline ssize_t arp_len_check(const void *vearp, size_t maxlen)
 {
 	const struct earphdr *earp = vearp;
 	const struct arphdr *arp = &earp->arp;

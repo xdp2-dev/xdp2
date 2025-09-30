@@ -36,7 +36,7 @@ static inline int ipv6_srv6_proto(const void *vopt)
 	return ((struct ipv6_opt_hdr *)vopt)->nexthdr;
 }
 
-static inline ssize_t ipv6_srv6_len(const void *vopt)
+static inline ssize_t ipv6_srv6_len(const void *vopt, size_t maxlen)
 {
 	return ipv6_optlen((struct ipv6_opt_hdr *)vopt);
 }

@@ -69,7 +69,7 @@ struct batadv_eth {
 	struct ethhdr eth;
 };
 
-static inline ssize_t batman_len_check(const void *vbeth)
+static inline ssize_t batman_len_check(const void *vbeth, size_t maxlen)
 {
 	const struct batadv_eth *beth = vbeth;
 

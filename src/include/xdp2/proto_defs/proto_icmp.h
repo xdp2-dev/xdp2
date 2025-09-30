@@ -72,7 +72,7 @@ static const struct xdp2_proto_def xdp2_parse_icmpv4 __unused() = {
 	.min_len = sizeof(struct icmphdr),
 	.overlay = true,
 	.ops.next_proto = icmp_get_type,
-	.ops.len_maxlen = icmp_all_len,
+	.ops.len = icmp_all_len,
 };
 
 /* xdp2_parse_icmpv6 protocol definition
@@ -84,7 +84,7 @@ static const struct xdp2_proto_def xdp2_parse_icmpv6 __unused() = {
 	.min_len = sizeof(struct icmp6hdr),
 	.overlay = true,
 	.ops.next_proto = icmp_get_type,
-	.ops.len_maxlen = icmp_all_len,
+	.ops.len = icmp_all_len,
 };
 
 #endif /* XDP2_DEFINE_PARSE_NODE */

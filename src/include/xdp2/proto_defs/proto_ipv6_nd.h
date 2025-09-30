@@ -49,12 +49,12 @@ struct icmpv6_nd_neigh_advert {
 
 #ifdef XDP2_DEFINE_PARSE_NODE
 
-static inline ssize_t icmpv6_nd_all_len(const void *v, size_t max_len)
+static inline ssize_t icmpv6_nd_all_len(const void *v, size_t maxlen)
 {
-	return max_len;
+	return maxlen;
 }
 
-static inline ssize_t icmpv6_nd_tlv_len(const void *hdr)
+static inline ssize_t icmpv6_nd_tlv_len(const void *hdr, size_t maxlen)
 {
 	return 8 * ((struct icmpv6_nd_opt *)hdr)->len;
 }
@@ -78,7 +78,7 @@ static const struct xdp2_proto_tlvs_def xdp2_parse_icmpv6_nd_solicit
 	.proto_def.node_type = XDP2_NODE_TYPE_TLVS,
 	.proto_def.name = "ICMPv6 neighbor solicit",
 	.proto_def.min_len = sizeof(struct icmpv6_nd_neigh_advert),
-	.proto_def.ops.len_maxlen = icmpv6_nd_all_len,
+	.proto_def.ops.len = icmpv6_nd_all_len,
 	.ops.len = icmpv6_nd_tlv_len,
 	.ops.type = icmpv6_nd_tlv_type,
 	.ops.start_offset = icmpv6_nd_tlvs_start_offset,
