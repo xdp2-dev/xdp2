@@ -59,7 +59,7 @@ static void run_router(const struct xdp2_parser *parser, char **pcap_files,
 {
 	__u32 flags = (debug ? XDP2_F_DEBUG : 0);
 	struct router_metadata metadata;
-	struct xdp2_packet_data pdata;
+	struct xdp2_ctrl_data ctrl;
 	struct one_packet *packets;
 	int total_packets = 0, pn;
 	struct xdp2_pcap_file *pf;
@@ -128,13 +128,12 @@ static void run_router(const struct xdp2_parser *parser, char **pcap_files,
 
 		memset(&metadata, 0, sizeof(metadata));
 
-		XDP2_SET_BASIC_PDATA_LEN_SEQNO(pdata, packets[pn].packet,
-					       packets[pn].cap_len,
-					       packets[pn].packet,
-					       packets[i].hdr_size, i);
+		XDP2_CTRL_RESET_VAR_DATA(ctrl);
+		XDP2_CTRL_SET_BASIC_PKT_DATA(ctrl, packets[pn].packet,
+					     packets[pn].cap_len, i);
 
-		xdp2_parse(parser, &pdata,
-			   (struct xdp2_metadata *)&metadata, flags);
+		xdp2_parse(parser, packets[pn].packet, packets[pn].cap_len,
+			   &metadata, &ctrl, flags);
 	}
 }
 
