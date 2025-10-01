@@ -133,12 +133,12 @@ parse_again:
 		if (proto_tlv_def->ops.nested_offset)
 			nested_offset =
 				proto_tlv_def->ops.nested_offset(hdr, tlv_len);
-		ctrl->hdr.tlv_levels++;
+		ctrl->var.tlv_levels++;
 		ret = xdp2_parse_tlvs(parse_tlv_node->nested_node,
 			    hdr + nested_offset, tlv_len - nested_offset,
 			    offset + nested_offset, metadata, frame, ctrl,
 			    flags);
-		ctrl->hdr.tlv_levels--;
+		ctrl->var.tlv_levels--;
 
 		if (ret != XDP2_OKAY)
 			return ret;
@@ -504,7 +504,7 @@ int __xdp2_parse(const struct xdp2_parser *parser, void *hdr,
 
 			type = proto_def->ops.next_proto_keyin ?
 				proto_def->ops.next_proto_keyin(hdr,
-					ctrl->var.keys[parse_node->key_sel]) :
+					ctrl->key.keys[parse_node->key_sel]) :
 				proto_def->ops.next_proto(hdr);
 			if (type < 0) {
 				ret = type;

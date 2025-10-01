@@ -318,27 +318,38 @@ static inline int xdp2_parse_fast(const struct xdp2_parser *parser,
 	return __xdp2_parse_fast(parser, hdr, len, metadata, ctrl);
 }
 
-#define __XDP2_PARSE_INIT_CTRL(PARSER, CTRL) do {			\
+#define XDP2_CTRL_RESET_VAR_DATA(CTRL)					\
+	memset(&(CTRL).var, 0, sizeof((CTRL).var))
+
+#define XDP2_CTRL_SET_BASIC_PKT_DATA(CTRL, PACKET, LENGTH, SEQNO) do {	\
+	memset(&(CTRL).pkt, 0, sizeof((CTRL).pkt));			\
+	(CTRL).pkt.packet = PACKET;					\
+	(CTRL).pkt.pkt_len = LENGTH;					\
+	(CTRL).pkt.seqno = SEQNO;					\
+} while (0)
+
+#define XDP2_CTRL_INIT_KEY_DATA(CTRL, PARSER, ARG) do {			\
 	const struct xdp2_parser *_parser = (PARSER);			\
 	struct xdp2_ctrl_data *_ctrl = &(CTRL);				\
 	void *p;							\
 									\
 	memset(_ctrl, 0, sizeof(*_ctrl));				\
+	_ctrl->key.arg = ARG;						\
 	if (_parser->config.num_counters) {				\
 		size_t sz = _parser->config.num_counters *		\
-					sizeof(_ctrl->var.counters[0]);	\
+					sizeof(_ctrl->key.counters[0]);	\
 									\
 		p = alloca(sz);						\
 		memset(p, 0, sz);					\
-		_ctrl->var.counters = p;				\
+		_ctrl->key.counters = p;				\
 	}								\
 	if (_parser->config.num_keys) {					\
 		size_t sz = _parser->config.num_keys *			\
-					sizeof(_ctrl->var.keys[0]);	\
+					sizeof(_ctrl->key.keys[0]);	\
 									\
 		p = alloca(sz);						\
 		memset(p, 0, sz);					\
-		_ctrl->var.keys = p;					\
+		_ctrl->key.keys = p;					\
 	}								\
 } while (0)
 

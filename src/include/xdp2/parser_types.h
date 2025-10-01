@@ -152,7 +152,7 @@ struct xdp2_xdp_ctx {
 
 struct xdp2_parse_node;
 
-struct xdp2_packet_data {
+struct xdp2_ctrl_packet_data {
 	void *packet;		/* Packet handle */
 	size_t pkt_len;		/* Full length of packet */
 	__u32 seqno;		/* Sequence number per interface */
@@ -161,42 +161,28 @@ struct xdp2_packet_data {
 	__u32 vrf_id;		/* Interface ID */
 	__u16 pkt_csum;		/* Checksum over packet */
 	__u16 flags;		/* Flags */
-	void *arg;		/* Caller argument */
 };
 
-#define XDP2_SET_BASIC_PDATA(PDATA, PACKET, LENGTH) do {		\
-	memset(&PDATA, 0, sizeof(PDATA));				\
-	(PDATA).packet = PACKET;					\
-	(PDATA).pkt_len = LENGTH;					\
-} while (0)
-
-#define XDP2_SET_BASIC_PDATA_LEN_SEQNO(PDATA, PACKET, LENGTH,		\
-				 HDRS, HDRS_LEN, SEQNO) do {		\
-	memset(&PDATA, 0, sizeof(PDATA));				\
-	(PDATA).packet = PACKET;					\
-	(PDATA).pkt_len = LENGTH;					\
-	(PDATA).seqno = SEQNO;						\
-} while (0)
-
-struct xdp2_hdr_data {
+struct xdp2_ctrl_var_data {
+	const struct xdp2_parse_node *last_node; /* Last node parsed */
+	__s8 ret_code;		/* Return code */
+	__u8 encaps;		/* Number of encapsulations */
+	__u8 node_cnt;		/* NUmber of nodes visited */
 	__u8 tlv_levels;	/* Num. TLV levels (used with nested TLVs) */
 	__u16 pkt_csum;		/* Packet checksum to header start */
 	__u16 hdr_csum;		/* CHecksum of current header */
 };
 
-struct xdp2_var_data {
-	int ret_code;		/* Return code */
-	const struct xdp2_parse_node *last_node; /* Last node parsed */
+struct xdp2_ctrl_key_data {
 	__u8 *counters;		/* Array of 8-bit counters */
 	__u32 *keys;		/* Array of keys for passing between nodes */
-	__u8 encaps;		/* Number of encapsulations */
-	__u8 node_cnt;		/* NUmber of nodes visited */
+	void *arg;		/* Caller argument */
 };
 
 struct xdp2_ctrl_data {
-	struct xdp2_hdr_data hdr;
-	struct xdp2_var_data var;
-	struct xdp2_packet_data pkt;
+	struct xdp2_ctrl_var_data var;
+	struct xdp2_ctrl_packet_data pkt;
+	struct xdp2_ctrl_key_data key;
 };
 
 /* Parse node operations
