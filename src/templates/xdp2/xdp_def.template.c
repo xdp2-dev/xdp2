@@ -53,7 +53,7 @@ CODE_IGNORE
 static __attribute__((unused)) __always_inline int
 	check_pkt_len(const void *hdr, const void *hdr_end,
 					 const struct xdp2_proto_def *pnode,
-					 ssize_t* hlen)
+					 ssize_t *hlen)
 {
 	size_t len = (uintptr_t)(hdr_end - hdr);
 	*hlen = pnode->min_len;
@@ -62,18 +62,14 @@ static __attribute__((unused)) __always_inline int
 	if (xdp2_bpf_check_pkt(hdr, *hlen, hdr_end))
 		return XDP2_STOP_LENGTH;
 
-	if (pnode->ops.len || pnode->ops.len_maxlen) {
-		*hlen = pnode->ops.len_maxlen ?
-				pnode->ops.len_maxlen(hdr, len) :
-				pnode->ops.len(hdr);
+	if (pnode->ops.len) {
+		*hlen = pnode->ops.len(hdr, len);
 		if (*hlen < 0)
 			return XDP2_STOP_LENGTH;
 		if (*hlen < pnode->min_len)
 			return XDP2_STOP_LENGTH;
 		if (xdp2_bpf_check_pkt(hdr, *hlen, hdr_end))
 			return XDP2_STOP_LENGTH;
-	} else {
-		*hlen = pnode->min_len;
 	}
 
 	return XDP2_OKAY;
@@ -105,8 +101,8 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 	xdp2_parse_tlv(
 		const struct xdp2_parse_tlvs_node *parse_node,
 		const struct xdp2_parse_tlv_node *parse_tlv_node,
-		const __u8 *cp, const void *hdr_end, void *_metadata,
-		void *frame, struct xdp2_ctrl_data tlv_ctrl,
+		const __u8 *cp, const void *hdr_end, size_t offset,
+		void *_metadata, void *frame, struct xdp2_ctrl_data tlv_ctrl,
 		unsigned int flags) {
 	const struct xdp2_parse_tlv_node_ops *ops = &parse_tlv_node->tlv_ops;
 	const struct xdp2_proto_tlv_def *proto_tlv_node =
@@ -118,8 +114,8 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 		if (parse_node->tlv_wildcard_node)
 			return xdp2_parse_tlv(parse_node,
 					      parse_node->tlv_wildcard_node,
-					      cp, hdr_end, _metadata, frame,
-					      tlv_ctrl, flags);
+					      cp, hdr_end, offset, _metadata,
+					      frame, tlv_ctrl, flags);
 		else
 			return parse_node->unknown_tlv_type_ret;
 	}
@@ -132,10 +128,11 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 		return ret;
 
 	if (ops->extract_metadata)
-		ops->extract_metadata(cp, frame, tlv_ctrl);
+		ops->extract_metadata(cp, hlen, offset, _metadata,
+				      frame, &tlv_ctrl);
 
 	if (ops->handler)
-		ops->handler(cp, frame, tlv_ctrl);
+		ops->handler(cp, hlen, offset, _metadata, frame, &tlv_ctrl);
 
 	return XDP2_OKAY;
 }
@@ -205,7 +202,8 @@ static __attribute__((unused)) __always_inline int
 static inline __attribute__((unused)) __attribute__((always_inline)) int
 	__@!name!@_xdp2_parse_tlvs(
 		const struct xdp2_parse_node *parse_node, const void *hdr,
-		const void *hdr_end, void *_metadata, void *frame,
+		const void *hdr_end, size_t offset, void *_metadata,
+		void *frame,
 		struct xdp2_ctrl_data ctrl, unsigned int flags)
 {
 	const struct xdp2_parse_tlvs_node *parse_tlvs_node =
@@ -267,10 +265,6 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 	<!--(for tlv in graph[name]['tlv_nodes'])-->
 		case @!tlv['type']!@:
 		{
-			struct xdp2_ctrl_data tlv_ctrl = {
-				.hdr.hdr_len = tlv_len,
-				.hdr.hdr_offset = ctrl.hdr.hdr_offset
-			};
 			int ret;
 
 			parse_tlv_node = &@!tlv['name']!@;
@@ -287,7 +281,7 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 
 				if ((ret = xdp2_parse_tlv(parse_tlvs_node,
 						parse_tlv_node, cp,
-						hdr_end, _metadata, frame,
+						hdr_end, offset, _metadata, frame,
 						tlv_ctrl, flags)) != XDP2_OKAY)
 					return ret;
 		<!--(if len(tlv['overlay_nodes']) != 0)-->
@@ -341,15 +335,10 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 	<!--(end)-->
 		default:
 		{
-			struct xdp2_ctrl_data tlv_ctrl = {
-				.hdr.hdr_len = tlv_len,
-				.hdr.hdr_offset = ctrl.hdr.hdr_offset
-			};
-
 			if (parse_tlvs_node->tlv_wildcard_node)
 				return xdp2_parse_tlv(parse_tlvs_node,
 					parse_tlvs_node->tlv_wildcard_node,
-					cp, hdr_end, _metadata, frame,
+					cp, hdr_end, offset, _metadata, frame,
 					tlv_ctrl, flags);
 			else if (parse_tlvs_node->unknown_tlv_type_ret !=
 				 XDP2_OKAY)
@@ -359,7 +348,6 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 
 		/* Move over current header */
 		cp += tlv_len;
-		ctrl.hdr.hdr_offset += tlv_len;
 		len -= tlv_len;
 	}
 	return XDP2_OKAY;
@@ -401,7 +389,8 @@ static __attribute__((unused)) __always_inline int __@!name!@_xdp2_parse(
 		return ret;
 
 	if (parse_node->ops.extract_metadata)
-		parse_node->ops.extract_metadata(*hdr, frame, ctrl);
+		parse_node->ops.extract_metadata(*hdr, hlen, offset,
+						 _metadata, frame, &ctrl);
 
 	<!--(if len(graph[name]['tlv_nodes']) != 0)-->
 	ret = __@!name!@_xdp2_parse_tlvs(parse_node, *hdr, hdr_end,

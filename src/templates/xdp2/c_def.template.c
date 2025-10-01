@@ -46,16 +46,12 @@ static inline __unused() __attribute__((always_inline)) int
 	if (len < *hlen)
 		return XDP2_STOP_LENGTH;
 
-	if (pnode->ops.len || pnode->ops.len_maxlen) {
-		*hlen = pnode->ops.len_maxlen ?
-				pnode->ops.len_maxlen(hdr, len) :
-				pnode->ops.len(hdr);
+	if (pnode->ops.len) {
+		*hlen = pnode->ops.len(hdr, len);
 		if (len < *hlen)
 			return XDP2_STOP_LENGTH;
 		if (*hlen < pnode->min_len)
 			return *hlen < 0 ? *hlen : XDP2_STOP_LENGTH;
-	} else {
-		*hlen = pnode->min_len;
 	}
 
 	return XDP2_OKAY;
