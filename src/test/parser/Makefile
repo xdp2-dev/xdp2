@@ -20,7 +20,7 @@ CORES_OBJ := $(foreach m,$(CORES),core-$(m).o)
 CFLAGS += -I../../lib/xdp2
 
 OBJ = $(CORES_OBJ) $(IMETHODS_OBJ) $(OMETHODS_OBJ)		\
-      cores.o imethods.o main.o omethods.o
+      cores.o imethods.o main.o omethods.o common-xdp2.o
 
 LIBS = -lpcap $(SRCDIR)/lib/flowdis/libflowdis.a		\
        $(SRCDIR)/lib/xdp2/libxdp2.a				\

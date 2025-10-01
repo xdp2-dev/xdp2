@@ -24,13 +24,17 @@
  * SUCH DAMAGE.
  */
 
+/* Flow dissector core. Run flow dissector parser in parser test */
+
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
 
 #include "flowdis/flow_dissector.h"
+
 #include "xdp2/utility.h"
+
 #include "test-parser-core.h"
 
 struct flowdis_priv {

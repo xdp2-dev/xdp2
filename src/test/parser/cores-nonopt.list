@@ -4,5 +4,6 @@
 #  suitable for use as a C symbol.
 flowdis
 xdp2
+xdp2fast
 parselite
 null

@@ -24,21 +24,31 @@
  * SUCH DAMAGE.
  */
 
-/* XDP2 optimized core. Run optimized big parser via xdp2_parse */
+/* XDP2-fast-tcpnopts core. Run tcpnopts parser via xdp2_parse_fast */
 
+#include "common-notcpopts.h"
 #include "common-xdp2.h"
 #include "test-parser-core.h"
 
-static void core_xdp2opt_help(void)
+XDP2_PARSER_STATIC(my_parser_big_ether, "XDP2 big parser for Ethernet",
+		   ether_node,
+		   (
+		    .max_frames = XDP2_PARSER_BIG_NUM_FRAMES,
+		    .metameta_size = 0,
+		    .frame_size = sizeof(struct xdp2_parser_big_metadata_one)
+		    )
+);
+
+static void core_xdp2fast_notcpopts_help(void)
 {
 	fprintf(stderr,
-		"For the `xdp2opt' core, arguments must be either not given or "
-		"zero length.\n\n"
-		"This core uses the compiler tool to optimize xdp2 "
-		"\"Big parser\" engine for the XDP2 Parser.\n");
+		"For the `xdp2fast_notcpopts' core, arguments must be either "
+		"not given or zero length.\n\n"
+		"This core uses the compiler tool to optimize a variant of "
+		"the xdp2 \"Big parser\" engine for the XDP2 Parser.\n");
 }
 
-static void *core_xdp2opt_init(const char *args)
+static void *core_xdp2fast_notcpopts_init(const char *args)
 {
 	struct xdp2_priv *p;
 
@@ -53,21 +63,28 @@ static void *core_xdp2opt_init(const char *args)
 		exit(-11);
 	}
 
+	if (!xdp2_parse_validate_fast(my_parser_big_ether)) {
+		fprintf(stderr, "Unable to validate that "
+			"xdp2_parser_big_ether can be run as xdp2-fast\n");
+		exit(-1);
+	}
+
 	return p;
 }
 
-static const char *core_xdp2opt_process(void *pv, void *data, size_t len,
-				      struct test_parser_out *out,
-				      unsigned int flags, long long *time)
+static const char *core_xdp2fast_notcpopts_process(void *pv, void *data,
+					size_t len,
+					struct test_parser_out *out,
+					unsigned int flags, long long *time)
 {
 	return common_core_xdp2_process((struct xdp2_priv *)pv, data, len,
 					out, flags, time,
-					xdp2_parser_big_ether_opt, false);
+					my_parser_big_ether, false);
 }
 
-static void core_xdp2opt_done(void *pv)
+static void core_xdp2fast_notcpopts_done(void *pv)
 {
 	free(pv);
 }
 
-CORE_DECL(xdp2opt)
+CORE_DECL(xdp2fast_notcpopts)

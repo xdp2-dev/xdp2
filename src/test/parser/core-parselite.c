@@ -24,6 +24,8 @@
  * SUCH DAMAGE.
  */
 
+/* Parselite core. Minimum hand coded parser to highest performance */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>

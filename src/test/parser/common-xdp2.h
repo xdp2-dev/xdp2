@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: BSD-2-Clause-FreeBSD
-/*
+/* SPDX-License-Identifier: BSD-2-Clause-FreeBSD
+ *
  * Copyright (c) 2020, 2021 by Mojatatu Networks.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,50 +24,26 @@
  * SUCH DAMAGE.
  */
 
-/* XDP2 optimized core. Run optimized big parser via xdp2_parse */
+#ifndef __PARSER_TEST_COMMON_XDP2_H__
+#define __PARSER_TEST_COMMON_XDP2_H__
 
-#include "common-xdp2.h"
+/* Header file for common functions to run xdp2_parse */
+
+#include <stdbool.h>
+
+#include "xdp2/parsers/parser_big.h"
+
 #include "test-parser-core.h"
 
-static void core_xdp2opt_help(void)
-{
-	fprintf(stderr,
-		"For the `xdp2opt' core, arguments must be either not given or "
-		"zero length.\n\n"
-		"This core uses the compiler tool to optimize xdp2 "
-		"\"Big parser\" engine for the XDP2 Parser.\n");
-}
+struct xdp2_priv {
+	struct xdp2_parser_big_metadata_one md;
+};
 
-static void *core_xdp2opt_init(const char *args)
-{
-	struct xdp2_priv *p;
+const char *common_core_xdp2_process(struct xdp2_priv *p, void *data,
+				     size_t len,
+				     struct test_parser_out *out,
+				     unsigned int flags, long long *time,
+				     const struct xdp2_parser *parser,
+				     bool use_fast);
 
-	if (args && *args) {
-		fprintf(stderr, "The xdp2 core takes no arguments.\n");
-		exit(-1);
-	}
-
-	p = calloc(1, sizeof(struct xdp2_priv));
-	if (!p) {
-		fprintf(stderr, "xdp2_parser_init failed\n");
-		exit(-11);
-	}
-
-	return p;
-}
-
-static const char *core_xdp2opt_process(void *pv, void *data, size_t len,
-				      struct test_parser_out *out,
-				      unsigned int flags, long long *time)
-{
-	return common_core_xdp2_process((struct xdp2_priv *)pv, data, len,
-					out, flags, time,
-					xdp2_parser_big_ether_opt, false);
-}
-
-static void core_xdp2opt_done(void *pv)
-{
-	free(pv);
-}
-
-CORE_DECL(xdp2opt)
+#endif /* __PARSER_TEST_COMMON_XDP2_H__ */

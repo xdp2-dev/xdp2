@@ -36,49 +36,54 @@
 #include "router.h"
 
 /* Extract EtherType from Ethernet header */
-static void extract_ether(const void *hdr, void *_frame,
-			  const struct xdp2_ctrl_data ctrl)
+static void extract_ether(const void *hdr, size_t hdr_len, size_t hdr_off,
+			  void *metadata, void *_frame,
+			  const struct xdp2_ctrl_data *ctrl)
 {
-	((struct router_metadata *)_frame)->ether_offset = ctrl.hdr.hdr_offset;
+	((struct router_metadata *)_frame)->ether_offset = hdr_off;
 }
 
 /* Extract EtherType from Ethernet header */
-static void extract_ipv4(const void *hdr, void *_frame,
-			 const struct xdp2_ctrl_data ctrl)
+static void extract_ipv4(const void *hdr, size_t hdr_len, size_t hdr_off,
+			 void *metadata, void *_frame,
+			 const struct xdp2_ctrl_data *ctrl)
 {
 	struct router_metadata *frame = _frame;
 	const struct iphdr *iph = hdr;
 
-	frame->ip_offset = ctrl.hdr.hdr_offset;
+	frame->ip_offset = hdr_off;
 	frame->ip_src_addr = iph->saddr;
 }
 
-static int handler_ipv4(const void *hdr, void *_frame,
-			const struct xdp2_ctrl_data ctrl)
+static int handler_ipv4(const void *hdr, size_t hdr_len, size_t hdr_off,
+			void *metadata, void *_frame,
+			const struct xdp2_ctrl_data *ctrl)
 {
 	const struct iphdr *iph = hdr;
 
 	if (iph->version != 4)
 		return XDP2_STOP_FAIL;
 
-	if (xdp2_checksum_compute(hdr, ctrl.hdr.hdr_len) != 0xffff)
+	if (xdp2_checksum_compute(hdr, hdr_len) != 0xffff)
 		return XDP2_STOP_FAIL;
 
 	return XDP2_OKAY;
 }
 
-static int handler_okay(const void *hdr, void *_frame,
-			const struct xdp2_ctrl_data ctrl)
+static int handler_okay(const void *hdr, size_t hdr_len, size_t hdr_off,
+			void *metadata, void *_frame,
+			const struct xdp2_ctrl_data *ctrl)
 {
 	struct router_metadata *frame = _frame;
-	struct ethhdr *eth = (struct ethhdr *)(ctrl.pkt.packet + frame->ether_offset);
+	struct ethhdr *eth = (struct ethhdr *)
+				(ctrl->pkt.packet + frame->ether_offset);
 	const struct next_hop *nh;
 
 	nh = router_lpm_table_lookup(frame);
 
 	if (nh) {
 		memcpy(eth->h_dest, nh->edest, sizeof(eth->h_dest));
-		xdp2_pkt_send(ctrl.pkt.packet, nh->port);
+		xdp2_pkt_send(ctrl->pkt.packet, nh->port);
 		printf("HIT port %u\n", nh->port);
 		return XDP2_OKAY;
 	}

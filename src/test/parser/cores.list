@@ -4,7 +4,10 @@
 #  suitable for use as a C symbol.
 flowdis
 xdp2
+xdp2fast
 xdp2opt
+xdp2_notcpopts
+xdp2fast_notcpopts
 xdp2opt_notcpopts.p
 parselite
 null

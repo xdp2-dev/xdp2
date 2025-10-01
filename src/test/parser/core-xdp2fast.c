@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-2-Clause-FreeBSD
 /*
  * Copyright (c) 2020, 2021 by Mojatatu Networks.
+ * Copyright (c) 2025 by Tom Herbert
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,21 +25,21 @@
  * SUCH DAMAGE.
  */
 
-/* XDP2 optimized core. Run optimized big parser via xdp2_parse */
+/* XDP2 fast-core. Run big parser via xdp2_parse_fast */
 
 #include "common-xdp2.h"
 #include "test-parser-core.h"
 
-static void core_xdp2opt_help(void)
+static void core_xdp2fast_help(void)
 {
 	fprintf(stderr,
-		"For the `xdp2opt' core, arguments must be either not given or "
-		"zero length.\n\n"
-		"This core uses the compiler tool to optimize xdp2 "
-		"\"Big parser\" engine for the XDP2 Parser.\n");
+		"For the `xdp2-fast' core, arguments must be either not given "
+		"or zero length.\n\n"
+		"This core uses the xdp2 library which impelements the "
+		"engine for the XDP2 Parser.\n");
 }
 
-static void *core_xdp2opt_init(const char *args)
+static void *core_xdp2fast_init(const char *args)
 {
 	struct xdp2_priv *p;
 
@@ -47,27 +48,34 @@ static void *core_xdp2opt_init(const char *args)
 		exit(-1);
 	}
 
+	if (!xdp2_parse_validate_fast(xdp2_parser_big_ether)) {
+		fprintf(stderr, "Unable to validate that "
+			"xdp2_parser_big_ether can be run as xdp2-fast\n");
+		exit(-1);
+	}
+
 	p = calloc(1, sizeof(struct xdp2_priv));
 	if (!p) {
 		fprintf(stderr, "xdp2_parser_init failed\n");
-		exit(-11);
+		exit(-1);
 	}
 
 	return p;
 }
 
-static const char *core_xdp2opt_process(void *pv, void *data, size_t len,
-				      struct test_parser_out *out,
-				      unsigned int flags, long long *time)
+static const char *core_xdp2fast_process(void *pv, void *data, size_t len,
+					 struct test_parser_out *out,
+					 unsigned int flags, long long *time)
 {
 	return common_core_xdp2_process((struct xdp2_priv *)pv, data, len,
 					out, flags, time,
-					xdp2_parser_big_ether_opt, false);
+					xdp2_parser_big_ether, true);
+
 }
 
-static void core_xdp2opt_done(void *pv)
+static void core_xdp2fast_done(void *pv)
 {
 	free(pv);
 }
 
-CORE_DECL(xdp2opt)
+CORE_DECL(xdp2fast)
