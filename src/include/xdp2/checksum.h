@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause-FreeBSD
  *
- * Copyright (c) 2020,2021 Tom Herbert
+ * Copyright (c) 2025 Tom Herbert
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
