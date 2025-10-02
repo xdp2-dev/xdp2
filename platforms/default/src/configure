@@ -16,7 +16,7 @@ init_platform()
 
 parse_platform_opts()
 {
-	usage $PROGNAME >&2
+	usage "$PROGNAME" >&2
 	exit 1
 }
 

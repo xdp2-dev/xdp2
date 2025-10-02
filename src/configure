@@ -9,47 +9,56 @@ INCLUDE=${1:-"$PWD/include"}
 CONFIG=config.mk
 # Make a temp directory in build tree.
 TMPDIR=$(mktemp -d config.XXXXXX)
-trap 'status=$?; rm -rf $TMPDIR; exit $status' EXIT HUP INT QUIT TERM
+status=0
+trap 'status=$?; rm -rf "$TMPDIR"; exit $status' EXIT HUP INT QUIT TERM
 
 
 check_prog()
 {
-    echo -n "$2"
-    command -v $1 >/dev/null 2>&1 && (echo "$3:=y" >> $CONFIG; echo "yes") ||
-					(echo "no"; return 1)
+	echo -n "$2"
+	if command -v "$1" >/dev/null 2>&1; then
+		echo "$3:=y" >> "$CONFIG"
+		echo "yes"
+	else
+		echo "no"
+		return 1
+	fi
 }
 
 check_libpcap()
 {
-	cat >$TMPDIR/pcaptest.c <<EOF
+	cat >"$TMPDIR"/pcaptest.c <<EOF
 #include <pcap.h>
+
 int main(int argc, char **argv)
 {
 	pcap_t *p;
 	char errbuf[PCAP_ERRBUF_SIZE];
 
 	p = pcap_open_offline("foo", &errbuf[0]);
-	pcap_close(p);
+	if (p != NULL) {
+		pcap_close(p);
+	}
 	return (0);
 }
 EOF
-	$CC_GCC -o $TMPDIR/pcaptest $TMPDIR/pcaptest.c 	\
-				-lpcap > /dev/null 2>$TMPDIR/pcaplog
+	$CC_GCC -o "$TMPDIR"/pcaptest "$TMPDIR"/pcaptest.c \
+		-lpcap > /dev/null 2>"$TMPDIR"/pcaplog
 
 	case $? in
 		0)	;;
 		*)	echo libpcap missing or broken\! 1>&2
 			echo ERROR LOG:
-			cat $TMPDIR/pcaplog
+			cat "$TMPDIR"/pcaplog
 			exit 1
 			;;
 	esac
-	rm -f $TMPDIR/pcaptest.c $TMPDIR/pcaptest
+	rm -f "$TMPDIR"/pcaptest.c "$TMPDIR"/pcaptest
 }
 
 check_boostwave()
 {
-	cat >$TMPDIR/wavetest.cpp <<EOF
+	cat >"$TMPDIR"/wavetest.cpp <<EOF
 #include <boost/wave.hpp>
 
 struct test : boost::wave::context_policies::default_preprocessing_hooks {
@@ -60,20 +69,20 @@ int main(int argc, char **argv)
 	return (0);
 }
 EOF
-        $HOST_CXX -o $TMPDIR/wavetest $TMPDIR/wavetest.cpp 		\
-						-lboost_system -lboost_wave
+	$HOST_CXX -o "$TMPDIR"/wavetest "$TMPDIR"/wavetest.cpp \
+		-lboost_system -lboost_wave
 	case $? in
 		0)	;;
 		*)	echo Boost.Wave missing or broken\! 1>&2
 			exit 1
 			;;
 	esac
-	rm -f $TMPDIR/wavetest.cpp $TMPDIR/wavetest
+	rm -f "$TMPDIR"/wavetest.cpp "$TMPDIR"/wavetest
 }
 
 check_boostthread()
 {
-	cat >$TMPDIR/threadtest.cpp <<EOF
+	cat >"$TMPDIR"/threadtest.cpp <<EOF
 #include <boost/thread.hpp>
 
 int main(int argc, char **argv)
@@ -84,20 +93,20 @@ int main(int argc, char **argv)
 	return (0);
 }
 EOF
-	$HOST_CXX -o $TMPDIR/threadtest $TMPDIR/threadtest.cpp		\
-			-lboost_thread   -lboost_system >/dev/null 2>&1
+	$HOST_CXX -o "$TMPDIR"/threadtest "$TMPDIR"/threadtest.cpp \
+		-lboost_thread -lboost_system >/dev/null 2>&1
 	case $? in
 		0)	;;
 		*)	echo Boost.Thread missing or broken\! 1>&2
 			exit 1
 			;;
 	esac
-	rm -f $TMPDIR/threadtest.cpp $TMPDIR/threadtest
+	rm -f "$TMPDIR"/threadtest.cpp "$TMPDIR"/threadtest
 }
 
 check_boostsystem()
 {
-	cat >$TMPDIR/systemtest.cpp <<EOF
+	cat >"$TMPDIR"/systemtest.cpp <<EOF
 #include <boost/system/error_code.hpp>
 
 int main(int argc, char **argv)
@@ -108,20 +117,20 @@ int main(int argc, char **argv)
 	return (0);
 }
 EOF
-	$HOST_CXX -o $TMPDIR/systemtest $TMPDIR/systemtest.cpp		\
-					-lboost_system > /dev/null 2>&1
+	$HOST_CXX -o "$TMPDIR"/systemtest "$TMPDIR"/systemtest.cpp \
+		-lboost_system > /dev/null 2>&1
 	case $? in
 		0)	;;
 		*)	echo Boost.System missing or broken\! 1>&2
 			exit 1
 			;;
 	esac
-	rm -f $TMPDIR/systemtest.cpp $TMPDIR/systemtest
+	rm -f "$TMPDIR"/systemtest.cpp "$TMPDIR"/systemtest
 }
 
 check_boostfilesystem()
 {
-	cat >$TMPDIR/filesystemtest.cpp <<EOF
+	cat >"$TMPDIR"/filesystemtest.cpp <<EOF
 #include <boost/filesystem/path.hpp>
 
 int main(int argc, char **argv)
@@ -132,20 +141,20 @@ int main(int argc, char **argv)
 	return (0);
 }
 EOF
-	$HOST_CXX -o $TMPDIR/filesystemtest $TMPDIR/filesystemtest.cpp	\
-			-lboost_system -lboost_filesystem > /dev/null 2>&1
+	$HOST_CXX -o "$TMPDIR"/filesystemtest "$TMPDIR"/filesystemtest.cpp \
+		-lboost_system -lboost_filesystem > /dev/null 2>&1
 	case $? in
 		0)	;;
 		*)	echo Boost.Filesystem missing or broken\! 1>&2
 			exit 1
 			;;
 	esac
-	rm -f $TMPDIR/filesystemtest.cpp $TMPDIR/filesystemtest
+	rm -f "$TMPDIR"/filesystemtest.cpp "$TMPDIR"/filesystemtest
 }
 
 check_clang_lib()
 {
-	cat >$TMPDIR/clang_lib.cpp <<EOF
+	cat >"$TMPDIR"/clang_lib.cpp <<EOF
 #include <clang/Frontend/CompilerInstance.h>
 #include "clang/Frontend/FrontendActions.h"
 #include "clang/Tooling/CommonOptionsParser.h"
@@ -161,20 +170,23 @@ int main(int argc, const char **argv)
 return 0;
 }
 EOF
-	$HOST_CXX -o $TMPDIR/clang_lib $TMPDIR/clang_lib.cpp	\
-			 `$HOST_LLVM_CONFIG --ldflags --cxxflags` -lclang -lLLVM -lclang-cpp > /dev/null 2>&1
+	# $HOST_LLVM_CONFIG could contain multiple items, so we need to use an array
+	# shellcheck disable=SC2207
+	LLVM_FLAGS=($($HOST_LLVM_CONFIG --ldflags --cxxflags))
+	$HOST_CXX -o "$TMPDIR"/clang_lib "$TMPDIR"/clang_lib.cpp \
+		"${LLVM_FLAGS[@]}" -lclang -lLLVM -lclang-cpp > /dev/null 2>&1
 	case $? in
 		0)	;;
 		*)	echo Clang library missing or broken\! 1>&2
 			exit 1
 			;;
 	esac
-	rm -f $TMPDIR/clang_lib.cpp $TMPDIR/clang
+	rm -f "$TMPDIR"/clang_lib.cpp "$TMPDIR"/clang
 }
 
 check_python()
 {
-	cat >$TMPDIR/check_python.cpp <<EOF
+	cat >"$TMPDIR"/check_python.cpp <<EOF
 #include <Python.h>
 
 int main(int argc, char **argv)
@@ -182,22 +194,25 @@ int main(int argc, char **argv)
 	return (0);
 }
 EOF
-        $HOST_CXX -o $TMPDIR/check_python $TMPDIR/check_python.cpp	\
-			`$PKG_CONFIG --cflags --libs python3-embed`
+	# $PKG_CONFIG could contain multiple items, so we need to use an array
+	# shellcheck disable=SC2207
+	PYTHON_FLAGS=($($PKG_CONFIG --cflags --libs python3-embed))
+	$HOST_CXX -o "$TMPDIR"/check_python "$TMPDIR"/check_python.cpp \
+		"${PYTHON_FLAGS[@]}"
 	case $? in
 		0)	;;
 		*)	echo Python missing or broken\! 1>&2
 			exit 1
 			;;
 	esac
-	rm -f $TMPDIR/check_python.cpp $TMPDIR/check_python
+	rm -f "$TMPDIR"/check_python.cpp "$TMPDIR"/check_python
 }
 
 check_scapy()
 {
 	python3 -c "import scapy.all; print('scapy OK')" >/dev/null 2>&1
 	case $? in
-		0)	echo "HAVE_SCAPY:=y" >> $CONFIG
+		0)	echo "HAVE_SCAPY:=y" >> "$CONFIG"
 			;;
 		*)	echo "ERROR: scapy is required but not found!" 1>&2
 			echo "Please install scapy: ( pip3 install scapy | apt install python3-scapy )" 1>&2
@@ -208,19 +223,19 @@ check_scapy()
 
 check_cross_compiler_environment()
 {
-	if [ ! -d $DEF_CC_ENV_LOC ]; then
+	if [ ! -d "$DEF_CC_ENV_LOC" ]; then
 		echo "$DEF_CC_ENV_LOC is not found!"
-		exit -1
+		exit 1
 	fi
 
-	if [ ! -d $SYSROOT_LOC ]; then
+	if [ ! -d "$SYSROOT_LOC" ]; then
 		echo "$SYSROOT_LOC is not found!"
-		exit -1
+		exit 1
 	fi
 
-	if [ ! -d $CC_ENV_TOOLCHAIN ]; then
+	if [ ! -d "$CC_ENV_TOOLCHAIN" ]; then
 		echo "$CC_ENV_TOOLCHAIN is not found!"
-		exit -1
+		exit 1
 	fi
 }
 
@@ -246,7 +261,7 @@ ifeq (\$(VERBOSE), 0)
 	QUIET_CXX      = @echo '    CXX      '\$@;
 	QUIET_AR       = @echo '    AR       '\$@;
 	QUIET_ASM      = @echo '    ASM      '\$@;
-	QUIET_XDP2    = @echo '    XDP2    '\$@;
+	QUIET_XDP2     = @echo '    XDP2     '\$@;
 	QUIET_LINK     = @echo '    LINK     '\$@;
 	QUIET_INSTALL  = @echo '    INSTALL  '\$(TARGETS);
 endif
@@ -258,7 +273,7 @@ usage_platforms()
 	echo "Usage $0 [--platform { $1 } ] [ <platform_paramters> ]"
 }
 
-PLATFORMS=($(ls ../platforms))
+mapfile -t PLATFORMS < <(ls ../platforms)
 
 PLATFORM="default"
 
@@ -268,7 +283,7 @@ if [ "$1" == "--platform" ]; then
 	shift 2
 fi
 
-for i in ${PLATFORMS[@]}; do
+for i in "${PLATFORMS[@]}"; do
 	if [ "$PLATFORM" == "$i" ]; then
 		FOUND_PLAT="true"
 	fi
@@ -281,7 +296,7 @@ fi
 
 usage()
 {
-        echo -n "Usage: $0"
+	echo -n "Usage: $0"
 	if [ -n "$PLATFORM_TEXT" ]; then
 		echo -n " --platform $PLATFORM_TEXT"
 	fi
@@ -294,14 +309,15 @@ usage()
 
 	platform_usage
 
-        exit 1
+	exit 1
 }
 
-source ../platforms/$PLATFORM/src/configure
+# shellcheck source=../platforms/default/src/configure
+# shellcheck disable=SC1091
+source ../platforms/"$PLATFORM"/src/configure
 
 init_platform
 
-PROGNAME=$0
 COMPILER="gcc"
 
 while [ -n "$1" ]; do
@@ -314,7 +330,7 @@ while [ -n "$1" ]; do
 		"--installdir") INSTALLDIR=$2; shift;;
 		"--build-opt-parser") BUILD_OPT_PARSER="y";;
 		"--llvm-config") HOST_LLVM_CONFIG=$2; shift;;
-		*) parse_platform_opts $1;;
+		*) parse_platform_opts "$1";;
 	esac
 	shift
 done
@@ -327,22 +343,28 @@ if [ -n "$MY_PKG_CONFIG_PATH" ]; then
 	fi
 fi
 
-echo "# Generated config based on" $INCLUDE >$CONFIG
-echo "ifneq (\$(TOP_LEVEL_MAKE),y)" >> $CONFIG
-quiet_config >> $CONFIG
+{
+	echo "# config.mk is generated by ./src/configure"
+	echo "# Generated config based on" "$INCLUDE"
+	echo
+	echo "ifneq (\$(TOP_LEVEL_MAKE),y)"
+	quiet_config
+} >"$CONFIG"
 
 if [ -n "$PKG_CONFIG_PATH" ]; then
-	echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $CONFIG
-	echo "PATH_ARG=\"--with-path=$PKG_CONFIG_PATH\"" >> $CONFIG
+	{
+		echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
+		echo "PATH_ARG=\"--with-path=$PKG_CONFIG_PATH\""
+	} >> "$CONFIG"
 else
-	echo "PATH_ARG=\"\"" >> $CONFIG
+	echo "PATH_ARG=\"\"" >> "$CONFIG"
 fi
 
-echo -n 'CFLAGS_PYTHON=`$(PKG_CONFIG) $(PATH_ARG)' >> $CONFIG
-echo ' --cflags python3-embed`' >> $CONFIG
-echo -n 'LDFLAGS_PYTHON=`$(PKG_CONFIG) $(PATH_ARG) --libs' >> $CONFIG
-echo ' python3-embed`' >> $CONFIG
-echo 'CAT=cat' >> $CONFIG
+{
+	echo "CFLAGS_PYTHON=\`\$(PKG_CONFIG) \$(PATH_ARG) --cflags python3-embed\`"
+	echo "LDFLAGS_PYTHON=\`\$(PKG_CONFIG) \$(PATH_ARG) --libs python3-embed\`"
+	echo "CAT=cat"
+} >> "$CONFIG"
 
 # Set up architecture variables
 LLVM_CONFIG="llvm-config"
@@ -362,35 +384,37 @@ if [ -z "$ARCH" ]; then
 	if [ -n "$TARGET_ARCH" ]; then
 		ARCH="$TARGET_ARCH"
 	else
-		ARCH="`uname -m`"
+		ARCH="$(uname -m)"
 	fi
 fi
 
 set_platform_opts
 
-: ${PKG_CONFIG:=pkg-config}
-: ${AR:="$CC_AR"}
-: ${HOST_CC:=gcc}
-: ${HOST_CXX:=g++}
-: ${LDLIBS:="$LIBS_N $LIBS_NL"}
+: "${PKG_CONFIG:=pkg-config}"
+: "${AR:=$CC_AR}"
+: "${HOST_CC:=gcc}"
+: "${HOST_CXX:=g++}"
+: "${LDLIBS:=$LIBS_N $LIBS_NL}"
 
-echo "CC_ISA_EXT_FLAGS := $CC_ISA_EXT_FLAGS" >> $CONFIG
-echo "ASM_ISA_EXT_FLAGS := $ASM_ISA_EXT_FLAGS" >> $CONFIG
-echo "C_MARCH_FLAGS := $C_MARCH_FLAGS" >>$CONFIG
-echo "ASM_MARCH_FLAGS := $ASM_MARCH_FLAGS" >>$CONFIG
-echo "HOST_CC := gcc" >> $CONFIG
-echo "HOST_CXX := g++" >> $CONFIG
-echo "CC_ELF := $CC_ELF" >> $CONFIG
-echo "LDLIBS = $LDLIBS" >> $CONFIG
-echo "LDLIBS += \$(LDLIBS_LOCAL) -ldl" >> $CONFIG
-echo "LDLIBS_STATIC = $LIBS_N" >> $CONFIG
-echo "LDLIBS_STATIC += \$(LDLIBS_LOCAL) -ldl" >> $CONFIG
-echo "TEST_TARGET_STATIC = \$(TEST_TARGET:%=%_static)" >> $CONFIG
-echo "OBJ = \$(TEST_TARGET:%=%.o)" >> $CONFIG
-echo "STATIC_OBJ = \$(TEST_TARGET_STATIC:%=%.o)" >> $CONFIG
-echo "TARGETS = \$(TEST_TARGET)" >> $CONFIG
-echo "PKG_CONFIG := $PKG_CONFIG" >> $CONFIG
-echo "TARGET_ARCH := $TARGET_ARCH" >> $CONFIG
+{
+	echo "CC_ISA_EXT_FLAGS := $CC_ISA_EXT_FLAGS"
+	echo "ASM_ISA_EXT_FLAGS := $ASM_ISA_EXT_FLAGS"
+	echo "C_MARCH_FLAGS := $C_MARCH_FLAGS"
+	echo "ASM_MARCH_FLAGS := $ASM_MARCH_FLAGS"
+	echo "HOST_CC := gcc"
+	echo "HOST_CXX := g++"
+	echo "CC_ELF := $CC_ELF"
+	echo "LDLIBS = $LDLIBS"
+	echo "LDLIBS += \$(LDLIBS_LOCAL) -ldl"
+	echo "LDLIBS_STATIC = $LIBS_N"
+	echo "LDLIBS_STATIC += \$(LDLIBS_LOCAL) -ldl"
+	echo "TEST_TARGET_STATIC = \$(TEST_TARGET:%=%_static)"
+	echo "OBJ = \$(TEST_TARGET:%=%.o)"
+	echo "STATIC_OBJ = \$(TEST_TARGET_STATIC:%=%.o)"
+	echo "TARGETS = \$(TEST_TARGET)"
+	echo "PKG_CONFIG := $PKG_CONFIG"
+	echo "TARGET_ARCH := $TARGET_ARCH"
+} >> "$CONFIG"
 
 
 if [ -z "$INSTALLDIR" ]; then
@@ -401,30 +425,32 @@ if [ -z "$INSTALLTARNAME" ]; then
 	INSTALLTARNAME=install.tgz
 fi
 
-echo "XDP2_ARCH := $ARCH" >> $CONFIG
-echo "XDP2_CFLAGS += -DARCH_$ARCH" >> $CONFIG
+{
+	echo "XDP2_ARCH := $ARCH"
+	echo "XDP2_CFLAGS += -DARCH_$ARCH"
+} >> "$CONFIG"
 
 if [ -n "$TARGET_ARCH" ]; then
-	echo "CFLAGS += -DTARGET_ARCH_$TARGET_ARCH" >> $CONFIG
+	echo "CFLAGS += -DTARGET_ARCH_$TARGET_ARCH" >> "$CONFIG"
 fi
 
 if [ "$SOFT_FLOAT_BUILD" == "yes" ]; then
-    echo "XDP2_CFLAGS += -DFPGA_SOFT_FLAG" >> $CONFIG
+    echo "XDP2_CFLAGS += -DFPGA_SOFT_FLAG" >> "$CONFIG"
 fi
 
-echo >> $CONFIG
+echo >> "$CONFIG"
 
 echo "Platform is $PLATFORM"
 
 unlink ../platform 2>/dev/null
-ln -s platforms/$PLATFORM ../platform
+ln -s platforms/"$PLATFORM" ../platform
 
 echo "Architecture is $ARCH"
 
 unlink ./include/arch 2>/dev/null
 
-if [ -d ../platform/src/include/arch/arch_$ARCH ]; then
-	ln -s ../../platform/src/include/arch/arch_$ARCH ./include/arch
+if [ -d ../platform/src/include/arch/arch_"$ARCH" ]; then
+	ln -s ../../platform/src/include/arch/arch_"$ARCH" ./include/arch
 	echo "Architecture includes are ./include/arch_$ARCH"
 	CFLAGS_N+=" -fcommon"
 else
@@ -436,24 +462,26 @@ echo "Target Architecture is $TARGET_ARCH"
 
 echo "COMPILER is $COMPILER"
 
-: ${CC:="$CC_GCC $CFLAGS_N"}
-: ${CXX:="$CC_CXX $CFLAGS_N"}
-: ${LD:="$LD_GCC"}
+: "${CC:=$CC_GCC $CFLAGS_N}"
+: "${CXX:=$CC_CXX $CFLAGS_N}"
+: "${LD:=$LD_GCC}"
 
 if [ -z "$HOST_LLVM_CONFIG" ]; then
-	: ${HOST_LLVM_CONFIG:="/usr/bin/llvm-config"}
+	: "${HOST_LLVM_CONFIG:=/usr/bin/llvm-config}"
 fi
 
-: ${LLVM_CONFIG:="$LLVM_CONFIG"}
-echo "CC := $CC" >> $CONFIG
-echo "LD := $LD" >> $CONFIG
-echo "CXX := $CXX" >> $CONFIG
-echo "HOST_LLVM_CONFIG := $HOST_LLVM_CONFIG" >> $CONFIG
-echo "LLVM_CONFIG := $LLVM_CONFIG" >> $CONFIG
-echo "LDFLAGS := $LDFLAGS" >> $CONFIG
-echo "PYTHON := python3" >> $CONFIG
+: "${LLVM_CONFIG:=$LLVM_CONFIG}"
+{
+	echo "CC := $CC"
+	echo "LD := $LD"
+	echo "CXX := $CXX"
+	echo "HOST_LLVM_CONFIG := $HOST_LLVM_CONFIG"
+	echo "LLVM_CONFIG := $LLVM_CONFIG"
+	echo "LDFLAGS := $LDFLAGS"
+	echo "PYTHON := python3"
+} >> "$CONFIG"
 
-# If we didn't get an architecture from the command line set it base
+# If we didn't get an architecture from the command line set it based
 # on the running host
 
 
@@ -466,51 +494,57 @@ check_clang_lib
 check_python
 check_scapy
 
-echo "ifneq (\$(USE_HOST_TOOLS),y)" >> $CONFIG
+{
+	echo "ifneq (\$(USE_HOST_TOOLS),y)"
 
-echo "%.o: %.c" >> $CONFIG
-echo '	$(QUIET_CC)$(CC) $(CFLAGS) $(XDP2_CFLAGS) $(EXTRA_CFLAGS) $(C_MARCH_FLAGS)\
-					-c -o $@ $<' >> $CONFIG
+	echo "%.o: %.c"
+	echo "	\$(QUIET_CC)\$(CC) \$(CFLAGS) \$(XDP2_CFLAGS) \$(EXTRA_CFLAGS) \$(C_MARCH_FLAGS) \\
+					-c -o \$@ \$<"
 
-echo "%_static.o: %.c" >> $CONFIG
-echo '	$(QUIET_CC)$(CC) $(CFLAGS) $(XDP2_CFLAGS) $(EXTRA_CFLAGS) -DXDP2_NO_DYNAMIC $(C_MARCH_FLAGS)\
-					-c -o $@ $<' >> $CONFIG
+	echo "%_static.o: %.c"
+	echo "	\$(QUIET_CC)\$(CC) \$(CFLAGS) \$(XDP2_CFLAGS) \$(EXTRA_CFLAGS) -DXDP2_NO_DYNAMIC \$(C_MARCH_FLAGS) \\
+					-c -o \$@ \$<"
 
-echo "%.o: %.cpp" >> $CONFIG
-echo '	$(QUIET_CXX)$(CXX) $(CXXFLAGS) $(EXTRA_CXXFLAGS) $(C_MARCH_FLAGS)\
-						-c -o $@ $<' >> $CONFIG
+	echo "%.o: %.cpp"
+	echo "	\$(QUIET_CXX)\$(CXX) \$(CXXFLAGS) \$(EXTRA_CXXFLAGS) \$(C_MARCH_FLAGS) \\
+						-c -o \$@ \$<"
 
-echo "%.o: %.s" >> $CONFIG
-echo '	$(QUIET_ASM)$(CC) $(ASM_MARCH_FLAGS)\
-					-c -o $@ $<' >> $CONFIG
+	echo "%.o: %.s"
+	echo "	\$(QUIET_ASM)\$(CC) \$(ASM_MARCH_FLAGS)\\
+					-c -o \$@ \$<"
 
-echo "else" >> $CONFIG
+	echo "else"
 
-echo "%.o: %.c" >> $CONFIG
-echo '	$(QUIET_CC)$(HOST_CC) $(CFLAGS) $(XDP2_CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<' >> $CONFIG
+	echo "%.o: %.c"
+	echo "	\$(QUIET_CC)\$(HOST_CC) \$(CFLAGS) \$(XDP2_CFLAGS) \$(EXTRA_CFLAGS) -c -o \$@ \$<"
 
-echo "%.o: %.cpp" >> $CONFIG
-echo '	$(QUIET_CXX)$(HOST_CXX) $(XDP2_CXXFLAGS) $(CXXFLAGS) $(EXTRA_CXXFLAGS)		\
-						-c -o $@ $<' >> $CONFIG
+	echo "%.o: %.cpp"
+	echo "	\$(QUIET_CXX)\$(HOST_CXX) \$(XDP2_CXXFLAGS) \$(CXXFLAGS) \$(EXTRA_CXXFLAGS) \\
+						-c -o \$@ \$<"
 
-echo "endif" >> $CONFIG
+	echo "endif"
 
-echo >> $CONFIG
-if [ -f ${HOST_LLVM_CONFIG} ]; then
-XDP2_CLANG_VERSION=`${HOST_LLVM_CONFIG} --version`
+} >> "$CONFIG"
+
+if [ -f "${HOST_LLVM_CONFIG}" ]; then
+	XDP2_CLANG_VERSION=$("${HOST_LLVM_CONFIG}" --version)
 else
-XDP2_CLANG_VERSION=`/usr/bin/llvm-config --version`
+	XDP2_CLANG_VERSION=$(/usr/bin/llvm-config --version)
 fi
 
+XDP2_CLANG_RESOURCE_PATH="$("${HOST_LLVM_CONFIG}" --libdir)/clang/$(echo "${XDP2_CLANG_VERSION}" | cut -d'.' -f1)"
+XDP2_C_INCLUDE_PATH="$("${HOST_LLVM_CONFIG}" --libdir)/clang/$(echo "${XDP2_CLANG_VERSION}" | cut -d'.' -f1)/include"
+
 echo "XDP2_CLANG_VERSION=${XDP2_CLANG_VERSION}"
-echo "XDP2_CLANG_VERSION=${XDP2_CLANG_VERSION}" >> $CONFIG
-XDP2_CLANG_RESOURCE_PATH="`${HOST_LLVM_CONFIG} --libdir`/clang/`echo ${XDP2_CLANG_VERSION} | cut -d'.' -f1`"
-XDP2_C_INCLUDE_PATH="`${HOST_LLVM_CONFIG} --libdir`/clang/`echo ${XDP2_CLANG_VERSION} | cut -d'.' -f1`/include"
 echo "XDP2_C_INCLUDE_PATH=${XDP2_C_INCLUDE_PATH}"
-echo "XDP2_C_INCLUDE_PATH=${XDP2_C_INCLUDE_PATH}" >> $CONFIG
 echo "XDP2_CLANG_RESOURCE_PATH=${XDP2_CLANG_RESOURCE_PATH}"
-echo "XDP2_CLANG_RESOURCE_PATH=${XDP2_CLANG_RESOURCE_PATH}" >> $CONFIG
-echo >> $CONFIG
+
+{
+	echo "XDP2_CLANG_VERSION=${XDP2_CLANG_VERSION}"
+	echo "XDP2_C_INCLUDE_PATH=${XDP2_C_INCLUDE_PATH}"
+	echo "XDP2_CLANG_RESOURCE_PATH=${XDP2_CLANG_RESOURCE_PATH}"
+	echo
+} >> "$CONFIG"
 
 output_platform_config
 
@@ -518,10 +552,12 @@ output_platform_config
 #OPTIMIZE_PARSER- may have to be enhanced with commandline options
 #
 
-echo >> $CONFIG
-echo "endif # !TOP_LEVEL_MAKE" >> $CONFIG
-echo >> $CONFIG
-echo "INSTALLDIR ?= $INSTALLDIR" >> $CONFIG
-echo "INSTALLTARNAME ?= $INSTALLTARNAME" >> $CONFIG
-echo "BUILD_OPT_PARSER ?= $BUILD_OPT_PARSER" >> $CONFIG
-echo "CONFIG_DEFINES := $CONFIG_DEFINES" >> $CONFIG
+{
+	echo
+	echo "endif # !TOP_LEVEL_MAKE"
+	echo
+	echo "INSTALLDIR ?= $INSTALLDIR"
+	echo "INSTALLTARNAME ?= $INSTALLTARNAME"
+	echo "BUILD_OPT_PARSER ?= $BUILD_OPT_PARSER"
+	echo "CONFIG_DEFINES := $CONFIG_DEFINES"
+} >> "$CONFIG"
