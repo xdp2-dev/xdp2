@@ -8,7 +8,8 @@ TOPTARGETS := all clean install
 
 INCDIR=$(INSTALLDIR)$(HDRDIR)/uet
 
-TARGETS = pds.h  proto_uet_pds.h  proto_uet_ses.h  ses.h
+TARGETS = pds.h proto_uet_pds.h proto_uet_ses.h ses.h debug.h
+TARGETS += config.h protocol.h parser_test.h
 
 all:
 
