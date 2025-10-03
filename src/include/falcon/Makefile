@@ -8,7 +8,8 @@ TOPTARGETS := all clean install
 
 INCDIR=$(INSTALLDIR)$(HDRDIR)/falcon
 
-TARGETS =
+TARGETS = falcon.h proto_falcon.h debug.h
+TARGETS += config.h protocol.h parser_test.h
 
 all:
 
