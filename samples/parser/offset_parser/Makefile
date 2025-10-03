@@ -15,20 +15,32 @@ CFLAGS+= -g
 LDFLAGS= -L$(LIBDIR)
 
 TARGETS= parser
-TMPFILES= parser.p.c parser.p.h parser.o
+TMPFILES= parser.p.c parser.p.h parser.o parser.ll parser.json
+
+XDP2_COMPILER = $(BINDIR)/xdp2-compiler
+
+ifeq ($(BUILD_PARSER_JSON),y)
+PARSER_JSON = parser.json
+endif
 
 .PHONY: all
-all: $(TARGETS)
+all: $(TARGETS) $(PARSER_JSON)
 
 # We build parser.o but don't actually link it. This is done to detect any
 # compiler errors before calling xdp2-compiler that doesn't seem to produce
 # any errors if compilation fails (XXXTH Something to fix)
 
 parser.p.c: parser.c parser.o
-	$(BINDIR)/xdp2-compiler -I$(INCDIR) -i $< -o $@
+	$(XDP2_COMPILER) -I$(INCDIR) -i $< -o $@
 
 parser: parser.p.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< -lpcap -lxdp2 -lcli -lsiphash
+
+parser.ll: parser.c
+	clang $(CFLAGS) $(LDFLAGS) -S $< -emit-llvm
+
+parser.json: parser.ll
+	$(XDP2_COMPILER) -I$(INCDIR) -o $@ -l $< -i ${<:%.ll=%.c}
 
 .PHONY: clean
 clean:
