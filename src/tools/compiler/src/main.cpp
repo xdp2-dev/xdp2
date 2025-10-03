@@ -1405,13 +1405,14 @@ int main(int argc, char *argv[])
 
                         std::size_t key_value = out_edge_obj.macro_name_value;
 
-                        if (node.next_proto_data->bit_size <= 8)
+                        if (node.next_proto_data) {
+                          if (node.next_proto_data->bit_size <= 8)
                             ;
-                        else if (node.next_proto_data->bit_size <= 16)
+                          else if (node.next_proto_data->bit_size <= 16)
                             key_value = htons(key_value);
-                        else if (node.next_proto_data->bit_size <= 32)
+                          else if (node.next_proto_data->bit_size <= 32)
                             key_value = htonl(key_value);
-
+                        }
                         // Converts proto node mask to hex string
                         auto to_hex_mask = [&key_value]() -> std::string {
                             std::ostringstream ss;
