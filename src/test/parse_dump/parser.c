@@ -36,11 +36,9 @@
 #include "xdp2/proto_defs_define.h"
 #include "xdp2/utility.h"
 
-#include "falcon_parse.h"
-#include "parse_dump.h"
-#include "parse_helpers.h"
-#include "sue_parse.h"
-#include "uet_parse.h"
+#include "falcon/parser_test.h"
+#include "sue/parser_test.h"
+#include "uet/parser_test.h"
 
 #include "parse_dump.h"
 
