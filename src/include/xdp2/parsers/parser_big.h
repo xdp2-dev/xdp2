@@ -101,7 +101,7 @@ static inline bool xdp2_parser_big_parse_ip(void *p, size_t len,
 {
 	struct xdp2_ctrl_data ctrl;
 
-	XDP2_CTRL_RESET_VAR_DATA(ctrl);
+	XDP2_CTRL_RESET_VAR_DATA(&ctrl);
 
 	return (xdp2_parse(xdp2_parser_big_ip, p, len, mdata, &ctrl, 0) ==
 							XDP2_STOP_OKAY);

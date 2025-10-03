@@ -356,7 +356,7 @@ bool xdp2_parser_big_parse_l3(void *p, size_t len, __be16 proto,
 {
 	struct xdp2_ctrl_data ctrl;
 
-	XDP2_CTRL_RESET_VAR_DATA(ctrl);
+	XDP2_CTRL_RESET_VAR_DATA(&ctrl);
 
 	return (xdp2_parse_from_table(&l3_parser_table, proto, &ctrl,
 				      mdata, 0) == XDP2_STOP_OKAY);
