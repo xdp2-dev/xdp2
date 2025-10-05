@@ -252,7 +252,7 @@ std:
     bool _validate_output_ext(std::string const &ext)
     {
         if (ext == ".json" || ext == ".c" || ext == ".xdp.h" ||
-            ext == ".dot")
+            ext == ".dot" || ext == ".p4")
             return true;
         else
             return false;

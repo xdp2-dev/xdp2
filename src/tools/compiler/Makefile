@@ -13,6 +13,11 @@ TEMPLATES_SRC = $(patsubst %,%.template.c,$(TEMPLATES_LIST))
 	$(QUIET_EMBED)$(CAT) $< >> $@
 	@echo ")\";" >> $@
 
+%.cpp: %.template.p4
+	@echo "const char* $(<F:.template.p4=)_template_str = R\"(" > $@
+	$(QUIET_EMBED)$(CAT) $< >> $@
+	@echo ")\";" >> $@
+
 OBJS := src/main.o src/template.o
 OBJS += $(patsubst %,$(TEMPLATES_PATH)/%.o,$(TEMPLATES_LIST))
 

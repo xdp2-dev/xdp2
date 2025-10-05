@@ -473,6 +473,25 @@ int main(int argc, char *argv[])
                     plog::log(std::cout) << "failed python gen?" << std::endl;
                     return res;
                 }
+            } else if (output.substr(std::max(output.size() - 3, 0ul)) ==
+                       ".p4") {
+                output_basename =
+                    output.substr(std::max(output.size() - 6, 0ul));
+                auto file = std::ofstream{ output };
+                auto out = std::ostream_iterator<char>(file);
+
+                if (roots.size() > 1) {
+                    plog::log(std::cout) << "P4 only supports one root";
+                    return 1;
+                }
+
+                auto res = xdp2gen::python::generate_root_parser_p4(
+                    filename, output, graph, roots, record);
+
+                if (res != 0) {
+                    plog::log(std::cout) << "failed python gen?" << std::endl;
+                    return res;
+                }
             } else if (output.substr(std::max(output.size() - 5, 0ul)) ==
                        ".json") {
                 plog::log(std::cout) << "Generating json" << std::endl;
@@ -1405,13 +1424,14 @@ int main(int argc, char *argv[])
 
                         std::size_t key_value = out_edge_obj.macro_name_value;
 
-                        if (node.next_proto_data->bit_size <= 8)
+                        if (node.next_proto_data) {
+                          if (node.next_proto_data->bit_size <= 8)
                             ;
-                        else if (node.next_proto_data->bit_size <= 16)
+                          else if (node.next_proto_data->bit_size <= 16)
                             key_value = htons(key_value);
-                        else if (node.next_proto_data->bit_size <= 32)
+                          else if (node.next_proto_data->bit_size <= 32)
                             key_value = htonl(key_value);
-
+                        }
                         // Converts proto node mask to hex string
                         auto to_hex_mask = [&key_value]() -> std::string {
                             std::ostringstream ss;
@@ -1771,6 +1791,8 @@ int extract_struct_constants(
                     << "\n"
                     << "  - protocol has tlvs: "
                     << (graph[vd].tlv_nodes.size() > 0 ? "True" : "False")
+                    << "  - protocol has next_proto: "
+                    << (graph[vd].proto_next_proto.has_value() ? "True" : "False")
                     << std::endl;
                 if (graph[vd].proto_next_proto.has_value()) {
                     plog::log(std::cout)
