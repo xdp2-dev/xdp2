@@ -42,6 +42,7 @@ extern const char *pyratempsrc;
 extern const char *template_gen;
 extern const char *common_parser_template_str;
 extern const char *c_def_template_str;
+extern const char* p4_def_template_str;
 extern const char *xdp_def_template_str;
 
 namespace xdp2gen::python
@@ -361,12 +362,12 @@ auto make_python_object(graph_t const &graph, vertex_descriptor_t const &vertex)
         next_proto_info.set("multiplier",
                             static_cast<int>(v.next_proto_data->multiplier));
     }
-    /* else { */
-    /* 	  next_proto_info.set("bit_offset", 0); */
-    /* 	  next_proto_info.set("bit_size", 0); */
-    /* 	  next_proto_info.set("bit_mask", 0); */
-    /* 	  next_proto_info.set("multiplier", 0); */
-    /* }	   */
+    else {
+	  next_proto_info.set("bit_offset", 0);
+	  next_proto_info.set("bit_size", 0);
+	  next_proto_info.set("bit_mask", 0);
+	  next_proto_info.set("multiplier", 0);
+    }
     python::list metadata_transfers;
     for (auto &&m : v.metadata_transfers) {
         python::dict transfer;
@@ -645,6 +646,56 @@ int generate_root_parser_xdp_c(std::string filename, std::string output,
     }
 
     return 0;
+}
+
+int generate_root_parser_p4(std::string filename,
+						   std::string output,
+						   graph_t graph,
+                            std::vector<parser<graph_t>> roots
+			    , clang_ast::metadata_record record)
+{
+	{
+		auto ptr = [](auto* p) { PyMem_RawFree(p); };
+		auto program_name = decode_locale("main.py", NULL);
+		auto template_str = std::string(p4_def_template_str);
+
+		Py_SetProgramName(program_name.get());
+		Py_Initialize();
+
+		auto checker = error_checker{};
+
+		PyRun_SimpleString(pyratempsrc);
+		PyRun_SimpleString(template_gen);
+
+		auto generate_parser_entry_function = make_python_object(
+        ensure_not_null(
+           PyObject_GetAttrString(PyImport_AddModule("__main__"), "generate_parser_function"),
+           std::string{"Failed to get 'generate_parser_function'"}
+          ));
+
+		{
+			auto py_graph = make_python_object(graph);
+			auto py_roots = make_python_object(graph, roots);
+			auto py_metadata_record = make_python_object(record);
+
+			call_function(
+						  generate_parser_entry_function,
+						  filename,
+						  output,
+						  py_graph.get(),
+						  py_roots.get(),
+						  py_metadata_record.get(),
+						  template_str.c_str()
+						  );
+		}
+	}
+
+	if (Py_FinalizeEx() < 0) {
+		std::cerr << "Error running generation template" << std::endl;
+		return 120;
+	}
+
+	return 0;
 }
 
 }
