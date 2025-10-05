@@ -597,6 +597,8 @@ private:
 		     field_name == "metadata_table" ||
 		     field_name == "thread_funcs" ||
 		     field_name == "tlv_proto_table" ||
+                     field_name == "proto_def" ||
+                     field_name == "thread_funcs" ||
 		     field_name == "flag_fields_proto_table");
 
 		if (is_cur_field_of_interest) {
