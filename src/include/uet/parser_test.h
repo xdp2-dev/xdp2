@@ -909,8 +909,8 @@ static void print_ses_common_std_nosom_hdr(
 			     uet_ses_request_std_hdr_get_payload_length(shdr));
 
 	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tMessage offset: %u (0x%x)\n",
-			     ntohl(shdr->buffer_offset),
-			     ntohl(shdr->buffer_offset));
+			     ntohl(shdr->message_offset),
+			     ntohl(shdr->message_offset));
 	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRequest length: %u (0x%x)\n",
 			     ntohl(shdr->request_length),
 			     ntohl(shdr->request_length));
@@ -941,8 +941,8 @@ static void print_ses_common_std_som_hdr(
 			     payload_length, payload_length);
 
 	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tMessage offset: %u (0x%x)\n",
-			     ntohl(shdr->buffer_offset),
-			     ntohl(shdr->buffer_offset));
+			     ntohl(shdr->message_offset),
+			     ntohl(shdr->message_offset));
 	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tRequest length: %u (0x%x)\n",
 			     ntohl(shdr->request_length),
 			     ntohl(shdr->request_length));
