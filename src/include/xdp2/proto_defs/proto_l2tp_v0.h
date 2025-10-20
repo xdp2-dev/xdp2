@@ -103,9 +103,7 @@ static inline ssize_t l2tp_v0_offsz_len(const void *vl2tp, size_t maxlen)
  * Next protocol operation returns L2TP version number (i.e. 0, 1, or 3).
  */
 
-
-static const struct xdp2_proto_def
-					xdp_parse_l2tp_v0_base __unused() = {
+static const struct xdp2_proto_def xdp_parse_l2tp_v0_base __unused() = {
 	.name = "L2TP v0",
 	.min_len = 2,
 	.ops.next_proto = l2tp_v0_base_proto_version,
