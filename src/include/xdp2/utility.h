@@ -210,6 +210,7 @@ static inline unsigned int xdp2_get_log_round_up(unsigned long long x)
 #endif
 
 #define xdp2_ntohl24(x) (ntohl(x) >> 8)
+#define xdp2_htonl24(x) (htonl(x) >> 8)
 
 #define XDP2_SWAP(a, b) do {					\
 	typeof(a) __tmp = (a); (a) = (b); (b) = __tmp;		\
