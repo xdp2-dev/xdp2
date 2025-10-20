@@ -944,7 +944,7 @@ struct uet_ses_common_response_hdr {
 	__u8 ver: 2;
 #endif
 
-	__u16 message_id;
+	__be16 message_id;
 
 	__u32 ri_generation: 8;
 	__u32 job_id: 24;
