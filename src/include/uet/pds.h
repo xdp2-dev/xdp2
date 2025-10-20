@@ -452,7 +452,7 @@ struct uet_pds_control_pkt {
 	__u16 rsvd1: 1;
 	__u16 ctl_type2: 1;
 #endif
-	__u16 probe_opaque;
+	__be16 probe_opaque;
 	__be32 psn;
 	__be16 spdcid;
 	union {
