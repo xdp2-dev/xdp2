@@ -106,6 +106,15 @@ The subdirectories of **samples** are:
 For more information about the XDP2 code samples see the README files in
 the samples directory
 
+Nix Development Environment (Experimental)
+==========================================
+
+**New in October 2024**: XDP2 now includes an experimental Nix development environment that provides a reproducible, isolated development setup. This eliminates dependency conflicts and ensures consistent builds across all machines.  We would love feedback about the Nix development environment to xdp2@lists.linux.dev.
+
+For detailed instructions, troubleshooting, and technical details, see the [Nix Development Environment Guide](documentation/nix/nix.md).
+
+> **Note**: This is an experimental feature. The traditional build process (described below) remains the primary method for building XDP2.
+
 Building-src
 ============
 
