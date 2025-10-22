@@ -629,9 +629,21 @@ static int handler_pds_uud_req(const void *hdr, size_t hdr_len,
 			       void *frame,
 			       const struct xdp2_ctrl_data *ctrl)
 {
+	const struct uet_pds_uud_req *pkt = hdr;
+	__u8 next_hdr = uet_pds_common_get_next_hdr(pkt);
+
 	if (verbose >= 5)
 		XDP2_PTH_LOC_PRINTFC(ctrl, "\tUET PDS UUD request\n");
 
+	if (verbose < 10)
+		return 0;
+
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tType: %s (%u)\n",
+			     uet_pkt_type_to_text(pkt->type), pkt->type);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tNext header: %s (%u)\n",
+			     uet_next_header_type_to_text(next_hdr), next_hdr);
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tFlags: %u (0x%x)\n",
+			     pkt->flags, pkt->flags);
 	return 0;
 }
 
@@ -815,7 +827,7 @@ XDP2_MAKE_PROTO_TABLE(pds_packet_type_table,
 	MATCH_PAIR(UET_PDS_TYPE_NACK, pds_nack),
 	MATCH_PAIR(UET_PDS_TYPE_NACK_CCX, pds_nack_ccx),
 	MATCH_PAIR(UET_PDS_TYPE_RUDI_RESP, pds_rudi_resp),
-	MATCH_ONE(UET_PDS_TYPE_UUD_REQ, pds_uud_req)
+	MATCH_PAIR(UET_PDS_TYPE_UUD_REQ, pds_uud_req)
 );
 
 /************************ SES ****************************/
@@ -828,7 +840,7 @@ static void print_ses_common_hdr(const struct uet_ses_common_hdr *chdr,
 {
 	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tVersion: %u\n", chdr->version);
 	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tOpcode: %s (%u)\n",
-			     uet_ses_request_msg_type_to_text(chdr->opcode),
+			     uet_ses_request_opcode_to_text(chdr->opcode),
 			     chdr->opcode);
 	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tDelivery complete: %s\n",
 			     chdr->delivery_complete ? "yes" : "no");
@@ -1376,30 +1388,31 @@ XDP2_MAKE_LEAF_PARSE_NODE(uet_ses_no_op_std,
 			  (.ops.handler = handler_uet_ses_no_op_std));
 
 XDP2_MAKE_PROTO_TABLE(pds_hdr_request_std_table,
-	( UET_SES_REQUEST_MSG_NO_OP, uet_ses_no_op_std ),
-	( UET_SES_REQUEST_MSG_WRITE, uet_ses_request_write_std ),
-	( UET_SES_REQUEST_MSG_READ, uet_ses_request_read_std ),
-	( UET_SES_REQUEST_MSG_ATOMIC, uet_ses_request_atomic_std ),
-	( UET_SES_REQUEST_MSG_FETCHING_ATOMIC,
+	( UET_SES_REQUEST_OPCODE_NO_OP, uet_ses_no_op_std ),
+	( UET_SES_REQUEST_OPCODE_WRITE, uet_ses_request_write_std ),
+	( UET_SES_REQUEST_OPCODE_READ, uet_ses_request_read_std ),
+	( UET_SES_REQUEST_OPCODE_ATOMIC, uet_ses_request_atomic_std ),
+	( UET_SES_REQUEST_OPCODE_FETCHING_ATOMIC,
 	  uet_ses_request_fetching_atomic_std ),
-	( UET_SES_REQUEST_MSG_SEND, uet_ses_request_send_std ),
-	( UET_SES_REQUEST_MSG_RENDEZVOUS_SEND,
+	( UET_SES_REQUEST_OPCODE_SEND, uet_ses_request_send_std ),
+	( UET_SES_REQUEST_OPCODE_RENDEZVOUS_SEND,
 	  uet_ses_request_rendezvous_send_std ),
-	( UET_SES_REQUEST_MSG_DATAGRAM_SEND,
+	( UET_SES_REQUEST_OPCODE_DATAGRAM_SEND,
 	  uet_ses_request_datagram_send_std ),
-	( UET_SES_REQUEST_MSG_DEFERRABLE_SEND,
+	( UET_SES_REQUEST_OPCODE_DEFERRABLE_SEND,
 	  uet_ses_request_deferrable_send_std ),
-	( UET_SES_REQUEST_MSG_TAGGED_SEND, uet_ses_request_tagged_send_std ),
-	( UET_SES_REQUEST_MSG_RENDEZVOUS_TSEND,
+	( UET_SES_REQUEST_OPCODE_TAGGED_SEND, uet_ses_request_tagged_send_std ),
+	( UET_SES_REQUEST_OPCODE_RENDEZVOUS_TSEND,
 	  uet_ses_request_rendezvous_tsend_std ),
-	( UET_SES_REQUEST_MSG_DEFERRABLE_TSEND,
+	( UET_SES_REQUEST_OPCODE_DEFERRABLE_TSEND,
 	  uet_ses_request_deferrable_tsend_std ),
-	( UET_SES_REQUEST_MSG_DEFERRABLE_RTR,
+	( UET_SES_REQUEST_OPCODE_DEFERRABLE_RTR,
 	  uet_ses_request_ready_restart_std ),
-	( UET_SES_REQUEST_MSG_TSEND_ATOMIC, uet_ses_request_tsend_atomic_std ),
-	( UET_SES_REQUEST_MSG_TSEND_FETCH_ATOMIC,
+	( UET_SES_REQUEST_OPCODE_TSEND_ATOMIC,
+	  uet_ses_request_tsend_atomic_std ),
+	( UET_SES_REQUEST_OPCODE_TSEND_FETCH_ATOMIC,
 	  uet_ses_request_tsend_fetch_atomic_std ),
-	( UET_SES_REQUEST_MSG_MSG_ERROR, uet_ses_request_error_std )
+	( UET_SES_REQUEST_OPCODE_MSG_ERROR, uet_ses_request_error_std )
 );
 
 /* SES medium headers */
@@ -1485,20 +1498,20 @@ XDP2_MAKE_LEAF_PARSE_NODE(uet_ses_msg_no_op_medium,
 			  (.ops.handler = handler_uet_ses_msg_no_op_medium));
 
 XDP2_MAKE_PROTO_TABLE(pds_hdr_request_medium_table,
-	( UET_SES_REQUEST_MSG_NO_OP, uet_ses_msg_no_op_medium ),
-	( UET_SES_REQUEST_MSG_WRITE, uet_ses_request_write_medium ),
-	( UET_SES_REQUEST_MSG_READ, uet_ses_request_read_medium ),
-	( UET_SES_REQUEST_MSG_SEND, uet_ses_request_send_medium ),
-	( UET_SES_REQUEST_MSG_TAGGED_SEND,
+	( UET_SES_REQUEST_OPCODE_NO_OP, uet_ses_msg_no_op_medium ),
+	( UET_SES_REQUEST_OPCODE_WRITE, uet_ses_request_write_medium ),
+	( UET_SES_REQUEST_OPCODE_READ, uet_ses_request_read_medium ),
+	( UET_SES_REQUEST_OPCODE_SEND, uet_ses_request_send_medium ),
+	( UET_SES_REQUEST_OPCODE_TAGGED_SEND,
 	  uet_ses_request_tsend_medium ),
-	( UET_SES_REQUEST_MSG_DATAGRAM_SEND,
+	( UET_SES_REQUEST_OPCODE_DATAGRAM_SEND,
 	  uet_ses_request_datagram_send_medium ),
-	( UET_SES_REQUEST_MSG_TSEND_ATOMIC,
+	( UET_SES_REQUEST_OPCODE_TSEND_ATOMIC,
 	  uet_ses_request_tsend_atomic_medium ),
-	( UET_SES_REQUEST_MSG_TSEND_FETCH_ATOMIC,
+	( UET_SES_REQUEST_OPCODE_TSEND_FETCH_ATOMIC,
 	  uet_ses_request_tsend_fetch_atomic_medium ),
-	( UET_SES_REQUEST_MSG_ATOMIC, uet_ses_request_atomic_medium ),
-	( UET_SES_REQUEST_MSG_FETCHING_ATOMIC,
+	( UET_SES_REQUEST_OPCODE_ATOMIC, uet_ses_request_atomic_medium ),
+	( UET_SES_REQUEST_OPCODE_FETCHING_ATOMIC,
 	  uet_ses_request_fetching_atomic_medium )
 );
 
@@ -1571,11 +1584,11 @@ XDP2_MAKE_LEAF_PARSE_NODE(uet_ses_msg_no_op_small,
 			  (.ops.handler = handler_uet_ses_msg_no_op_small));
 
 XDP2_MAKE_PROTO_TABLE(pds_hdr_request_small_table,
-	( UET_SES_REQUEST_MSG_NO_OP, uet_ses_msg_no_op_small ),
-	( UET_SES_REQUEST_MSG_WRITE, uet_ses_request_write_small ),
-	( UET_SES_REQUEST_MSG_READ, uet_ses_request_read_small ),
-	( UET_SES_REQUEST_MSG_ATOMIC, uet_ses_request_atomic_small ),
-	( UET_SES_REQUEST_MSG_FETCHING_ATOMIC,
+	( UET_SES_REQUEST_OPCODE_NO_OP, uet_ses_msg_no_op_small ),
+	( UET_SES_REQUEST_OPCODE_WRITE, uet_ses_request_write_small ),
+	( UET_SES_REQUEST_OPCODE_READ, uet_ses_request_read_small ),
+	( UET_SES_REQUEST_OPCODE_ATOMIC, uet_ses_request_atomic_small ),
+	( UET_SES_REQUEST_OPCODE_FETCHING_ATOMIC,
 	  uet_ses_request_fetching_atomic_small)
 );
 
@@ -1624,7 +1637,7 @@ static void print_ses_common_response(const struct uet_ses_common_response_hdr
 			     uet_ses_list_delivered_to_text(resp->list),
 			     resp->list);
 	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tOpcode: %s (%u)\n",
-			     uet_ses_reponse_msg_type_to_text(resp->opcode),
+			     uet_ses_reponse_type_to_text(resp->opcode),
 			     resp->opcode);
 
 	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tVersion: %x\n", resp->ver);
@@ -1683,9 +1696,9 @@ MAKE_RESPONSE(default, "Default");
 MAKE_RESPONSE(none, "None");
 
 XDP2_MAKE_PROTO_TABLE(uet_ses_response_nodata_table,
-	( UET_SES_RESPONSE, uet_ses_normal_nodata_response ),
-	( UET_SES_RESPONSE_DEFAULT, uet_ses_default_nodata_response ),
-	( UET_SES_RESPONSE_NONE, uet_ses_none_nodata_response )
+	( UET_SES_RESPONSE_TYPE_OTHER, uet_ses_normal_nodata_response ),
+	( UET_SES_RESPONSE_TYPE_DEFAULT, uet_ses_default_nodata_response ),
+	( UET_SES_RESPONSE_TYPE_NONE, uet_ses_none_nodata_response )
 );
 
 /* Handler for response with data */
@@ -1715,9 +1728,9 @@ static int handler_uet_ses_with_data_response(const void *hdr, size_t hdr_len,
 	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tModified length: %u (%x)\n",
 			     ntohl(resp->modified_length),
 			     ntohl(resp->modified_length));
-	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tModified length: %u (%x)\n",
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tMessage offset: %u (%x)\n",
 			     ntohl(resp->message_offset),
-			     ntohs(resp->message_offset));
+			     ntohl(resp->message_offset));
 	return 0;
 }
 
@@ -1727,7 +1740,7 @@ XDP2_MAKE_LEAF_PARSE_NODE(uet_ses_response_with_data,
 				handler_uet_ses_with_data_response));
 
 XDP2_MAKE_PROTO_TABLE(uet_ses_response_with_data_table,
-	( UET_SES_RESPONSE_WITH_DATA, uet_ses_response_with_data )
+	( UET_SES_RESPONSE_TYPE_WITH_DATA, uet_ses_response_with_data )
 );
 
 /* Handler for response with small data */
@@ -1750,7 +1763,7 @@ static int handler_uet_ses_with_small_data_response(
 			     uet_ses_list_delivered_to_text(resp->list),
 			     resp->list);
 	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tOpcode: %s (%u)\n",
-			     uet_ses_reponse_msg_type_to_text(resp->opcode),
+			     uet_ses_reponse_type_to_text(resp->opcode),
 			     resp->opcode);
 
 	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tVersion: %x\n", resp->ver);
@@ -1777,7 +1790,7 @@ XDP2_MAKE_LEAF_PARSE_NODE(uet_ses_response_with_small_data,
 				handler_uet_ses_with_small_data_response));
 
 XDP2_MAKE_PROTO_TABLE(uet_ses_response_with_data_small_table,
-	( UET_SES_RESPONSE_WITH_DATA, uet_ses_response_with_small_data )
+	( UET_SES_RESPONSE_TYPE_WITH_DATA, uet_ses_response_with_small_data )
 );
 
 /* Master PDS table for responses */

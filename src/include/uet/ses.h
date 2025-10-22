@@ -64,88 +64,88 @@ static inline const char *uet_next_header_type_to_text(
 	}
 }
 
-#define __XDP_SES_REQUEST_VENDOR_MSG_ENUM2(VNUM, VAL)		\
-	XDP2_JOIN2(UET_SES_REQUEST_MSG_VENDOR_DEFINED_, VNUM) = VAL,
+#define __XDP_SES_REQUEST_VENDOR_OPCODE_ENUM2(VNUM, VAL)		\
+	XDP2_JOIN2(UET_SES_REQUEST_OPCODE_VENDOR_DEFINED_, VNUM) = VAL,
 
-#define __XDP_SES_REQUEST_VENDOR_MSG_ENUM(PAIR)			\
-	__XDP_SES_REQUEST_VENDOR_MSG_ENUM2 PAIR
+#define __XDP_SES_REQUEST_VENDOR_OPCODE_ENUM(PAIR)			\
+	__XDP_SES_REQUEST_VENDOR_OPCODE_ENUM2 PAIR
 
-enum uet_ses_request_msg_type {
-	UET_SES_REQUEST_MSG_NO_OP = 0x0,
-	UET_SES_REQUEST_MSG_WRITE = 0x1,
-	UET_SES_REQUEST_MSG_READ = 0x2,
-	UET_SES_REQUEST_MSG_ATOMIC = 0x3,
-	UET_SES_REQUEST_MSG_FETCHING_ATOMIC = 0x4,
-	UET_SES_REQUEST_MSG_SEND = 0x5,
-	UET_SES_REQUEST_MSG_RENDEZVOUS_SEND = 0x6,
-	UET_SES_REQUEST_MSG_DATAGRAM_SEND = 0x7,
-	UET_SES_REQUEST_MSG_DEFERRABLE_SEND = 0x8,
-	UET_SES_REQUEST_MSG_TAGGED_SEND = 0x9,
-	UET_SES_REQUEST_MSG_RENDEZVOUS_TSEND = 0xa,
-	UET_SES_REQUEST_MSG_DEFERRABLE_TSEND = 0xb,
-	UET_SES_REQUEST_MSG_DEFERRABLE_RTR = 0xc,
-	UET_SES_REQUEST_MSG_TSEND_ATOMIC = 0xd,
-	UET_SES_REQUEST_MSG_TSEND_FETCH_ATOMIC = 0xe,
-	UET_SES_REQUEST_MSG_MSG_ERROR = 0xf,
+enum uet_ses_request_opcode {
+	UET_SES_REQUEST_OPCODE_NO_OP = 0x0,
+	UET_SES_REQUEST_OPCODE_WRITE = 0x1,
+	UET_SES_REQUEST_OPCODE_READ = 0x2,
+	UET_SES_REQUEST_OPCODE_ATOMIC = 0x3,
+	UET_SES_REQUEST_OPCODE_FETCHING_ATOMIC = 0x4,
+	UET_SES_REQUEST_OPCODE_SEND = 0x5,
+	UET_SES_REQUEST_OPCODE_RENDEZVOUS_SEND = 0x6,
+	UET_SES_REQUEST_OPCODE_DATAGRAM_SEND = 0x7,
+	UET_SES_REQUEST_OPCODE_DEFERRABLE_SEND = 0x8,
+	UET_SES_REQUEST_OPCODE_TAGGED_SEND = 0x9,
+	UET_SES_REQUEST_OPCODE_RENDEZVOUS_TSEND = 0xa,
+	UET_SES_REQUEST_OPCODE_DEFERRABLE_TSEND = 0xb,
+	UET_SES_REQUEST_OPCODE_DEFERRABLE_RTR = 0xc,
+	UET_SES_REQUEST_OPCODE_TSEND_ATOMIC = 0xd,
+	UET_SES_REQUEST_OPCODE_TSEND_FETCH_ATOMIC = 0xe,
+	UET_SES_REQUEST_OPCODE_MSG_ERROR = 0xf,
 
 	/* Reserved 0x10-0x2f */
 
-	XDP2_PMACRO_APPLY_ALL(__XDP_SES_REQUEST_VENDOR_MSG_ENUM,
+	XDP2_PMACRO_APPLY_ALL(__XDP_SES_REQUEST_VENDOR_OPCODE_ENUM,
 			      (0, 0x30), (1, 0x31), (2, 0x32), (3, 0x33),
 			      (4, 0x34), (5, 0x35), (6, 0x36), (7, 0x37),
 			      (8, 0x38), (9, 0x39), (10, 0x3a), (11, 0x3b),
 			      (12, 0x3c), (13, 0x3d), (14, 0x3e))
 
-	UET_SES_REQUEST_MSG_EXTENDED = 0x3f,
+	UET_SES_REQUEST_OPCODE_EXTENDED = 0x3f,
 };
 
-#define __XDP_SES_REQUEST_VENDOR_MSG_CASE(VNUM)			\
-	case XDP2_JOIN2(UET_SES_REQUEST_MSG_VENDOR_DEFINED_, VNUM):	\
+#define __XDP_SES_REQUEST_VENDOR_OPCODE_CASE(VNUM)			\
+	case XDP2_JOIN2(UET_SES_REQUEST_OPCODE_VENDOR_DEFINED_, VNUM):	\
 		return "Vendor defined #" #VNUM;
 
-static inline const char *uet_ses_request_msg_type_to_text(
-					enum uet_ses_request_msg_type type)
+static inline const char *uet_ses_request_opcode_to_text(
+					enum uet_ses_request_opcode opcode)
 {
-	switch (type) {
-	case UET_SES_REQUEST_MSG_NO_OP:
+	switch (opcode) {
+	case UET_SES_REQUEST_OPCODE_NO_OP:
 		return "No operation";
-	case UET_SES_REQUEST_MSG_WRITE:
+	case UET_SES_REQUEST_OPCODE_WRITE:
 		return "Write";
-	case UET_SES_REQUEST_MSG_READ:
+	case UET_SES_REQUEST_OPCODE_READ:
 		return "Read";
-	case UET_SES_REQUEST_MSG_ATOMIC:
+	case UET_SES_REQUEST_OPCODE_ATOMIC:
 		return "Atomic";
-	case UET_SES_REQUEST_MSG_FETCHING_ATOMIC:
+	case UET_SES_REQUEST_OPCODE_FETCHING_ATOMIC:
 		return "Fetching atomic";
-	case UET_SES_REQUEST_MSG_SEND:
+	case UET_SES_REQUEST_OPCODE_SEND:
 		return "Send";
-	case UET_SES_REQUEST_MSG_RENDEZVOUS_SEND:
+	case UET_SES_REQUEST_OPCODE_RENDEZVOUS_SEND:
 		return "Rendezvous send";
-	case UET_SES_REQUEST_MSG_DATAGRAM_SEND:
+	case UET_SES_REQUEST_OPCODE_DATAGRAM_SEND:
 		return "Datagram send";
-	case UET_SES_REQUEST_MSG_DEFERRABLE_SEND:
+	case UET_SES_REQUEST_OPCODE_DEFERRABLE_SEND:
 		return "Deferrable send";
-	case UET_SES_REQUEST_MSG_TAGGED_SEND:
+	case UET_SES_REQUEST_OPCODE_TAGGED_SEND:
 		return "Tagged send";
-	case UET_SES_REQUEST_MSG_RENDEZVOUS_TSEND:
+	case UET_SES_REQUEST_OPCODE_RENDEZVOUS_TSEND:
 		return "Rendezvous tagged send";
-	case UET_SES_REQUEST_MSG_DEFERRABLE_TSEND:
+	case UET_SES_REQUEST_OPCODE_DEFERRABLE_TSEND:
 		return "Deferrable tagged send";
-	case UET_SES_REQUEST_MSG_DEFERRABLE_RTR:
+	case UET_SES_REQUEST_OPCODE_DEFERRABLE_RTR:
 		return "Deferred send ready to restart";
-	case UET_SES_REQUEST_MSG_TSEND_ATOMIC:
+	case UET_SES_REQUEST_OPCODE_TSEND_ATOMIC:
 		return "Tagged send atomic";
-	case UET_SES_REQUEST_MSG_TSEND_FETCH_ATOMIC:
+	case UET_SES_REQUEST_OPCODE_TSEND_FETCH_ATOMIC:
 		return "Tagged send fetch atomic";
-	case UET_SES_REQUEST_MSG_MSG_ERROR:
+	case UET_SES_REQUEST_OPCODE_MSG_ERROR:
 		return "Terminate message in error";
 
 	/* Reserved 0x10-0x2f */
 
-	XDP2_PMACRO_APPLY_ALL(__XDP_SES_REQUEST_VENDOR_MSG_CASE,
+	XDP2_PMACRO_APPLY_ALL(__XDP_SES_REQUEST_VENDOR_OPCODE_CASE,
 			      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
 
-	case UET_SES_REQUEST_MSG_EXTENDED:
+	case UET_SES_REQUEST_OPCODE_EXTENDED:
 		return "Opcode escaped to extend opcode (TBD)";
 
 	default:
@@ -156,8 +156,8 @@ static inline const char *uet_ses_request_msg_type_to_text(
 enum uet_ses_list_delivered_to_type  {
 	UET_SES_LIST_DELIVERED_EXPECTED = 0,
 	UET_SES_LIST_DELIVERED_OVERFLOW = 1,
-	UET_SES_LIST_DELIVERED_VNEDOR_DEFINED1 = 2,
-	UET_SES_LIST_DELIVERED_VNEDOR_DEFINED2 = 3,
+	UET_SES_LIST_DELIVERED_VENDOR_DEFINED1 = 2,
+	UET_SES_LIST_DELIVERED_VENDOR_DEFINED2 = 3,
 };
 
 static inline const char *uet_ses_list_delivered_to_text(
@@ -168,54 +168,54 @@ static inline const char *uet_ses_list_delivered_to_text(
 		return "expected";
 	case UET_SES_LIST_DELIVERED_OVERFLOW:
 		return "overflow";
-	case UET_SES_LIST_DELIVERED_VNEDOR_DEFINED1:
+	case UET_SES_LIST_DELIVERED_VENDOR_DEFINED1:
 		return "Vendor defined 1";
-	case UET_SES_LIST_DELIVERED_VNEDOR_DEFINED2:
+	case UET_SES_LIST_DELIVERED_VENDOR_DEFINED2:
 		return "Vendor defined 2";
 	default:
 		return "unknown";
 	}
 }
 
-#define __XDP_SES_RESPONSE_VENDOR_MSG_ENUM2(VNUM, VAL)			\
-	XDP2_JOIN2(UET_SES_RESPONSE_MSG_VENDOR_DEFINED_, VNUM) = VAL,
+#define __XDP_SES_RESPONSE_TYPE_VENDOR_ENUM2(VNUM, VAL)		\
+	XDP2_JOIN2(UET_SES_RESPONSE_TYPE_VENDOR_DEFINED_, VNUM) = VAL,
 
-#define __XDP_SES_RESPONSE_VENDOR_MSG_ENUM(PAIR)			\
-	__XDP_SES_RESPONSE_VENDOR_MSG_ENUM2 PAIR
+#define __XDP_SES_RESPONSE_TYPE_VENDOR_ENUM(PAIR)			\
+	__XDP_SES_RESPONSE_TYPE_VENDOR_ENUM2 PAIR
 
-enum uet_ses_response_msg_type {
-	UET_SES_RESPONSE_DEFAULT = 0x0,
-	UET_SES_RESPONSE = 0x1,
-	UET_SES_RESPONSE_WITH_DATA = 0x2,
-	UET_SES_RESPONSE_NONE = 0x3,
+enum uet_ses_response_type {
+	UET_SES_RESPONSE_TYPE_DEFAULT = 0x0,
+	UET_SES_RESPONSE_TYPE_OTHER = 0x1,
+	UET_SES_RESPONSE_TYPE_WITH_DATA = 0x2,
+	UET_SES_RESPONSE_TYPE_NONE = 0x3,
 
 	/* Reserved 0x5-0x2f */
 
-	XDP2_PMACRO_APPLY_ALL(__XDP_SES_RESPONSE_VENDOR_MSG_ENUM,
+	XDP2_PMACRO_APPLY_ALL(__XDP_SES_RESPONSE_TYPE_VENDOR_ENUM,
 			      (0, 0x30), (1, 0x31), (2, 0x32), (3, 0x33),
 			      (4, 0x34), (5, 0x35), (6, 0x36), (7, 0x37),
 			      (8, 0x38), (9, 0x39), (10, 0x3a), (11, 0x3b),
 			      (12, 0x3c), (13, 0x3d), (14, 0x3e), (15, 0x3f))
 };
 
-#define __XDP_SES_RESPONSE_VENDOR_MSG_CASE(VNUM)			\
-	case XDP2_JOIN2(UET_SES_RESPONSE_MSG_VENDOR_DEFINED_, VNUM):	\
+#define __XDP_SES_RESPONSE_TYPE_VENDOR_CASE(VNUM)			\
+	case XDP2_JOIN2(UET_SES_RESPONSE_TYPE_VENDOR_DEFINED_, VNUM):	\
 		return "Vendor defined #" #VNUM;
 
-static inline const char *uet_ses_reponse_msg_type_to_text(
-					enum uet_ses_response_msg_type type)
+static inline const char *uet_ses_reponse_type_to_text(
+					enum uet_ses_response_type type)
 {
 	switch (type) {
-	case UET_SES_RESPONSE_DEFAULT:
+	case UET_SES_RESPONSE_TYPE_DEFAULT:
 		return "Default response";
-	case UET_SES_RESPONSE:
+	case UET_SES_RESPONSE_TYPE_OTHER:
 		return "Other than default response";
-	case UET_SES_RESPONSE_WITH_DATA:
+	case UET_SES_RESPONSE_TYPE_WITH_DATA:
 		return "Response carrying data";
-	case UET_SES_RESPONSE_NONE:
+	case UET_SES_RESPONSE_TYPE_NONE:
 		return "No semantic response availbale";
 
-	XDP2_PMACRO_APPLY_ALL(__XDP_SES_RESPONSE_VENDOR_MSG_CASE,
+	XDP2_PMACRO_APPLY_ALL(__XDP_SES_RESPONSE_TYPE_VENDOR_CASE,
 			      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
 			      14, 15)
 
@@ -376,7 +376,7 @@ static inline const char *uet_ses_return_code_to_text(
 	}
 }
 
-#define __XDP_SES_AMO_VENDOR_ENUM2(VNUM, VAL)			\
+#define __XDP_SES_AMO_VENDOR_ENUM2(VNUM, VAL)				\
 	XDP2_JOIN2(UET_SES_AMO_VENDOR_DEFINED_, VNUM) = VAL,
 
 #define __XDP_SES_AMO_VENDOR_ENUM(PAIR) __XDP_SES_AMO_VENDOR_ENUM2 PAIR
