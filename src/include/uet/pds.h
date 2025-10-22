@@ -38,7 +38,7 @@
 struct uet_entropy_hdr {
 	__be16 entropy;
 	__u16 rsvd;
-};
+} __packed;
 
 /* UET-PDS packet types */
 enum uet_pds_pkt_type {
@@ -471,7 +471,7 @@ struct uet_pds_control_pkt {
 		};
 	};
 	__be32 payload;
-};
+} __packed;
 
 /* Helper functions to get/set psn-offset from bitfields in control packet */
 static inline __u16 uet_pds_control_pkt_get_psn_offset(
@@ -541,8 +541,9 @@ struct uet_pds_rudi_req_resp {
 	__u16 rsvd1: 1;
 	__u16 next_hdr2: 1;
 #endif
+	__u16 rsvd3;
 	__be32 pkt_id;
-};
+} __packed;
 
 /* NACK packet types */
 enum uet_nack_type {
@@ -735,6 +736,6 @@ struct uet_pds_uud_req {
 	__u16 next_hdr2: 1;
 #endif
 	__u16 rsvd;
-};
+} __packed;
 
 #endif /* __UET_PDS_H__ */
