@@ -95,6 +95,8 @@ enum xdp2_parser_node_type {
 	XDP2_NODE_TYPE_TLVS,
 	/* Flag-fields with super structure for flag-fields */
 	XDP2_NODE_TYPE_FLAG_FIELDS,
+	/* Array with super structure for arrays */
+	XDP2_NODE_TYPE_ARRAY,
 };
 
 /* Protocol parsing operations:

@@ -35,6 +35,7 @@
 #include <linux/types.h>
 #include <string.h>
 
+#include "xdp2/arrays.h"
 #include "xdp2/compiler_helpers.h"
 #include "xdp2/flag_fields.h"
 #include "xdp2/parser_types.h"

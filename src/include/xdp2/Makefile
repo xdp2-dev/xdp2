@@ -21,8 +21,8 @@ TARGETS += vstruct.h switch.h locks.h timer.h cli.h pcap.h
 TARGETS += packets_helpers.h table_common.h stable.h _stable.h
 TARGETS += dtable.h _dtable.h checksum.h obj_allocator.h pvbuf.h
 TARGETS += pvpkt.h config.h parser_types.h parser.h parser_metadata.h
-TARGETS += flag_fields.h tlvs.h proto_defs_define.h proto_defs.h
-TARGETS += accelerator.h pkt_action.h bpf.h xdp_tmpl.h
+TARGETS += flag_fields.h tlvs.h arrays.h proto_defs_define.h
+TARGETS += proto_defs.h accelerator.h pkt_action.h bpf.h xdp_tmpl.h
 
 PMACRO_GEN = $(SRCDIR)/tools/pmacro/pmacro_gen
 
