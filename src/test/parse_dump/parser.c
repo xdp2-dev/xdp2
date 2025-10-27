@@ -38,6 +38,7 @@
 
 #include "falcon/parser_test.h"
 #include "sue/parser_test.h"
+//#include "superp/parser_test.h"
 #include "uet/parser_test.h"
 
 #include "parse_dump.h"
@@ -1042,8 +1043,6 @@ static int handler_ipv6_srv6_routing_header(const void *hdr, size_t hdr_len,
 					    const struct xdp2_ctrl_data *ctrl)
 {
 	const struct ipv6_sr_hdr *srhdr = hdr;
-	char sbuf[INET6_ADDRSTRLEN];
-	int i;
 
 	if (verbose >= 5)
 		XDP2_PTH_LOC_PRINTFC(ctrl, "\tSRv6 header length %u\n",
@@ -1058,12 +1057,22 @@ static int handler_ipv6_srv6_routing_header(const void *hdr, size_t hdr_len,
 		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tTag: %u\n", srhdr->tag);
 
 		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\tSegments:\n");
-		for (i = 0; i <= srhdr->first_segment; i++) {
-			inet_ntop(AF_INET6, &srhdr->segments[i], sbuf,
-				  sizeof(sbuf));
-			XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t\t%u: %s\n", i, sbuf);
-		}
 	}
+
+	return 0;
+}
+
+static int handler_ipv6_srv6_segment(const void *hdr, size_t hdr_len,
+				     size_t hdr_off, void *metadata,
+				     void *_frame,
+				     const struct xdp2_ctrl_data *ctrl)
+{
+	const struct in6_addr *addr = hdr;
+	char sbuf[INET6_ADDRSTRLEN];
+
+	inet_ntop(AF_INET6, addr, sbuf, sizeof(sbuf));
+	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t\t%u: %s\n",
+			     ctrl->key.counters[2]++, sbuf);
 
 	return 0;
 }
@@ -1084,11 +1093,17 @@ XDP2_MAKE_PARSE_NODE(ipv6_routing_header_node,
 		      .ops.handler = handler_ipv6_routing_header,
 		      .unknown_ret = XDP2_STOP_OKAY));
 
-XDP2_MAKE_PARSE_NODE(ipv6_srv6_routing_header_node,
-		      xdp2_parse_ipv6_eh, ip6_table,
-		     (.ops.extract_metadata = extract_eh,
-		      .ops.handler = handler_ipv6_srv6_routing_header,
-		      .unknown_ret = XDP2_STOP_OKAY));
+XDP2_MAKE_ARREL_PARSE_NODE(ipv6_srv6_segment,
+			   (.ops.handler = handler_ipv6_srv6_segment));
+
+XDP2_MAKE_ARRAY_PARSE_NODE_NOTAB(ipv6_srv6_routing_header_node,
+				 xdp2_parse_srv6_seg_list, ip6_table,
+				 (.ops.extract_metadata = extract_eh,
+				  .ops.handler =
+					handler_ipv6_srv6_routing_header,
+				  .unknown_ret = XDP2_STOP_OKAY),
+				 (.array_wildcard_node =
+					XDP2_ARREL_NODE(ipv6_srv6_segment)));
 
 XDP2_MAKE_PARSE_NODE(ipv6_routing_header_node_check,
 		     xdp2_parse_ipv6_routing_hdr, rthdr_table,
