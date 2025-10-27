@@ -60,6 +60,19 @@ static const struct xdp2_parse_tlv_node *lookup_tlv_node(int type,
 	return NULL;
 }
 
+/* Lookup a type in a node array element table */
+static const struct xdp2_parse_arrel_node *lookup_array_node(int type,
+				const struct xdp2_proto_array_table *table)
+{
+	int i;
+
+	for (i = 0; i < table->num_ents; i++)
+		if (type == table->entries[i].type)
+			return table->entries[i].node;
+
+	return NULL;
+}
+
 /* Lookup up a protocol for the table associated with a parse node */
 const struct xdp2_parse_tlv_node *xdp2_parse_lookup_tlv(
 		const struct xdp2_parse_tlvs_node *node,
@@ -345,6 +358,99 @@ static int xdp2_parse_flag_fields(const struct xdp2_parse_node *parse_node,
 	return XDP2_OKAY;
 }
 
+static int xdp2_parse_array(const struct xdp2_parse_node *parse_node,
+			    const void *hdr, size_t hlen,
+			    size_t offset, void *metadata,
+			    void *frame, struct xdp2_ctrl_data *ctrl,
+			    unsigned int pflags)
+{
+	const struct xdp2_parse_array_node *parse_array_node;
+	const struct xdp2_parse_arrel_node *parse_arrel_node;
+	const struct xdp2_proto_array_def *proto_array_def;
+	unsigned int num_els;
+	const __u8 *cp = hdr;
+	int el_type = 0, i;
+	size_t off;
+
+	parse_array_node = (struct xdp2_parse_array_node *)parse_node;
+	proto_array_def = (struct xdp2_proto_array_def *)parse_node->proto_def;
+
+	off = proto_array_def->ops.start_offset(hdr);
+
+	/* We assume start offset is less than or equal to minimal length */
+	hlen -= off;
+
+	cp += off;
+	offset += off;
+
+	num_els = proto_array_def->ops.num_els(hdr, hlen);
+
+	for (i = 0; i < num_els && hlen > 0; i++) {
+		if (proto_array_def->ops.el_type) {
+			/* Get array type */
+			el_type = proto_array_def->ops.el_type(cp);
+			if (el_type < 0)
+				return el_type;
+		}
+
+		/* Lookup array element type */
+		parse_arrel_node = parse_array_node->array_proto_table ?
+			lookup_array_node(el_type,
+					  parse_array_node->array_proto_table) :
+			NULL;
+
+		if (parse_arrel_node) {
+parse_one_arrel:
+			const struct xdp2_parse_arrel_node_ops *ops =
+							&parse_arrel_node->ops;
+
+			/* Parse one array element */
+			if (pflags & XDP2_F_DEBUG)
+				printf("XDP2 parsing array entry %s\n",
+				       parse_arrel_node->name);
+
+			if (ops->extract_metadata)
+				ops->extract_metadata(cp,
+					proto_array_def->el_length,
+					offset, metadata, frame, ctrl);
+
+			if (ops->handler)
+				ops->handler(cp, proto_array_def->el_length,
+					     offset, metadata, frame, ctrl);
+		} else {
+			parse_arrel_node =
+				parse_array_node->array_wildcard_node;
+			if (parse_arrel_node) {
+				/* If a wilcard node is present parse that
+				 * node as an overlay to this one. The
+				 * wild card node can perform error processing
+				 */
+				goto parse_one_arrel;
+			} else {
+				/* Return default error code. Returning
+				 * XDP2_OKAY means skip
+				 */
+				if (parse_array_node->unknown_array_type_ret !=
+								XDP2_OKAY)
+					return
+						parse_array_node->
+							unknown_array_type_ret;
+			}
+		}
+
+		cp += proto_array_def->el_length;
+		offset += proto_array_def->el_length;
+		hlen -= proto_array_def->el_length;
+	}
+
+	if (i < num_els) {
+		/* We ran out of header length before the end of the array */
+		return XDP2_STOP_LENGTH;
+	}
+
+	return XDP2_OKAY;
+}
+
 /* Parse a packet
  *
  * Arguments:
@@ -453,6 +559,20 @@ int __xdp2_parse(const struct xdp2_parser *parser, void *hdr,
 							     hlen, offset,
 							     metadata, frame,
 							     ctrl, flags);
+				if (ret != XDP2_OKAY)
+					goto out;
+			}
+			break;
+		case XDP2_NODE_TYPE_ARRAY:
+			/* Process array */
+			if (parse_node->proto_def->node_type ==
+						XDP2_NODE_TYPE_ARRAY) {
+				/* Need error in case parse_node is array
+				 * type but proto_def is not array type
+				 */
+				ret = xdp2_parse_array(parse_node, hdr, hlen,
+						       offset, metadata, frame,
+						       ctrl, flags);
 				if (ret != XDP2_OKAY)
 					goto out;
 			}
