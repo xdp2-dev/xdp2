@@ -108,7 +108,7 @@ static int handler_##NAME(const void *hdr, size_t hdr_len,		\
 			  const struct xdp2_ctrl_data *ctrl)		\
 {									\
 	if (verbose >= 5)						\
-		XDP2_PTH_LOC_PRINTFC(ctrl, "\t" TEXT "length %u\n",	\
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t" TEXT " length %u\n",	\
 			    ipv6_optlen(				\
 				(struct ipv6_opt_hdr *)hdr));		\
 	return 0;							\
