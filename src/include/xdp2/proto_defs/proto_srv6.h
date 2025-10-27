@@ -41,6 +41,23 @@ static inline ssize_t ipv6_srv6_len(const void *vopt, size_t maxlen)
 	return ipv6_optlen((struct ipv6_opt_hdr *)vopt);
 }
 
+static inline unsigned int ipv6_srv6_num_els(const void *hdr, size_t hlen)
+{
+	const struct ipv6_sr_hdr *srhdr = hdr;
+
+	return srhdr->first_segment + 1;
+}
+
+static inline int ipv6_srv6_el_type(const void *hdr)
+{
+	return 0;
+}
+
+static inline size_t ipv6_srv6_seg_list_start_offset(const void *hdr)
+{
+	return sizeof(struct ipv6_sr_hdr);
+}
+
 #endif /* __XDP2_PROTO_SRV6_H__ */
 
 #ifdef XDP2_DEFINE_PARSE_NODE
@@ -54,6 +71,17 @@ static const struct xdp2_proto_def xdp2_parse_srv6 __unused() = {
 	.min_len = sizeof(struct ipv6_opt_hdr),
 	.ops.next_proto = ipv6_srv6_proto,
 	.ops.len = ipv6_srv6_len,
+};
+
+static const struct xdp2_proto_array_def xdp2_parse_srv6_seg_list __unused() = {
+	.proto_def.name = "SRV6 with seg list",
+	.proto_def.min_len = sizeof(struct ipv6_opt_hdr),
+	.proto_def.ops.next_proto = ipv6_srv6_proto,
+	.proto_def.ops.len = ipv6_srv6_len,
+	.proto_def.node_type = XDP2_NODE_TYPE_ARRAY,
+	.ops.el_type = ipv6_srv6_el_type,
+	.ops.num_els = ipv6_srv6_num_els,
+	.ops.start_offset = ipv6_srv6_seg_list_start_offset,
 };
 
 #endif /* XDP2_DEFINE_PARSE_NODE */
