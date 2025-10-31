@@ -137,13 +137,14 @@ struct xdp2_proto_table_entry {
 <figure class="image">
     <img src="images/Plain parsing.png" alt="Plain parsing"/>
     <figcaption> Logic flow for parsing nodes in a parse graph. For each node,
-    first the header length is computed and checked against the minimum length in the
-    protocol definition and the packet length. The extract_metadata and
-    handle_proto functions of the parse graph are called. Next TLVs or flag fields
-    are parsed if they are defined for the node. If the parse node is a leaf node then
-    the parser exits, else then next protocol type is determined, a lookup on the
-    parse node's protocol table is performed, and the parser proceeds to process the
-    next node returned from the lookup
+    first the header length is computed and checked against the minimum length
+    in the protocol definition and the packet length. The extract_metadata and
+    handle_proto functions of the parse graph are called. Next TLVs, flag
+    fields, or an array are parsed if they are defined for the node. If the
+    parse node is a leaf node then the parser exits, else then next protocol
+    type is determined, a lookup on the parse node's protocol table is
+    performed, and the parser proceeds to process the next node returned from
+    the lookup
     </figcaption>
 </figure>
 
@@ -242,15 +243,15 @@ respectively.  The definitions for parsing TLVs are in
 <figure class="image">
     <img src="images/TLVs parsing.png" alt="TLVs parsing"/>
     <figcaption> Logic flow for parsing a list of TLVs. data_off is the
-    offset of the current TLV being processed and data_bound is the remaining length
-    of the TLVs area that follows the start of the current TLV. If the data_bound is
-    zero then all the TLVs are processed so TLVs processing completes. The
-    length of the current TLV is computed. If it is greater than data_bound then
-    the TLV length is bad so TLVs processing exits on an error. If the length is good
-    then a lookup is performed on the TLV type. The lookup returns a TLV node that
-    is visited to process the TLV. When TLV node processing completes, data_off and
-    data_bnd are adjusted per the current TLV's length and the processing proceeds
-    to the next TLV
+    offset of the current TLV being processed and data_bound is the remaining
+    length of the TLVs area that follows the start of the current TLV. If the
+    data_bound is zero then all the TLVs are processed so TLVs processing
+    completes. The length of the current TLV is computed. If it is greater than
+    data_bound then the TLV length is bad so TLVs processing exits on an error.
+    If the length is good then a lookup is performed on the TLV type. The lookup
+    returns a TLV node that is visited to process the TLV. When TLV node
+    processing completes, data_off and data_bnd are adjusted per the current
+    TLV's length and the processing proceeds to the next TLV
     </figcaption>
 </figure>
 
@@ -286,11 +287,11 @@ the TLV.
 
 <figure class="image">
     <img src="images/TLVs parser example.png" alt="XDP2 TLVs nodes"/>
-    <figcaption> Example nodes for parsing TLVs. On the left is a TLVs parse node
-    for TCP. The TLVs parse node points to a protocol table that maps TLV type
-    (kind in TCP) to a TLV node. In this example, the table maps the TCP Timestamp
-    option and TCP Authentication option kinds to TLV nodes for processing the
-    respective options.
+    <figcaption> Example nodes for parsing TLVs. On the left is a TLVs parse
+    node for TCP. The TLVs parse node points to a protocol table that maps TLV
+    type (kind in TCP) to a TLV node. In this example, the table maps the TCP
+    Timestamp option and TCP Authentication option kinds to TLV nodes for
+    processing the respective options.
     </figcaption>
 </figure>
 
@@ -309,19 +310,20 @@ included in [include/xdp2/parser.h](../src/include/xdp2/parser.h).
 <figure class="image">
     <img src="images/Flag-fields parsing.png" alt="Flag Fields parsing"/>
     <figcaption> Logic flow for parsing a set of flag-fields. data_off is the
-    offset of the next field data_bound is the remaining length in the fields area
-    that follows the start of the field. Processing starts by loading the flag.
-    The set of possible flags is contained in a descriptor table that includes a
-    flag value and mask. The entries in the descriptor table are ordered by the
-    flag values, The entries in the flags descriptor table are scanned and for each
-    entry the flag value is compared against the loaded flags with the entry's mask
-    applied. If they match then the flag is set in the flag-fields. Upon a match,
-    the index of the entry in the descriptor table is used as a key for a lookup
-    in a protocol table. The protocol table maps an index to a flag-field node. The
-    returned node is visited to process the flag-field. When flag-field processing
-    completes data_offset and data_bnd adjusted and processing loops to consider the
-    next flag. Flag-fields processing complete when all flags in the descriptor table
-    have been checked.
+    offset of the next field data_bound is the remaining length in the fields
+    area that follows the start of the field. Processing starts by loading the
+    flag.  The set of possible flags is contained in a descriptor table that
+    includes a flag value and mask. The entries in the descriptor table are
+    ordered by the flag values, The entries in the flags descriptor table are
+    scanned and for each entry the flag value is compared against the loaded
+    flags with the entry's mask applied. If they match then the flag is set in
+    the flag-fields. Upon a match, the index of the entry in the descriptor
+    table is used as a key for a lookup in a protocol table. The protocol table
+    maps an index to a flag-field node. The returned node is visited to process
+    the flag-field. When flag-field processing completes data_offset and
+    data_bnd adjusted and processing loops to consider the next flag.
+    Flag-fields processing complete when all flags in the descriptor table have
+    been checked.
     </figcaption>
 </figure>
 
@@ -371,18 +373,62 @@ __u32 flags, const struct xdp2_flag_fields \*flag_fields)**
     <img src="images/Flag-fields parser example.png" alt="Flag-fields nodes"/>
     <figcaption> Flag-field nodes for parsing GRE flag-fields. On the left
     is the flag-fields descriptor table that gives a value, mask, and field size
-    for each possible flag. GREv0 is a flag-fields parse node, it has a reference
-    to the descriptor table and a protocol table. The protocol table has set
-    entries for a GRE Key ID flag and Sequence Number.
+    for each possible flag. GREv0 is a flag-fields parse node, it has a
+    reference to the descriptor table and a protocol table. The protocol table
+    has set entries for a GRE Key ID flag and Sequence Number.
     </figcaption>
 </figure>
 
+Parsing arrays
+--------------
+
+*Arrays* are a common networking protocol construct that encodes optional
+data in an array. All elements of an array are the same size. An example
+protocol containing an array is SRv6 (Segment Routing Header) which includes
+an array of segments. The definitions for parsing arrays are in
+[include/xdp2/arrays.h](../src/include/xdp2/arrays.h) which is
+included in [include/xdp2/parser.h](../src/include/xdp2/parser.h).
+
+A protocol definition with type **struct xdp2_proto_array_def** defines
+a protocol definition with an array. There are three array related operations:
+**el_type** takes a pointer to an array element and returns its type,
+**num_els** takes a pointer to a top level header and returns the number of
+elements in the array, and **start_offset** takes a pointer the top level
+header and returns the offset of the array. The constant size of an array
+element is given by the **el_length** field.
+
+A parse node of type **struct xdp2_parse_array_node** is an extended
+parse node with an array. The structure includes **max_els** that gives the
+maximum allowed number of elements in the array. An array parse node points
+to a protocol definition of type **struct xdp2_proto_array_def**. The array
+parse node includes a protocol table for looking up the parse node given for
+the type of an element.
+
+To parse an array, first the number of elements is computed by calling the
+**num_els** operations. The elements of an array are then parsed via
+a *for loop* over the array. For each element the protocol type is determined
+by the **el_type** function. A lookup is performed and the returned
+node is processed. If no match is found in the table, or the table is
+NULL which might be true if there is no type associated with a table element
+and all array elements are processed the same way, then the wildcard node in
+the array parse node is invoked.
+
+<figure class="image">
+    <img src="images/Array parser example.png" alt="Array nodes"/>
+    <figcaption> Array parse nodes parsing SRv6 segment list in an array. On
+    the left is an array parse node for SRv6. The SRv6 header is an
+    IPv6 extension header so the next protocol table is set to the IP
+    protocol table. The array table is set to NULL and the array wildcard
+    node is set to an array element (arrel) node that processes the
+    IPv6 address in each segment of the array.
+    </figcaption>
+</figure>
 
 Parser API
 ==========
 
-The XDP2 parser API consists of a number of helper macros to create a
-parser and its corresponding data structures that instantiate the parser. The examples
+The XDP2 parser API consists of a number of helper macros to create a parser
+and its corresponding data structures that instantiate the parser. The examples
 provided in this section are taken from
 [test/parse_dump/parser.c](../src/test/parse_dump/parser.c).
 
@@ -466,7 +512,7 @@ The attributes that may be set in **EXTRA** include:
 |---|---|
 | ops.extract_metadata | Pointer to a function to extract metadata |
 | ops.handler | Pointer to a function to perform protocol processing |
-| ops.post_handler | Pointer to a function to perform protocol processing after TLVs or flag-fields processing |
+| ops.post_handler | Pointer to a function to perform protocol processing after TLVs, flag-fields, or array processing |
 | unknown_ret | Error code to set when an unknown protocol is encountered |
 
 The example below creates a typical Ethernet node for the root of a parser.
@@ -777,6 +823,134 @@ XDP2_MAKE_FLAG_FIELD_PARSE_NODE(gre_flag_key_node,
                                 (.ops.extract_metadata =
                                                 extract_gre_flag_key));
 ```
+Parsing Arrays API
+----------------------
+
+The API for parsing arrays is similar to that of parsing plain protocols.
+A set of macros is defined in arrays.h.
+
+### XDP2_MAKE_ARRAY_PARSE_NODE
+
+Creates a non-leaf parse node for a protocol with an array as a
+**static const struct xdp2_parse_array_node**. Macro arguments include
+both those for generic parse nodes and arrays specific arguments.
+
+```C
+XDP2_MAKE_ARRAY_PARSE_NODE(PARSE_ARRAY_NODE, PROTO_ARRAY_DEF,
+			   PROTO_TABLE, ARRAY_TABLE, EXTRA_PN, EXTRA_ARRAY)
+```
+
+The arguments to the macro include the name of the parse node
+(**PARSE_ARRAY_NODE**), the corresponding array protocol definition
+(**PROTO_ARRAY_DEF**), and a canonical protocol table for transitioning
+to the next node in the parse walk (**PROTO_TABLE**). A protocol table to
+an array element type (**ARRAY_TABLE**). **EXTRA_PN** contains other
+configuration parameters and attributes for generic parse nodes, and
+**EXTRA_ARRAY** contains other array specific configuration parameters and
+attributes.
+
+The attributes that may be set in **EXTRA_ARRAY** include:
+
+| Attributes | Description |
+|---|---|
+| max_els | Limit on number of element in an array |
+| max_tvl_len | Maximum allowed length of one TLV |
+| unknown_array_type_ret | Error code to set when an unknown array element type is encountered |
+| array_wildcard_node | Wildcard node to visit if array type is not found in lookup |
+
+**XDP2_MAKE_ARRAY_PARSE_NODE_NOTAB** is the same as
+**XDP2_MAKE_ARRAY_PARSE_NODE** except that the **ARRAY_TABLE** argument is
+missing. The processing for each element can be set using a wildcard node.
+
+```C
+XDP2_MAKE_ARRAY_PARSE_NODE_NOTAB(PARSE_ARRAY_NODE, PROTO_ARRAY_DEF,
+				 PROTO_TABLE, EXTRA_PN, EXTRA_ARRAY)
+```
+
+Below is an example for creating an array parse node without an array table.
+
+```C
+XDP2_MAKE_ARRAY_PARSE_NODE_NOTAB(ipv6_srv6_routing_header_node,
+				 xdp2_parse_srv6_seg_list, ip6_table,
+				 (.ops.extract_metadata = extract_eh,
+				  .ops.handler =
+					handler_ipv6_srv6_routing_header,
+				  .unknown_ret = XDP2_STOP_OKAY),
+				 (.array_wildcard_node =
+					XDP2_ARREL_NODE(ipv6_srv6_segment)));
+```
+
+### XDP2_MAKE_FLAG_FIELDS_AUTONEXT_PARSE_NODE
+
+Creates an autonext node for arrays similar to
+**XDP2_MAKE_AUTONEXT_PARSE_NODE**.
+
+```C
+XDP2_MAKE_ARRAY_AUTONEXT_PARSE_NODE(PARSE_ARRAY_NODE, PROTO_ARRAY_DEF,
+				    NEXT_NODE, ARRAY_TABLE, EXTRA_PN,
+				    EXTRA_ARRAY)
+```
+
+**XDP2_MAKE_ARRAY_AUTONEXT_PARSE_NODE_NOTAB** is the same as
+**XDP2_MAKE_ARRAY_AUTONEXT_PARSE_NODE** except that the **ARRAY_TABLE**
+argument is missing. The processing for each element can be set using a
+wildcard node.
+
+```C
+XDP2_MAKE_ARRAY_AUTONEXT_PARSE_NODE_NOTAB(PARSE_ARRAY_NODE, PROTO_ARRAY_DEF,
+					  NEXT_NODE, EXTRA_PN, EXTRA_ARRAY)
+```
+
+### XDP2_MAKE_LEAF_ARRAY_PARSE_NODE
+
+Creates a leaf parse node for arrays. The argument semantics are the same
+as those in **XDP2_MAKE_ARRAY_PARSE_NODE**.
+
+```C
+XDP2_MAKE_LEAF_ARRAY_PARSE_NODE(PARSE_ARRAY_NODE, PROTO_ARRAY_DEF,
+				ARRAY_TABLE, EXTRA_PN, EXTRA_ARRAY)
+```
+
+**XDP2_MAKE_LEAF_ARRAY_PARSE_NODE_NOTAB** is the same as
+**XDP2_MAKE_LEAF_ARRAY_PARSE_NODE** except that the **ARRAY_TABLE**
+argument is missing. The processing for each element can be set using a
+wildcard node.
+
+```C
+XDP2_MAKE_LEAF_ARRAY_PARSE_NODE_NOTAB(PARSE_ARRAY_NODE, PROTO_ARRAY_DEF,
+				      EXTRA_PN, EXTRA_ARRAY)
+```
+
+### XDP2_MAKE_ARRAY_TABLE
+
+Creates an array protocol table containing a variable list of entries as a
+**static const struct xdp2_proto_array_table**. The arguments consist of
+the name of the table (**NAME**) and a variable list of pairs in the form
+{ *KEY, ARREL_PARSE_NODE* }.
+
+```C
+XDP2_MAKE_ARRAY_TABLE(NAME, ...)
+```
+
+### XDP2_MAKE_ARREL_PARSE_NODE
+
+Create an array element parse node to parse one array element of a particular
+type.
+
+```C
+XDP2_MAKE_ARREL_PARSE_NODE(NODE_NAME, EXTRA)
+```
+
+The arguments to the macro include the name of the array element parse node
+(**NODE_NAME**) and other configuration parameters and attributes in
+**EXTRA**.
+
+The attributes that may be set in **EXTRA** include:
+
+| Attributes | Description |
+|---|---|
+| ops.extract_metadata | Pointer to a function to extract metadata from flag-field |
+| ops.handler | Pointer to a function to perform protocol processing of flag-field |
 
 Invoking the XDP2 Parser
 ========================
@@ -939,8 +1113,8 @@ int (*post_handler)(const void *hdr, void *frame,
 		    const struct xdp2_ctrl_data ctrl);
 ```
 
-The **handler** function is called before TLVs or flag-field processing and
-the **post_handler** function is called after TLV or flag-fields
+The **handler** function is called before TLVs, flag-fields, or array
+processing and the **post_handler** function is called after TLV or flag-fields
 processing.
 
 An example handler is:
