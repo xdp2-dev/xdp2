@@ -82,6 +82,7 @@ static const struct xdp2_proto_array_def xdp2_parse_srv6_seg_list __unused() = {
 	.ops.el_type = ipv6_srv6_el_type,
 	.ops.num_els = ipv6_srv6_num_els,
 	.ops.start_offset = ipv6_srv6_seg_list_start_offset,
+	.el_length = sizeof(struct in6_addr),
 };
 
 #endif /* XDP2_DEFINE_PARSE_NODE */
