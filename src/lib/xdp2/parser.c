@@ -194,6 +194,7 @@ static int xdp2_parse_tlvs(const struct xdp2_parse_node *parse_node,
 	const struct xdp2_parse_tlvs_node *parse_tlvs_node;
 	const struct xdp2_proto_tlvs_def *proto_tlvs_def;
 	const struct xdp2_parse_tlv_node *parse_tlv_node;
+	unsigned int tlv_cnt = 0;
 	const __u8 *cp = hdr;
 	ssize_t tlv_len;
 	int type, ret;
@@ -230,6 +231,14 @@ static int xdp2_parse_tlvs(const struct xdp2_parse_node *parse_node,
 
 			/* Hit EOL, we're done */
 			break;
+		}
+
+		tlv_cnt++;
+
+		if (parse_tlvs_node->max_tlvs &&
+		    tlv_cnt > parse_tlvs_node->max_tlvs) {
+			/* Too many TLVs */
+			return XDP2_STOP_OPTION_LIMIT;
 		}
 
 		tlv_len = proto_tlvs_def->min_len;
