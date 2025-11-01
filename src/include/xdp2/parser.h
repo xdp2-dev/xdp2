@@ -359,6 +359,24 @@ static inline int xdp2_parse_fast(const struct xdp2_parser *parser,
 	}								\
 } while (0)
 
+#define XDP2_CTRL_RESET_KEY_DATA(CTRL, PARSER) do {			\
+	const struct xdp2_parser *_parser = (PARSER);			\
+	struct xdp2_ctrl_data *_ctrl = (CTRL);				\
+									\
+	if (_parser->config.num_counters) {				\
+		size_t sz = _parser->config.num_counters *		\
+					sizeof(_ctrl->key.counters[0]);	\
+									\
+		memset(_ctrl->key.counters, 0, sz);			\
+	}								\
+	if (_parser->config.num_keys) {					\
+		size_t sz = _parser->config.num_keys *			\
+					sizeof(_ctrl->key.keys[0]);	\
+									\
+		memset(_ctrl->key.keys, 0, sz);				\
+	}								\
+} while (0)
+
 static inline const struct xdp2_parser *xdp2_lookup_parser_table(
 				const struct xdp2_parser_table *table,
 				int key)
