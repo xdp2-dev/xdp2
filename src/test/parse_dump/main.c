@@ -146,6 +146,7 @@ static void run_parser(const struct xdp2_parser *parser, char **pcap_files,
 		memset(&pmetadata, 0, sizeof(pmetadata));
 
 		XDP2_CTRL_RESET_VAR_DATA(&ctrl);
+		XDP2_CTRL_RESET_KEY_DATA(&ctrl, parser);
 		XDP2_CTRL_SET_BASIC_PKT_DATA(&ctrl, packets[pn].packet,
 					     packets[pn].cap_len, i);
 		ctrl.key.arg = &packets[pn];
