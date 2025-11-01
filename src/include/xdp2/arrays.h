@@ -268,9 +268,8 @@ struct xdp2_proto_array_def {
 #define __XDP2_MAKE_LEAF_ARRAY_PARSE_NODE(PARSE_ARRAY_NODE,		\
 					  PROTO_ARRAY_DEF, ARRAY_TABLE,	\
 					  EXTRA_PN, EXTRA_ARRAY)	\
-	XDP2_DECL_ARRAY_TABLE(ARRAY_TABLE);				\
 	XDP2_PUSH_NO_WEXTRA();						\
-	static const struct xdp2_parse_array_node PARSE_array_NODE = {	\
+	static const struct xdp2_parse_array_node PARSE_ARRAY_NODE = {	\
 		__XDP2_MAKE_ARRAY_PARSE_NODE_COMMON(PARSE_ARRAY_NODE,	\
 			PROTO_ARRAY_DEF, ARRAY_TABLE, EXTRA_PN,	\
 			EXTRA_ARRAY)					\
@@ -281,9 +280,10 @@ struct xdp2_proto_array_def {
 #define XDP2_MAKE_LEAF_ARRAY_PARSE_NODE(PARSE_ARRAY_NODE,		\
 					PROTO_ARRAY_DEF, ARRAY_TABLE,	\
 					EXTRA_PN, EXTRA_ARRAY)		\
+	XDP2_DECL_ARRAY_TABLE(ARRAY_TABLE);				\
 	__XDP2_MAKE_LEAF_ARRAY_PARSE_NODE(PARSE_ARRAY_NODE,		\
 					  PROTO_ARRAY_DEF,		\
-					  &ARRAY_TABLE,	EXTRA_PN,	\
+					  ARRAY_TABLE,	EXTRA_PN,	\
 					  EXTRA_ARRAY)
 
 /* Helper to create a leaf array parse node with no array table */
