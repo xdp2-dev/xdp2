@@ -39,6 +39,7 @@
 #include "falcon/parser_test.h"
 #include "sue/parser_test.h"
 #include "sunh/parser_test.h"
+#include "superp/parser_test.h"
 #include "uet/parser_test.h"
 
 #include "parse_dump.h"
@@ -1154,7 +1155,8 @@ XDP2_MAKE_PROTO_TABLE(ip6_table,
 	( IPPROTO_DSTOPTS, ipv6_dest_options_node ),
 	( IPPROTO_ROUTING, ipv6_routing_header_node_check ),
 	( IPPROTO_FRAGMENT, ipv6_fragment_header_node ),
-	( IPPROTO_AH, ipv6_ah_header_node )
+	( IPPROTO_AH, ipv6_ah_header_node ),
+	( IPPROTO_SUPERP, superp_pdl_node )
 );
 
 XDP2_MAKE_PROTO_TABLE(rthdr_table,
@@ -1255,7 +1257,8 @@ XDP2_MAKE_PROTO_TABLE(udp_ports_table,
 	( __cpu_to_be16(6081), geneve_base_node ),
 	( __cpu_to_be16(UET_UDP_PORT_NUM), uet_base_node ),
 	( __cpu_to_be16(FALCON_UDP_PORT_NUM), falcon_base_node ),
-	( __cpu_to_be16(SUE_UDP_PORT_NUM), sue_base_node )
+	( __cpu_to_be16(SUE_UDP_PORT_NUM), sue_base_node ),
+	( __cpu_to_be16(SUPERP_UDP_PORT_NUM), superp_pdl_node )
 );
 
 XDP2_MAKE_PROTO_TABLE(icmpv6_table,
@@ -1312,7 +1315,7 @@ XDP2_PARSER(parse_dump, "Parser to dump protocols", ether_node_root,
 	     .max_frames = METADATA_FRAME_COUNT,
 	     .metameta_size = sizeof(struct metametadata),
 	     .frame_size = sizeof(struct metadata),
-	     .num_counters = 3,
-	     .num_keys = 3
+	     .num_counters = 8,
+	     .num_keys = 7
 	    )
 )
