@@ -92,6 +92,7 @@ enum xdp2_addr_types {
 	XDP2_ADDR_TYPE_IPV4,
 	XDP2_ADDR_TYPE_IPV6,
 	XDP2_ADDR_TYPE_TIPC,
+	XDP2_ADDR_TYPE_SUNH,
 };
 
 #define	XDP2_METADATA_addr_type	__u8 addr_type
