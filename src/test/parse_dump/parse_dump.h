@@ -147,6 +147,13 @@ struct metadata {
 				struct in6_addr daddr;
 			} v6;
 		};
+		union {
+			struct in6_addr sunh_addrs[2];
+			struct {
+				__be16 saddr;
+				__be16 daddr;
+			} sunh;
+		};
 	} addrs;
 } __packed;
 

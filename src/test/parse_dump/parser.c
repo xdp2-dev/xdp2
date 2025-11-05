@@ -38,7 +38,7 @@
 
 #include "falcon/parser_test.h"
 #include "sue/parser_test.h"
-//#include "superp/parser_test.h"
+#include "sunh/parser_test.h"
 #include "uet/parser_test.h"
 
 #include "parse_dump.h"
@@ -74,6 +74,21 @@ static void extract_ipv4(const void *hdr, size_t hdr_len, size_t hdr_off,
 	frame->ip_hlen = hdr_len;
 	frame->ip_frag_off = iph->frag_off;
 	frame->ip_frag_id = iph->id;
+}
+
+/* Extract protocol number and addresses for SUNH header */
+static void extract_sunh(const void *hdr, size_t hdr_len, size_t hdr_off,
+			 void *metadata, void *_frame,
+			 const struct xdp2_ctrl_data *ctrl)
+{
+	struct metadata *frame = _frame;
+	const struct sunh_hdr *sunh = hdr;
+
+	frame->ip_proto = sunh->next_header;
+	frame->addr_type = XDP2_ADDR_TYPE_SUNH;
+	frame->addrs.sunh.saddr = sunh->saddr;
+	frame->addrs.sunh.daddr = sunh->daddr;
+	frame->ip_ttl = sunh->hop_limit;
 }
 
 /* Extract IP next header and address from IPv4 header */
@@ -993,6 +1008,10 @@ XDP2_MAKE_PARSE_NODE(e8021Q_node, xdp2_parse_vlan, ether_table,
 		     (.ops.extract_metadata = extract_e8021Q,
 		      .ops.handler = handler_e8021Q));
 
+XDP2_MAKE_PARSE_NODE(sunh_node_alt, sunh_parse, ip6_table,
+		     (.ops.extract_metadata = extract_sunh,
+		      .ops.handler = handler_sunh));
+
 /* Protocol tables */
 
 XDP2_MAKE_PROTO_TABLE(ether_table,
@@ -1003,7 +1022,8 @@ XDP2_MAKE_PROTO_TABLE(ether_table,
 	( __cpu_to_be16(ETH_P_8021AD), e8021AD_node ),
 	( __cpu_to_be16(ETH_P_8021Q), e8021Q_node ),
 	( __cpu_to_be16(ETH_P_ARP), arp_node ),
-	( __cpu_to_be16(ETH_P_TEB), ether_node )
+	( __cpu_to_be16(ETH_P_TEB), ether_node ),
+	( __cpu_to_be16(ETH_P_SUNH), sunh_node_alt )
 );
 
 XDP2_MAKE_PROTO_TABLE(ip_overlay_table,

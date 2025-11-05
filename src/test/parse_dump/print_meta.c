@@ -247,11 +247,31 @@ static void print_frame(struct metadata *frame, int seqno)
 
 		break;
 	}
+	case XDP2_ADDR_TYPE_SUNH: {
+		if (frame->port_pair.sport ||
+		    frame->port_pair.dport)
+			XDP2_PTH_PRINTFC(seqno, "\tSUNH: %u'%u:%u->%u'%u:%u\n",
+					 ntohs(frame->addrs.sunh.saddr) >> 8,
+					 ntohs(frame->addrs.sunh.saddr) & 0xff,
+					 ntohs(frame->port_pair.sport),
+					 ntohs(frame->addrs.sunh.daddr) >> 8,
+					 ntohs(frame->addrs.sunh.daddr) & 0xff,
+					 ntohs(frame->port_pair.dport));
+		else
+			XDP2_PTH_PRINTFC(seqno, "\tSUNH: %u'%u->%u'%u\n",
+					 ntohs(frame->addrs.sunh.saddr) >> 8,
+					 ntohs(frame->addrs.sunh.saddr) & 0xff,
+					 ntohs(frame->addrs.sunh.daddr) >> 8,
+					 ntohs(frame->addrs.sunh.daddr) & 0xff);
+
+		break;
+	}
 	case 0:
 		XDP2_PTH_PRINTFC(seqno, "\tNo addresses\n");
 		break;
 	default:
-		XDP2_PTH_PRINTFC(seqno, "\tUnknown addr type %u\n", frame->addr_type);
+		XDP2_PTH_PRINTFC(seqno, "\tUnknown addr type %u\n",
+				 frame->addr_type);
 	}
 
 	if (is_ip) {
