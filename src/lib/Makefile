@@ -8,7 +8,7 @@ SUBDIRS = cli siphash crc flowdis lzf murmur3hash xdp2 parselite
 $(TOPTARGETS) : $(SUBDIRS)
 
 $(SUBDIRS):
-	@make -C $@ $(MAKECMDGOALS)
+	@$(MAKE) -C $@ $(MAKECMDGOALS)
 
 .PHONY: $(TOPTARGETS) $(SUBDIRS)
 

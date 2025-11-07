@@ -6,9 +6,9 @@ TOPTARGETS := all clean install
 
 .PHONY: $(TOPTARGETS)
 
-INCDIR=$(INSTALLDIR)$(HDRDIR)/falcon
+INCDIR=$(INSTALLDIR)$(HDRDIR)/sue
 
-TARGETS =
+TARGETS = sue.h proto_sue.h parser_test.h
 
 all:
 

@@ -197,6 +197,10 @@ clang::tooling::ClangTool create_clang_tool(
 {
     std::string version = XDP2_STRINGIFY(XDP2_CLANG_VERSION);
     version = version.substr(0, version.find("git"));
+
+    // NOTE: This is hardcoded debug output showing a typical system path.
+    // It does NOT represent the actual resource directory being used.
+    // The actual resource directory is set via -resource-dir flag below.
     plog::log(std::cout)
         << "/usr/lib/clang/" << version << "/include" << std::endl;
     if (getenv("XDP2_C_INCLUDE_PATH"))
@@ -222,6 +226,12 @@ clang::tooling::ClangTool create_clang_tool(
          {"-resource-dir", *resource_path},
          clang::tooling::ArgumentInsertPosition::BEGIN));
     }
+    // NOTE: We intentionally let clang auto-detect its resource directory.
+    // This works correctly in Nix environments via the clang-wrapper which sets
+    // up the resource-root symlink. If we need to explicitly set it in the future,
+    // we should call `clang -print-resource-dir` at build time and use that value.
+    // Previously, we used XDP2_CLANG_RESOURCE_PATH compiled in at build time,
+    // but this was set incorrectly in flake.nix, causing incomplete type information.
 #ifdef XDP2_CLANG_RESOURCE_PATH
     else {
       Tool.appendArgumentsAdjuster(clang::tooling::getInsertArgumentAdjuster(

@@ -6,8 +6,10 @@ TARGETS = get_falcon_udp_port falcon.pcap
 
 all: $(TARGETS)
 
-%.pcap: make_%.py
-	$(QUIET_PYTHON)$(PYTHON) $< `./get_falcon_udp_port`
+GET_UDP_PORT = get_falcon_udp_port
+
+%.pcap: make_%.py $(GET_UDP_PORT)
+	$(QUIET_PYTHON)$(PYTHON) $< `./$(GET_UDP_PORT)`
 
 get_falcon_udp_port: get_falcon_udp_port.c
 	$(QUIET_CC)$(HOST_CC) $(CCOPTS) -I$(SRCDIR)/include $(CONFIG_DEFINES) $^ -o $@

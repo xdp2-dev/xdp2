@@ -1,3 +1,5 @@
+# don't accidently commit the binary
+cppfront
 
 *.vcxproj
 *.filters
