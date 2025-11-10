@@ -1,3 +1,21 @@
+#
+# .gitignore
+#
+
+# primary configure file
+./src/config.mk
+
+./thirdparty/cppfront/cppfront-compiler
+
+./src/tools/compiler/xdp2-compiler
+
+__pycache__/
+./src/tools/packets/falcon/__pycache__/
+./src/tools/packets/sue/__pycache__/
+./src/tools/packets/uet/__pycache__/
+
+*.pcap
+
 # Prerequisites
 *.d
 

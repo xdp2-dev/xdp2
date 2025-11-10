@@ -45,7 +45,15 @@ xdp2-define-test: $(TESTOBJS) $(TESTFILES)
 	for i in $(TESTFILES); \
 	do ./$@ $$i; done
 
-gen-patterns-cpp:
+.PHONY: check-cppfront
+check-cppfront:
+	@if [ ! -f "$(CPPFRONT)" ]; then \
+		echo "cppfront-compiler not found at $(CPPFRONT)" >&2; \
+		echo "Building cppfront..." >&2; \
+		$(MAKE) -C ../../../thirdparty/cppfront || exit 1; \
+	fi
+
+gen-patterns-cpp: check-cppfront
 	$(CPPFRONT) $(PATTERNS_LLVM_CPP2) && $(CPPFRONT) $(PATTERNS_CLANG_AST_CPP2)
 
 all: $(TARGETS)

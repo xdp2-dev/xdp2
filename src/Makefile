@@ -7,10 +7,13 @@ TOP_LEVEL_MAKE=
 
 ifeq ($(VERBOSE),0)
 MAKEFLAGS += --no-print-directory -s
+export MAKEFLAGS
 MFLAGS += -s
 endif
 
 ifneq ($(V), 1)
+MAKEFLAGS += -s
+export MAKEFLAGS
 MFLAGS += -s
 endif
 
@@ -73,7 +76,7 @@ SUBDIRS= tools include lib test
 all: config.mk $(EXTRA_TARGETS)
 	@set -e; \
 	for i in $(SUBDIRS); \
-	do echo; echo $$i; $(MAKE) $(MFLAGS) -C $$i; done
+	do echo; echo $$i; $(MAKE) -C $$i; done
 
 config.mk:
 	bash configure $(KERNEL_INCLUDE)
@@ -85,7 +88,9 @@ install: all
 	@install -m 0755 -d $(INSTALLDIR)$(ETCDIR)
 	@install -m 0755 -d $(INSTALLDIR)$(HDRDIR)
 	@for i in $(SUBDIRS); \
-	do echo; echo $$i; $(MAKE) $(MFLAGS) -C $$i install; done
+	do echo; echo $$i; $(MAKE) -C $$i install; done
+	@echo ""
+	@echo "xdp2 installed into directory: $(INSTALLDIR)"
 
 install_data: install
 	@rm -rf $(INSTALLDIR)/data
@@ -105,7 +110,7 @@ install_all_tar: install_all
 
 .PHONY: kernel
 kernel:
-	@$(MAKE) $(MFLAGS) -C kernel KDIR=$(KDIR)
+	@$(MAKE) -C kernel KDIR=$(KDIR)
 
 snapshot:
 	echo "static const char SNAPSHOT[] = \""`date +%y%m%d`"\";"	\
@@ -117,11 +122,11 @@ help:
 clean:
 	@rm -rf $(INSTALLDIR)
 	@for i in $(SUBDIRS) ;						\
-		do $(MAKE) $(MFLAGS) -C $$i clean; done
+		do $(MAKE) -C $$i clean; done
 
 clobber:
 	touch config.mk
-	$(MAKE) $(MFLAGS) clean
+	$(MAKE) clean
 	rm -f config.mk cscope.*
 
 distclean: clobber

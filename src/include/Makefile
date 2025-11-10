@@ -9,6 +9,6 @@ SUBDIRS = cli siphash xdp2 sunh parselite uet falcon sue superp
 $(TOPTARGETS) : $(SUBDIRS)
 
 $(SUBDIRS):
-	@make -C $@ $(MAKECMDGOALS)
+	@$(MAKE) -C $@ $(MAKECMDGOALS)
 
 .PHONY: $(TOPTARGETS) $(SUBDIRS)
