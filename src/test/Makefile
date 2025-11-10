@@ -8,7 +8,7 @@ SUBDIRS += accelerator router bitmaps uet falcon
 $(TOPTARGETS) : $(SUBDIRS)
 
 $(SUBDIRS):
-	@make -C $@ $(MAKECMDGOALS)
+	@$(MAKE) -C $@ $(MAKECMDGOALS)
 
 .PHONY: $(TOPTARGETS) $(SUBDIRS)
 

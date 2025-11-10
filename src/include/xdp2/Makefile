@@ -9,7 +9,7 @@ SUBDIRS = proto_defs parsers
 $(TOPTARGETS) : $(SUBDIRS)
 
 $(SUBDIRS):
-	@make -C $@ $(MAKECMDGOALS)
+	@$(MAKE) -C $@ $(MAKECMDGOALS)
 
 .PHONY: $(TOPTARGETS) $(SUBDIRS)
 
