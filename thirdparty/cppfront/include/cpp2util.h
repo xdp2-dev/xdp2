@@ -21,6 +21,7 @@
 #define CPP2_UTIL_H
 
 //  If this implementation doesn't support source_location yet, disable it
+#include <functional>
 #include <version>
 #if !defined(_MSC_VER) && !defined(__cpp_lib_source_location)
     #undef CPP2_USE_SOURCE_LOCATION
