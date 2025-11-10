@@ -6,8 +6,10 @@ TARGETS = get_sunh_ether_type sunh.pcap
 
 all: $(TARGETS)
 
-%.pcap: make_%.py
-	$(QUIET_PYTHON)$(PYTHON) $< `./get_sunh_ether_type`
+GET_SUNH_ETHER_TYPE = get_sunh_ether_type
+
+%.pcap: make_%.py $(GET_SUNH_ETHER_TYPE)
+	$(QUIET_PYTHON)$(PYTHON) $< `./$(GET_SUNH_ETHER_TYPE)`
 
 get_sunh_ether_type: get_sunh_ether_type.c
 	$(QUIET_CC)$(HOST_CC) $(CCOPTS) -I$(SRCDIR)/include $(CONFIG_DEFINES) $^ -o $@
