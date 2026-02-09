@@ -1,0 +1,59 @@
+# nix/patches/02-tentative-definition-null-check.patch
+#
+# Purpose: Fix null pointer crash with C tentative definitions
+#
+# C tentative definitions like "static const struct T name;" (created by
+# XDP2_DECL_PROTO_TABLE macro) behave differently across clang versions:
+#
+#   - Ubuntu clang 18.1.3: hasInit() returns false, these are skipped
+#   - Nix clang 18.1.8+:   hasInit() returns true with void-type InitListExpr
+#
+# When getAs<RecordType>() is called on void type, it returns nullptr.
+# The original code calls ->getDecl() on this nullptr, causing a segfault.
+#
+# This patch adds a null check and skips tentative definitions gracefully.
+# The actual definition is processed when encountered later in the AST.
+#
+# See: documentation/nix/phase6_segfault_defect.md
+#
+diff --git a/src/tools/compiler/include/xdp2gen/ast-consumer/proto-tables.h b/src/tools/compiler/include/xdp2gen/ast-consumer/proto-tables.h
+index 6616cf7..3aaa7c5 100644
+--- a/src/tools/compiler/include/xdp2gen/ast-consumer/proto-tables.h
++++ b/src/tools/compiler/include/xdp2gen/ast-consumer/proto-tables.h
+@@ -89,11 +89,32 @@ public:
+                             clang::dyn_cast<clang::InitListExpr>(
+                                 initializer_expr);
+ 
++                        // [nix-patch] Handle tentative definitions to prevent null pointer crash.
++                        //
++                        // PROBLEM: C tentative definitions like:
++                        //   static const struct xdp2_proto_table ip_table;
++                        // are created by XDP2_DECL_PROTO_TABLE macro before the actual definition.
++                        //
++                        // Different clang versions handle hasInit() differently for these:
++                        //   - Ubuntu clang 18.1.3: hasInit() returns false (skipped entirely)
++                        //   - Nix clang 18.1.8+:   hasInit() returns true with void-type InitListExpr
++                        //
++                        // When getAs<RecordType>() is called on void type, it returns nullptr.
++                        // The original code then calls ->getDecl() on nullptr, causing segfault.
++                        //
++                        // SOLUTION: Check if RecordType is null and skip tentative definitions.
++                        // The actual definition will be processed when encountered later in the AST.
++                        //
++                        // See: documentation/nix/phase6_segfault_defect.md for full investigation.
++                        clang::QualType initType = initializer_list_expr->getType();
++                        auto *recordType = initType->getAs<clang::RecordType>();
++                        if (!recordType) {
++                            // Skip tentative definitions - actual definition processed later
++                            return true;
++                        }
++
+                         // Extracts current analyzed InitListDecl
+-                        clang::RecordDecl *initializer_list_decl =
+-                            initializer_list_expr->getType()
+-                                ->getAs<clang::RecordType>()
+-                                ->getDecl();
++                        clang::RecordDecl *initializer_list_decl = recordType->getDecl();
+ 
+                         // Proto table consumed infos
+                         xdp2_proto_table_extract_data table_data;

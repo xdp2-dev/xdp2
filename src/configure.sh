@@ -769,8 +769,14 @@ fi
 
 echo "XDP2_CLANG_VERSION=${XDP2_CLANG_VERSION}"
 echo "XDP2_CLANG_VERSION=${XDP2_CLANG_VERSION}" >> $CONFIG
-XDP2_CLANG_RESOURCE_PATH="`${HOST_LLVM_CONFIG} --libdir`/clang/`echo ${XDP2_CLANG_VERSION} | cut -d'.' -f1`"
-XDP2_C_INCLUDE_PATH="`${HOST_LLVM_CONFIG} --libdir`/clang/`echo ${XDP2_CLANG_VERSION} | cut -d'.' -f1`/include"
+
+# Check for environment variable overrides (useful for Nix which has different path structure)
+if [ -z "${XDP2_CLANG_RESOURCE_PATH}" ]; then
+    XDP2_CLANG_RESOURCE_PATH="`${HOST_LLVM_CONFIG} --libdir`/clang/`echo ${XDP2_CLANG_VERSION} | cut -d'.' -f1`"
+fi
+if [ -z "${XDP2_C_INCLUDE_PATH}" ]; then
+    XDP2_C_INCLUDE_PATH="${XDP2_CLANG_RESOURCE_PATH}/include"
+fi
 echo "XDP2_C_INCLUDE_PATH=${XDP2_C_INCLUDE_PATH}"
 echo "XDP2_C_INCLUDE_PATH=${XDP2_C_INCLUDE_PATH}" >> $CONFIG
 echo "XDP2_CLANG_RESOURCE_PATH=${XDP2_CLANG_RESOURCE_PATH}"

@@ -11,7 +11,7 @@ The goals of using Nix in this repository are to:
 
 > ⚠️ **Linux only:** This flake currently supports **Linux only** because [`libbpf`](https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/os-specific/linux/libbpf/default.nix) is Linux-specific.
 
-Feedback and merge requests are welcome. If we're missing a tool, please open an issue or PR. See the `corePackages` section in `flake.nix`.
+Feedback and merge requests are welcome. If we're missing a tool, please open an issue or PR. See `nix/packages.nix` for package definitions.
 
 ---
 
@@ -63,11 +63,75 @@ Feedback and merge requests are welcome. If we're missing a tool, please open an
 
 ### What This Repository Provides
 
-This repository includes `flake.nix` and `flake.lock`:
-- **`flake.nix`** defines the development environment (compilers, libraries, tools, helper functions)
-- **`flake.lock`** pins exact versions so all developers use **identical** inputs
+This repository includes `flake.nix`, `flake.lock`, and modular Nix files in `nix/`:
+
+- **`flake.nix`** - Main entry point (~90 lines), imports modules from `nix/`
+- **`flake.lock`** - Pins exact versions so all developers use **identical** inputs
+- **`nix/packages.nix`** - Package definitions (nativeBuildInputs, buildInputs, devTools)
+- **`nix/llvm.nix`** - LLVM/Clang configuration with wrapped llvm-config
+- **`nix/env-vars.nix`** - Environment variable exports
+- **`nix/devshell.nix`** - Development shell configuration
+- **`nix/derivation.nix`** - Package derivation for `nix build`
+- **`nix/patches/`** - Source code patches for Nix compatibility (see [Nix-Specific Patches](#nix-specific-patches))
+- **`nix/shell-functions/`** - Modular shell functions (build, clean, configure, etc.)
 
 Running `nix develop` spawns a shell with the correct toolchains, libraries, and environment variables configured for you.
+
+### Current Toolchain Versions
+
+The Nix development environment provides the following tool and library versions (as of February 2026):
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| GCC | 15.2.0 | Primary C/C++ compiler for final libraries |
+| LLVM/Clang | 21.1.8 | Host compiler for xdp2-compiler, AST parsing |
+| Boost | 1.87.0 | C++ libraries (graph, wave, program_options) |
+| libbpf | 1.5.0 | BPF library for eBPF/XDP programs |
+| libelf | 0.192 | ELF file handling |
+| libpcap | 1.10.5 | Packet capture library |
+| Python | 3.13.3 | Scripting and packet generation (with scapy) |
+
+### Nix-Specific Patches
+
+The Nix build uses patches to handle differences between traditional Linux distributions and the Nix build environment. These patches are located in `nix/patches/` and are automatically applied during `nix build`.
+
+**Why patches?** When using libclang's `ClangTool` API directly (as xdp2-compiler does), it bypasses the Nix clang wrapper that normally sets up include paths. Additionally, different clang versions handle certain C constructs differently. The patches address these Nix-specific issues without modifying the original source code.
+
+#### Patch 1: System Include Paths (`01-nix-clang-system-includes.patch`)
+
+**Problem:** ClangTool bypasses the Nix clang wrapper script which normally adds `-isystem` flags for system headers. Without these flags, header resolution fails and the AST contains error nodes.
+
+**Solution:** Reads include paths from environment variables set by the Nix derivation and adds them as `-isystem` arguments to ClangTool. These environment variables are only set during `nix build`, so this is a no-op on Ubuntu/Fedora.
+
+Environment variables used:
+- `XDP2_C_INCLUDE_PATH`: Clang builtins (stddef.h, stdint.h, etc.)
+- `XDP2_GLIBC_INCLUDE_PATH`: glibc headers (stdlib.h, stdio.h, etc.)
+- `XDP2_LINUX_HEADERS_PATH`: Linux kernel headers (<linux/types.h>, etc.)
+
+#### Patch 2: Tentative Definition Null Check (`02-tentative-definition-null-check.patch`)
+
+**Problem:** C tentative definitions like `static const struct T name;` (created by `XDP2_DECL_PROTO_TABLE` macro) behave differently across clang versions:
+- Ubuntu clang 18.1.3: `hasInit()` returns false, these are skipped
+- Nix clang 18.1.8+: `hasInit()` returns true with void-type InitListExpr
+
+When `getAs<RecordType>()` is called on void type, it returns nullptr, causing a segfault.
+
+**Solution:** Adds a null check and skips tentative definitions gracefully. The actual definition is processed when encountered later in the AST.
+
+For detailed investigation notes, see [phase6_segfault_defect.md](phase6_segfault_defect.md).
+
+### BPF/XDP Development Tools
+
+The development shell includes additional tools for BPF/XDP development and debugging:
+
+| Tool | Purpose |
+|------|---------|
+| `bpftools` | BPF program inspection and manipulation |
+| `bpftrace` | High-level tracing language for eBPF |
+| `bcc` | BPF Compiler Collection with Python bindings |
+| `perf` | Linux performance analysis tool |
+| `pahole` | DWARF debugging info analyzer (useful for BTF) |
+| `clang-tools` | clang-tidy, clang-format, and other code quality tools |
 
 ---
 
@@ -161,11 +225,24 @@ After running `build-all` once, the necessary changes will have been applied to 
 
 ### Debugging nix develop
 
-The `flake.nix` and embedded bash code make use of the environment variable `XDP2_NIX_DEBUG`. This variable uses syslog levels between 0 (default) and 7.
+The shell functions use the environment variable `XDP2_NIX_DEBUG` at runtime. This variable uses syslog-style levels between 0 (default) and 7.
+
+Debug levels:
+- **0** - No debug output (default)
+- **3** - Basic debug info
+- **5** - Show compiler selection and config.mk details
+- **7** - Maximum verbosity (all debug info)
 
 For maximum debugging:
 ```bash
 XDP2_NIX_DEBUG=7 nix develop --verbose --print-build-logs
+```
+
+You can also set the debug level after entering the shell:
+```bash
+nix develop
+export XDP2_NIX_DEBUG=5
+build-all  # Will show debug output
 ```
 
 ### Shellcheck
