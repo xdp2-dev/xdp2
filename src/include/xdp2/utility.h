@@ -74,6 +74,8 @@
 
 #define XDP2_CACHELINE_SIZE 64
 
+#define XDP2_PAGE_SIZE (sysconf(_SC_PAGE_SIZE))
+
 #define XDP2_STRING_IT(X) #X
 
 #define XDP2_DEPAIR2(...) __VA_ARGS__
@@ -121,6 +123,46 @@
 #define XDP2_GET_POS_ARG7_6(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7) ARG6
 #define XDP2_GET_POS_ARG7_7(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7) ARG7
 
+#define XDP2_IN_RANGE(V, BASE, LEN)				\
+	((V) >= (BASE) && (V) < (BASE) + (LEN))
+
+/* Generic rotate right */
+static inline __u64 xdp2_ror(__u64 val, unsigned int shift,
+			      unsigned int max_bits)
+{
+	if (shift >= max_bits)
+		return val;
+
+	return ((val >> shift) | (val << (max_bits - shift))) &
+		((1ULL << max_bits) - 1);
+}
+
+/* Generic rotate left */
+static inline __u64 xdp2_rol(__u64 val, unsigned int shift,
+			      unsigned int max_bits)
+{
+	if (shift >= max_bits)
+		return val;
+
+	return ((val << shift) | (val >> (max_bits - shift))) &
+		((1ULL << max_bits) - 1);
+}
+
+static inline void *panda_add_len_to_ptr(void *p, size_t len)
+{
+	return (void *)((__u8 *)p + len);
+}
+
+static inline const void *xdp2_add_len_to_ptr_const(const void *p, size_t len)
+{
+	return (void *)((__u8 *)p + len);
+}
+
+static inline bool xdp2_offset_page_aligned(off_t offset)
+{
+	return (offset == (offset & ~(XDP2_PAGE_SIZE - 1)));
+}
+
 static inline bool xdp2_is_power_of_two(unsigned long long x)
 {
 	return x && (!(x & (x - 1)));
@@ -164,6 +206,40 @@ static inline unsigned int xdp2_get_log_round_up(unsigned long long x)
 
 	return ret;
 }
+
+static inline unsigned long xdp2_round_up(unsigned long x, unsigned int r)
+{
+	unsigned int diff = x % r;
+
+	return diff ? x + (r - diff) : x;
+}
+
+static inline unsigned long xdp2_round_up_to_page(unsigned long x)
+{
+	return xdp2_round_up(x, XDP2_PAGE_SIZE);
+}
+
+#define	__XDP2_LOG_1(n) (((n) >= 2ULL) ? 1 : 0)
+#define	__XDP2_LOG_2(n) (((n) >= 1ULL << 2) ?				\
+		(2 + __XDP2_LOG_1((n) >> 2)) :	__XDP2_LOG_1(n))
+#define	__XDP2_LOG_4(n) (((n) >= 1ULL << 4) ?				\
+		(4 + __XDP2_LOG_2((n) >> 4)) : __XDP2_LOG_2(n))
+#define	__XDP2_LOG_8(n) (((n) >= 1ULL << 8) ?				\
+		(8 + __XDP2_LOG_4((n) >> 8)) : __XDP2_LOG_4(n))
+#define	__XDP2_LOG_16(n) (((n) >= 1ULL << 16) ?			\
+		(16 + __XDP2_LOG_8((n) >> 16)) : __XDP2_LOG_8(n))
+
+#define	XDP2_LOG_8BITS(n) (((n) >= 1ULL << 4) ?			\
+		(4 + __XDP2_LOG_2((n) >> 4)) : __XDP2_LOG_2(n))
+
+#define	XDP2_LOG_16BITS(n) (((n) >= 1ULL << 8) ?			\
+		(8 + __XDP2_LOG_4((n) >> 8)) : __XDP2_LOG_4(n))
+
+#define	XDP2_LOG_32BITS(n) (((n) >= 1ULL << 16) ?			\
+		(16 + __XDP2_LOG_8((n) >> 16)) : __XDP2_LOG_8(n))
+
+#define	XDP2_LOG_64BITS(n) (((n) >= 1ULL << 32) ?			\
+		(32 + __XDP2_LOG_16((n) >> 32)) : __XDP2_LOG_16(n))
 
 #define xdp2_max(a, b)						\
 ({								\
@@ -462,13 +538,6 @@ static inline char *xdp2_getline(void)
 	     ((((v) - 1) | (((v) - 1) >> 0x10) |			\
 	      (((v) - 1) | (((v) - 1) >> 0x10) >> 0x08)) >>		\
 					0x04))) >> 0x02))) >> 0x01))))
-
-static inline unsigned long xdp2_round_up(unsigned long x, unsigned int r)
-{
-	unsigned int diff = x % r;
-
-	return diff ? x + (r - diff) : x;
-}
 
 static inline unsigned long xdp2_round_up_div(unsigned long x, unsigned int r)
 {
