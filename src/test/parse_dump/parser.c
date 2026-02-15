@@ -45,9 +45,8 @@
 #include "parse_dump.h"
 
 /* Extract EtherType from Ethernet header */
-static void extract_ether(const void *hdr, size_t hdr_len, size_t hdr_off,
-			  void *metadata, void *_frame,
-			  const struct xdp2_ctrl_data *ctrl)
+static void extract_ether(const void *hdr, size_t hdr_len, void *metadata,
+			  void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct metadata *frame = _frame;
 	const struct ethhdr *eh = hdr;
@@ -56,9 +55,8 @@ static void extract_ether(const void *hdr, size_t hdr_len, size_t hdr_off,
 }
 
 /* Extract IP protocol number and address from IPv4 header */
-static void extract_ipv4(const void *hdr, size_t hdr_len, size_t hdr_off,
-			 void *metadata, void *_frame,
-			 const struct xdp2_ctrl_data *ctrl)
+static void extract_ipv4(const void *hdr, size_t hdr_len, void *metadata,
+			 void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct metadata *frame = _frame;
 	const struct iphdr *iph = hdr;
@@ -71,16 +69,15 @@ static void extract_ipv4(const void *hdr, size_t hdr_len, size_t hdr_off,
 	frame->addrs.v4.saddr = iph->saddr;
 	frame->addrs.v4.daddr = iph->daddr;
 	frame->ip_ttl = iph->ttl;
-	frame->ip_off = hdr_off;
+	frame->ip_off = xdp2_parse_hdr_offset(hdr, ctrl);
 	frame->ip_hlen = hdr_len;
 	frame->ip_frag_off = iph->frag_off;
 	frame->ip_frag_id = iph->id;
 }
 
 /* Extract protocol number and addresses for SUNH header */
-static void extract_sunh(const void *hdr, size_t hdr_len, size_t hdr_off,
-			 void *metadata, void *_frame,
-			 const struct xdp2_ctrl_data *ctrl)
+static void extract_sunh(const void *hdr, size_t hdr_len, void *metadata,
+			 void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct metadata *frame = _frame;
 	const struct sunh_hdr *sunh = hdr;
@@ -93,9 +90,8 @@ static void extract_sunh(const void *hdr, size_t hdr_len, size_t hdr_off,
 }
 
 /* Extract IP next header and address from IPv4 header */
-static void extract_ipv6(const void *hdr, size_t hdr_len, size_t hdr_off,
-			 void *metadata, void *_frame,
-			 const struct xdp2_ctrl_data *ctrl)
+static void extract_ipv6(const void *hdr, size_t hdr_len, void *metadata,
+			 void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct metadata *frame = _frame;
 	const struct ipv6hdr *iph = hdr;
@@ -104,13 +100,12 @@ static void extract_ipv6(const void *hdr, size_t hdr_len, size_t hdr_off,
 	frame->addr_type = XDP2_ADDR_TYPE_IPV6;
 	frame->addrs.v6.saddr = iph->saddr;
 	frame->addrs.v6.daddr = iph->daddr;
-	frame->ip_off = hdr_off;
+	frame->ip_off = xdp2_parse_hdr_offset(hdr, ctrl);
 }
 
 #if 0
 /* Extract IP next header and address from IPv4 header */
 static void extract_ipv6_fragment_header(const void *hdr, size_t hdr_len,
-					 size_t hdr_off,
 					 void *metadata, void *_frame,
 					 const struct xdp2_ctrl_data *ctrl)
 {
@@ -128,9 +123,8 @@ static void extract_ipv6_fragment_header(const void *hdr, size_t hdr_len,
  * first four bytes of a transport header that has ports (e.g. TCP, UDP,
  * etc.
  */
-static void extract_ports(const void *hdr, size_t hdr_len, size_t hdr_off,
-			  void *metadata, void *_frame,
-			  const struct xdp2_ctrl_data *ctrl)
+static void extract_ports(const void *hdr, size_t hdr_len, void *metadata,
+			  void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct metadata *frame = _frame;
 	const __be16 *ports = hdr;
@@ -139,27 +133,24 @@ static void extract_ports(const void *hdr, size_t hdr_len, size_t hdr_off,
 	frame->port_pair.dport = ports[1];
 }
 
-static void extract_udp(const void *hdr, size_t hdr_len, size_t hdr_off,
-			void *metadata, void *_frame,
-			const struct xdp2_ctrl_data *ctrl)
+static void extract_udp(const void *hdr, size_t hdr_len, void *metadata,
+			void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
-	extract_ports(hdr, hdr_len, hdr_off, metadata, _frame, ctrl);
+	extract_ports(hdr, hdr_len,  metadata, _frame, ctrl);
 }
 
-static void extract_tcp(const void *hdr, size_t hdr_len, size_t hdr_off,
-			void *metadata, void *_frame,
-			const struct xdp2_ctrl_data *ctrl)
+static void extract_tcp(const void *hdr, size_t hdr_len, void *metadata,
+			void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct pmetadata *pmeta = metadata;
 	struct metametadata *metametadata = &pmeta->metametadata;
 
 	metametadata->tcp_present = true;
-	extract_ports(hdr, hdr_len, hdr_off, metadata, _frame, ctrl);
+	extract_ports(hdr, hdr_len, metadata, _frame, ctrl);
 }
 
-static void extract_icmpv4(const void *hdr, size_t hdr_len, size_t hdr_off,
-			   void *metadata, void *_frame,
-			   const struct xdp2_ctrl_data *ctrl)
+static void extract_icmpv4(const void *hdr, size_t hdr_len, void *metadata,
+			   void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct pmetadata *pmeta = metadata;
 	struct metametadata *metametadata = &pmeta->metametadata;
@@ -171,9 +162,8 @@ static void extract_icmpv4(const void *hdr, size_t hdr_len, size_t hdr_off,
 	metametadata->icmp_present = true;
 }
 
-static void extract_icmpv6(const void *hdr, size_t hdr_len, size_t hdr_off,
-			   void *metadata, void *_frame,
-			   const struct xdp2_ctrl_data *ctrl)
+static void extract_icmpv6(const void *hdr, size_t hdr_len, void *metadata,
+			   void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct pmetadata *pmeta = metadata;
 	struct metametadata *metametadata = &pmeta->metametadata;
@@ -186,9 +176,8 @@ static void extract_icmpv6(const void *hdr, size_t hdr_len, size_t hdr_off,
 	metametadata->icmp_present = true;
 }
 
-static void extract_arp(const void *hdr, size_t hdr_len, size_t hdr_off,
-			void *metadata, void *_frame,
-			const struct xdp2_ctrl_data *ctrl)
+static void extract_arp(const void *hdr, size_t hdr_len, void *metadata,
+			void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct pmetadata *pmeta = metadata;
 	struct metametadata *metametadata = &pmeta->metametadata;
@@ -210,9 +199,8 @@ static void extract_arp(const void *hdr, size_t hdr_len, size_t hdr_off,
 }
 
 /* Extract GRE version */
-static void extract_gre_v0(const void *hdr, size_t hdr_len, size_t hdr_off,
-			   void *metadata, void *_frame,
-			   const struct xdp2_ctrl_data *ctrl)
+static void extract_gre_v0(const void *hdr, size_t hdr_len, void *metadata,
+			   void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct metadata *frame = _frame;
 
@@ -220,9 +208,8 @@ static void extract_gre_v0(const void *hdr, size_t hdr_len, size_t hdr_off,
 }
 
 /* Extract GRE version */
-static void extract_gre_v1(const void *hdr, size_t hdr_len, size_t hdr_off,
-			   void *metadata, void *_frame,
-			   const struct xdp2_ctrl_data *ctrl)
+static void extract_gre_v1(const void *hdr, size_t hdr_len, void *metadata,
+			   void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct metadata *frame = _frame;
 
@@ -231,7 +218,7 @@ static void extract_gre_v1(const void *hdr, size_t hdr_len, size_t hdr_off,
 
 /* Extract GRE checksum */
 static void extract_gre_flag_csum(const void *hdr, size_t hdr_len,
-				  size_t hdr_off, void *metadata, void *_frame,
+				  void *metadata, void *_frame,
 				  const struct xdp2_ctrl_data *ctrl)
 {
 	// TODO
@@ -239,7 +226,7 @@ static void extract_gre_flag_csum(const void *hdr, size_t hdr_len,
 
 /* Extract GRE key */
 static void extract_gre_flag_key(const void *hdr, size_t hdr_len,
-				 size_t hdr_off, void *metadata, void *_frame,
+				 void *metadata, void *_frame,
 				 const struct xdp2_ctrl_data *ctrl)
 {
 	struct metadata *frame = _frame;
@@ -250,7 +237,7 @@ static void extract_gre_flag_key(const void *hdr, size_t hdr_len,
 
 /* Extract GRE sequence */
 static void extract_gre_flag_seq(const void *hdr, size_t hdr_len,
-				 size_t hdr_off, void *metadata, void *_frame,
+				 void *metadata, void *_frame,
 				 const struct xdp2_ctrl_data *ctrl)
 {
 	struct metadata *frame = _frame;
@@ -261,7 +248,7 @@ static void extract_gre_flag_seq(const void *hdr, size_t hdr_len,
 
 /* Extract GRE ack */
 static void extract_gre_flag_ack(const void *hdr, size_t hdr_len,
-				 size_t hdr_off, void *metadata, void *_frame,
+				 void *metadata, void *_frame,
 				 const struct xdp2_ctrl_data *ctrl)
 {
 	struct metadata *frame = _frame;
@@ -272,7 +259,7 @@ static void extract_gre_flag_ack(const void *hdr, size_t hdr_len,
 
 /* Extract TCP timestamp option */
 static void extract_tcp_timestamp(const void *hdr, size_t hdr_len,
-				 size_t hdr_off, void *metadata, void *_frame,
+				 void *metadata, void *_frame,
 				 const struct xdp2_ctrl_data *ctrl)
 {
 	struct pmetadata *pmeta = metadata;
@@ -287,7 +274,7 @@ static void extract_tcp_timestamp(const void *hdr, size_t hdr_len,
 
 /* Extract TCP timestamp option */
 static void extract_tcp_mss(const void *hdr, size_t hdr_len,
-			    size_t hdr_off, void *metadata, void *_frame,
+			    void *metadata, void *_frame,
 			    const struct xdp2_ctrl_data *ctrl)
 {
 	struct pmetadata *pmeta = metadata;
@@ -299,7 +286,7 @@ static void extract_tcp_mss(const void *hdr, size_t hdr_len,
 
 /* Extract TCP wscale option */
 static void extract_tcp_wscale(const void *hdr, size_t hdr_len,
-			       size_t hdr_off, void *metadata, void *_frame,
+			       void *metadata, void *_frame,
 			       const struct xdp2_ctrl_data *ctrl)
 {
 	struct pmetadata *pmeta = metadata;
@@ -313,14 +300,13 @@ static void extract_tcp_wscale(const void *hdr, size_t hdr_len,
 
 /* Extract TCP wscale option */
 static void extract_tcp_sack_permitted(const void *hdr, size_t hdr_len,
-				       size_t hdr_off, void *metadata,
-				       void *_frame,
+				       void *metadata, void *_frame,
 				       const struct xdp2_ctrl_data *ctrl)
 {
 }
 
 static void extract_tcp_sack_1(const void *hdr, size_t hdr_len,
-			       size_t hdr_off, void *metadata, void *_frame,
+			       void *metadata, void *_frame,
 			       const struct xdp2_ctrl_data *ctrl)
 {
 	const struct tcp_opt_union *opt = hdr;
@@ -333,7 +319,7 @@ static void extract_tcp_sack_1(const void *hdr, size_t hdr_len,
 }
 
 static void extract_tcp_sack_2(const void *hdr, size_t hdr_len,
-			       size_t hdr_off, void *metadata, void *_frame,
+			       void *metadata, void *_frame,
 			       const struct xdp2_ctrl_data *ctrl)
 {
 	const struct tcp_opt_union *opt = hdr;
@@ -348,7 +334,7 @@ static void extract_tcp_sack_2(const void *hdr, size_t hdr_len,
 }
 
 static void extract_tcp_sack_3(const void *hdr, size_t hdr_len,
-			       size_t hdr_off, void *metadata, void *_frame,
+			       void *metadata, void *_frame,
 			       const struct xdp2_ctrl_data *ctrl)
 {
 	const struct tcp_opt_union *opt = hdr;
@@ -365,7 +351,7 @@ static void extract_tcp_sack_3(const void *hdr, size_t hdr_len,
 }
 
 static void extract_tcp_sack_4(const void *hdr, size_t hdr_len,
-			       size_t hdr_off, void *metadata, void *_frame,
+			       void *metadata, void *_frame,
 			       const struct xdp2_ctrl_data *ctrl)
 {
 	const struct tcp_opt_union *opt = hdr;
@@ -384,21 +370,21 @@ static void extract_tcp_sack_4(const void *hdr, size_t hdr_len,
 }
 
 static void extract_ipv4_check(const void *hdr, size_t hdr_len,
-			       size_t hdr_off, void *metadata, void *_frame,
+			       void *metadata, void *_frame,
 			       const struct xdp2_ctrl_data *ctrl)
 {
 	ctrl->key.keys[1] = ((struct ip_hdr_byte *)hdr)->version;
 }
 
 static void extract_ipv6_check(const void *hdr, size_t hdr_len,
-			       size_t hdr_off, void *metadata, void *_frame,
+			       void *metadata, void *_frame,
 			       const struct xdp2_ctrl_data *ctrl)
 {
 	ctrl->key.keys[1] = ((struct ip_hdr_byte *)hdr)->version;
 }
 
 static void extract_final(const void *hdr, size_t hdr_len,
-			  size_t hdr_off, void *metadata, void *_frame,
+			  void *metadata, void *_frame,
 			  const struct xdp2_ctrl_data *ctrl)
 {
 	struct metadata *frame = _frame;
@@ -424,14 +410,14 @@ static void extract_vlan(const void *hdr, void *_frame,
 }
 
 static void extract_e8021AD(const void *hdr, size_t hdr_len,
-			    size_t hdr_off, void *metadata, void *_frame,
+			    void *metadata, void *_frame,
 			    const struct xdp2_ctrl_data *ctrl)
 {
 	extract_vlan(hdr, _frame, ctrl, ETH_P_8021AD);
 }
 
 static void extract_e8021Q(const void *hdr, size_t hdr_len,
-			   size_t hdr_off, void *metadata, void *_frame,
+			   void *metadata, void *_frame,
 			   const struct xdp2_ctrl_data *ctrl)
 {
 	extract_vlan(hdr, _frame, ctrl, ETH_P_8021AD);
@@ -439,7 +425,7 @@ static void extract_e8021Q(const void *hdr, size_t hdr_len,
 
 /* Extract routing header */
 static void extract_eh(const void *hdr, size_t hdr_len,
-		       size_t hdr_off, void *metadata, void *_frame,
+		       void *metadata, void *_frame,
 		       const struct xdp2_ctrl_data *ctrl)
 {
 	const struct ipv6_opt_hdr *opt = hdr;
@@ -449,7 +435,7 @@ static void extract_eh(const void *hdr, size_t hdr_len,
 }
 
 static int handler_ether_root(const void *hdr, size_t hdr_len,
-			      size_t hdr_off, void *metadata, void *_frame,
+			      void *metadata, void *_frame,
 			       const struct xdp2_ctrl_data *ctrl)
 {
 	struct one_packet *pdata = ctrl->key.arg;
@@ -469,8 +455,7 @@ static int handler_ether_root(const void *hdr, size_t hdr_len,
 }
 
 static int handler_icmpv6_nd_target_addr_opt(const void *hdr, size_t hdr_len,
-					     size_t hdr_off, void *metadata,
-					     void *_frame,
+					     void *metadata, void *_frame,
 					     const struct xdp2_ctrl_data *ctrl)
 {
 	const struct icmpv6_nd_opt *opt = hdr;
@@ -485,8 +470,7 @@ static int handler_icmpv6_nd_target_addr_opt(const void *hdr, size_t hdr_len,
 
 #if 0
 static int handler_icmpv6_nd_source_addr_opt(const void *hdr, size_t hdr_len,
-					     size_t hdr_off, void *metadata,
-					     void *_frame,
+					     void *metadata, void *_frame,
 					     const struct xdp2_ctrl_data *ctrl)
 {
 	const struct icmpv6_nd_opt *opt = hdr;
@@ -505,8 +489,7 @@ XDP2_MAKE_TLV_PARSE_NODE(icmpv6_nd_target_addr_opt_node, xdp2_parse_tlv_null,
 					handler_icmpv6_nd_target_addr_opt));
 
 static int handler_ipv6_neigh_solicit(const void *hdr, size_t hdr_len,
-				      size_t hdr_off, void *metadata,
-				      void *_frame,
+				      void *metadata, void *_frame,
 				      const struct xdp2_ctrl_data *ctrl)
 {
 	const struct icmpv6_nd_neigh_advert *ns = hdr;
@@ -526,8 +509,7 @@ static int handler_ipv6_neigh_solicit(const void *hdr, size_t hdr_len,
 }
 
 static int handler_ipv6_neigh_advert(const void *hdr, size_t hdr_len,
-				     size_t hdr_off, void *metadata,
-				     void *_frame,
+				     void *metadata, void *_frame,
 				     const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
@@ -537,9 +519,8 @@ static int handler_ipv6_neigh_advert(const void *hdr, size_t hdr_len,
 	return 0;
 }
 
-static int handler_ospf(const void *hdr, size_t hdr_len, size_t hdr_off,
-			void *metadata, void *_frame,
-			const struct xdp2_ctrl_data *ctrl)
+static int handler_ospf(const void *hdr, size_t hdr_len, void *metadata,
+			void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
 		XDP2_PTH_LOC_PRINTFC(ctrl, "\tOSPF node\n");
@@ -584,8 +565,7 @@ XDP2_PTH_MAKE_SIMPLE_TCP_OPT_HANDLER(tcp_sack_permitted, "TCP sack permitted")
 XDP2_PTH_MAKE_SIMPLE_TCP_OPT_HANDLER(tcp_unknown, "Unknown TCP")
 
 static int handler_protobufs1_name(const void *hdr, size_t hdr_len,
-				   size_t hdr_off, void *metadata,
-				   void *_frame,
+				   void *metadata, void *_frame,
 				   const struct xdp2_ctrl_data *ctrl)
 {
 	const void *ptr = NULL;
@@ -607,8 +587,7 @@ static int handler_protobufs1_name(const void *hdr, size_t hdr_len,
 }
 
 static int handler_protobufs2_phone_number(const void *hdr, size_t hdr_len,
-					   size_t hdr_off, void *metadata,
-					   void *_frame,
+					   void *metadata, void *_frame,
 					   const struct xdp2_ctrl_data *ctrl)
 {
 	const void *ptr = NULL;
@@ -631,8 +610,7 @@ static int handler_protobufs2_phone_number(const void *hdr, size_t hdr_len,
 }
 
 static int handler_protobufs2_phone_type(const void *hdr, size_t hdr_len,
-					 size_t hdr_off, void *metadata,
-					 void *_frame,
+					 void *metadata, void *_frame,
 					 const struct xdp2_ctrl_data *ctrl)
 {
 	__u64 value;
@@ -647,8 +625,7 @@ static int handler_protobufs2_phone_type(const void *hdr, size_t hdr_len,
 }
 
 static int handler_protobufs1_email(const void *hdr, size_t hdr_len,
-				    size_t hdr_off, void *metadata,
-				    void *_frame,
+				    void *metadata, void *_frame,
 				    const struct xdp2_ctrl_data *ctrl)
 {
 	const void *ptr = NULL;
@@ -670,8 +647,7 @@ static int handler_protobufs1_email(const void *hdr, size_t hdr_len,
 }
 
 static int handler_protobufs1_id(const void *hdr, size_t hdr_len,
-				 size_t hdr_off, void *metadata,
-				 void *_frame,
+				 void *metadata, void *_frame,
 				 const struct xdp2_ctrl_data *ctrl)
 {
 	__u64 value;
@@ -695,9 +671,8 @@ XDP2_PTH_MAKE_SIMPLE_HANDLER(tcp, "TCP node")
 XDP2_PTH_MAKE_SIMPLE_HANDLER(grev0, "GREv0 node")
 XDP2_PTH_MAKE_SIMPLE_HANDLER(grev1, "GREv1 node")
 
-static int handler_okay(const void *hdr, size_t hdr_len,
-			size_t hdr_off, void *metadata, void *_frame,
-			const struct xdp2_ctrl_data *ctrl)
+static int handler_okay(const void *hdr, size_t hdr_len, void *metadata,
+			void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
 		XDP2_PTH_LOC_PRINTFC(ctrl, "\t** Okay node\n");
@@ -709,7 +684,7 @@ static int handler_okay(const void *hdr, size_t hdr_len,
 }
 
 static int handler_fail(const void *hdr, size_t hdr_len,
-			size_t hdr_off, void *metadata, void *_frame,
+			void *metadata, void *_frame,
 			const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
@@ -721,9 +696,8 @@ static int handler_fail(const void *hdr, size_t hdr_len,
 	return 0;
 }
 
-static int handler_atencap(const void *hdr, size_t hdr_len,
-			   size_t hdr_off, void *metadata, void *_frame,
-			   const struct xdp2_ctrl_data *ctrl)
+static int handler_atencap(const void *hdr, size_t hdr_len, void *metadata,
+			   void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
 		XDP2_PTH_LOC_PRINTFC(ctrl, "\t** At encapsulation node\n");
@@ -1059,8 +1033,7 @@ XDP2_PTH_MAKE_SIMPLE_EH_HANDLER(ipv6_fragment_header, "IPv6 Fragment header")
 XDP2_PTH_MAKE_SIMPLE_EH_HANDLER(ipv6_ah_header, "IPv6 Authentication header")
 
 static int handler_ipv6_srv6_routing_header(const void *hdr, size_t hdr_len,
-					    size_t hdr_off, void *metadata,
-					    void *_frame,
+					    void *metadata, void *_frame,
 					    const struct xdp2_ctrl_data *ctrl)
 {
 	const struct ipv6_sr_hdr *srhdr = hdr;
@@ -1084,8 +1057,7 @@ static int handler_ipv6_srv6_routing_header(const void *hdr, size_t hdr_len,
 }
 
 static int handler_ipv6_srv6_segment(const void *hdr, size_t hdr_len,
-				     size_t hdr_off, void *metadata,
-				     void *_frame,
+				     void *metadata, void *_frame,
 				     const struct xdp2_ctrl_data *ctrl)
 {
 	const struct in6_addr *addr = hdr;

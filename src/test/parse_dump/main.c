@@ -148,6 +148,7 @@ static void run_parser(const struct xdp2_parser *parser, char **pcap_files,
 		XDP2_CTRL_RESET_VAR_DATA(&ctrl);
 		XDP2_CTRL_RESET_KEY_DATA(&ctrl, parser);
 		XDP2_CTRL_SET_BASIC_PKT_DATA(&ctrl, packets[pn].packet,
+					     packets[pn].packet,
 					     packets[pn].cap_len, i);
 		ctrl.key.arg = &packets[pn];
 
@@ -211,7 +212,7 @@ static void run_parser_iface(const struct xdp2_parser *parser,
 		memset(&pmetadata, 0, sizeof(pmetadata));
 
 		XDP2_CTRL_RESET_VAR_DATA(&ctrl);
-		XDP2_CTRL_SET_BASIC_PKT_DATA(&ctrl, buffer, n, seq++);
+		XDP2_CTRL_SET_BASIC_PKT_DATA(&ctrl, buffer, buffer, n, seq++);
 
 		xdp2_parse(parser, buffer, n,  &pmetadata, &ctrl, flags);
 	}
