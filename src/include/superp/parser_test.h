@@ -41,10 +41,8 @@
 
 /* Parser definitions in parse_dump for SUPERp */
 
-static int handler_pdl(const void *hdr, size_t hdr_len,
-		       size_t hdr_off, void *metadata,
-		       void *frame,
-		       const struct xdp2_ctrl_data *ctrl)
+static int handler_pdl(const void *hdr, size_t hdr_len, void *metadata,
+		       void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct superp_pdl_hdr *pdl = hdr;
 
@@ -68,11 +66,11 @@ static int handler_pdl(const void *hdr, size_t hdr_len,
 	return 0;
 }
 
-static void extract_tal(const void *hdr, size_t hdr_len, size_t hdr_off,
-			void *metadata, void *_frame,
-			const struct xdp2_ctrl_data *ctrl)
+static void extract_tal(const void *hdr, size_t hdr_len, void *metadata,
+			void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct superp_tal_hdr *tal = hdr;
+	size_t hdr_off = xdp2_parse_hdr_offset(hdr, ctrl);
 
 	if (tal->num_ops) {
 		/* Preferably we'd put the block size and blocks offset in
@@ -94,10 +92,8 @@ static void extract_tal(const void *hdr, size_t hdr_len, size_t hdr_off,
 	}
 }
 
-static int handler_tal(const void *hdr, size_t hdr_len,
-		       size_t hdr_off, void *metadata,
-		       void *frame,
-		       const struct xdp2_ctrl_data *ctrl)
+static int handler_tal(const void *hdr, size_t hdr_len, void *metadata,
+		       void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct superp_tal_hdr *tal = hdr;
 
@@ -124,8 +120,7 @@ static int handler_tal(const void *hdr, size_t hdr_len,
 }
 
 static int handler_superp_read_op(const void *hdr, size_t hdr_len,
-				  size_t hdr_off, void *metadata,
-				  void *frame,
+				  void *metadata, void *frame,
 				  const struct xdp2_ctrl_data *ctrl)
 {
 	const struct superp_op_read *op = hdr;
@@ -144,8 +139,7 @@ static int handler_superp_read_op(const void *hdr, size_t hdr_len,
 }
 
 static int handler_superp_write_op(const void *hdr, size_t hdr_len,
-				   size_t hdr_off, void *metadata,
-				   void *frame,
+				   void *metadata, void *frame,
 				   const struct xdp2_ctrl_data *ctrl)
 {
 	const struct superp_op_read *op = hdr;
@@ -178,8 +172,7 @@ static int handler_superp_write_op(const void *hdr, size_t hdr_len,
 }
 
 static int handler_superp_read_resp(const void *hdr, size_t hdr_len,
-				    size_t hdr_off, void *metadata,
-				    void *frame,
+				    void *metadata, void *frame,
 				    const struct xdp2_ctrl_data *ctrl)
 {
 	const struct superp_op_read_resp *op = hdr;
@@ -218,8 +211,7 @@ static int handler_superp_read_resp(const void *hdr, size_t hdr_len,
 }
 
 static int handler_superp_send_op(const void *hdr, size_t hdr_len,
-				  size_t hdr_off, void *metadata,
-				  void *frame,
+				  void *metadata, void *frame,
 				  const struct xdp2_ctrl_data *ctrl)
 {
 	const struct superp_op_send *op = hdr;
@@ -255,8 +247,7 @@ static int handler_superp_send_op(const void *hdr, size_t hdr_len,
 }
 
 static int handler_superp_send_to_qp_op(const void *hdr, size_t hdr_len,
-					size_t hdr_off, void *metadata,
-					void *frame,
+					void *metadata, void *frame,
 					const struct xdp2_ctrl_data *ctrl)
 {
 	const struct superp_op_send_to_qp *op = hdr;
@@ -291,8 +282,7 @@ static int handler_superp_send_to_qp_op(const void *hdr, size_t hdr_len,
 }
 
 static int handler_superp_transact_err(const void *hdr, size_t hdr_len,
-				       size_t hdr_off, void *metadata,
-				       void *frame,
+				       void *metadata, void *frame,
 				       const struct xdp2_ctrl_data *ctrl)
 {
 	const struct superp_op_transact_err *op = hdr;
