@@ -81,11 +81,10 @@ struct xdp2_proto_tlvs_opts {
  */
 struct xdp2_parse_tlv_node_ops {
 	void (*extract_metadata)(const void *hdr, size_t hdr_len,
-				 size_t hdr_off, void *metadata, void *frame,
+				 void *metadata, void *frame,
 				 const struct xdp2_ctrl_data *ctrl);
-	int (*handler)(const void *hdr, size_t hdr_len, size_t hdr_off,
-		       void *metadata, void *frame,
-		       const struct xdp2_ctrl_data *ctrl);
+	int (*handler)(const void *hdr, size_t hdr_len, void *metadata,
+		       void *frame, const struct xdp2_ctrl_data *ctrl);
 };
 
 /* Parse node for a single TLV. Use common parse node operations
