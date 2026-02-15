@@ -156,6 +156,7 @@ struct xdp2_parse_node;
 
 struct xdp2_ctrl_packet_data {
 	void *packet;		/* Packet handle */
+	void *start;		/* Pointer to first byte of the packet */
 	size_t pkt_len;		/* Full length of packet */
 	__u32 seqno;		/* Sequence number per interface */
 	__u32 timestamp;	/* Received timestamp */
@@ -202,14 +203,12 @@ struct xdp2_ctrl_data {
  */
 struct xdp2_parse_node_ops {
 	void (*extract_metadata)(const void *hdr, size_t hdr_len,
-				 size_t hdr_off, void *metadata, void *frame,
+				 void *metadata, void *frame,
 				 const struct xdp2_ctrl_data *ctrl);
-	int (*handler)(const void *hdr, size_t hdr_len, size_t hdr_off,
-		       void *metadata, void *frame,
-		       const struct xdp2_ctrl_data *ctrl);
-	int (*post_handler)(const void *hdr, size_t hdr_len, size_t hdr_off,
-			    void *metadata, void *frame,
-			    const struct xdp2_ctrl_data *ctrl);
+	int (*handler)(const void *hdr, size_t hdr_len, void *metadata,
+		       void *frame, const struct xdp2_ctrl_data *ctrl);
+	int (*post_handler)(const void *hdr, size_t hdr_len, void *metadata,
+			    void *frame, const struct xdp2_ctrl_data *ctrl);
 };
 
 /* Protocol definitions and parse node operations ordering. When processing a

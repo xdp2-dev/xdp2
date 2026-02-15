@@ -325,14 +325,25 @@ static inline int xdp2_parse_fast(const struct xdp2_parser *parser,
 	memset(&_ctrl->var, 0, sizeof(_ctrl->var));			\
 } while (0)
 
-#define XDP2_CTRL_SET_BASIC_PKT_DATA(CTRL, PACKET, LENGTH, SEQNO) do {	\
+#define XDP2_CTRL_SET_BASIC_PKT_DATA(CTRL, PACKET, PKT_START, LENGTH,	\
+				     SEQNO) do {			\
 	struct xdp2_ctrl_data *_ctrl = (CTRL);				\
 									\
 	memset(&_ctrl->pkt, 0, sizeof(_ctrl->pkt));			\
 	_ctrl->pkt.packet = PACKET;					\
+	_ctrl->pkt.start = PKT_START;					\
 	_ctrl->pkt.pkt_len = LENGTH;					\
 	_ctrl->pkt.seqno = SEQNO;					\
 } while (0)
+
+/* Compute the offset of the current header by subtracting the pointer
+ * to the start of the packet
+ */
+static inline size_t xdp2_parse_hdr_offset(const void *hdr,
+					   const struct xdp2_ctrl_data *ctrl)
+{
+	return hdr - ctrl->pkt.start;
+}
 
 #define XDP2_CTRL_INIT_KEY_DATA(CTRL, PARSER, ARG) do {			\
 	const struct xdp2_parser *_parser = (PARSER);			\
@@ -424,11 +435,11 @@ static inline int __xdp2_parse_run_exit_node(const struct xdp2_parser *parser,
 					     unsigned int flags)
 {
 	if (parse_node->ops.extract_metadata)
-		parse_node->ops.extract_metadata(NULL, 0, 0, metadata, _frame,
+		parse_node->ops.extract_metadata(NULL, 0, metadata, _frame,
 						 ctrl);
 
 	if (parse_node->ops.handler)
-		parse_node->ops.handler(NULL, 0, 0, metadata, _frame, ctrl);
+		parse_node->ops.handler(NULL, 0, metadata, _frame, ctrl);
 
 	return 0;
 }

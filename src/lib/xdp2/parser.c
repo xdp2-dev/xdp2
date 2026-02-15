@@ -96,15 +96,15 @@ static const struct xdp2_parse_flag_field_node *lookup_flag_field_node(int idx,
 }
 
 static int xdp2_parse_tlvs(const struct xdp2_parse_node *parse_node,
-			   const void *hdr, size_t hlen, size_t offset,
-			   void *metadata, void *frame,
-			   struct xdp2_ctrl_data *ctrl, unsigned int flags);
+			   const void *hdr, size_t hlen, void *metadata,
+			   void *frame, struct xdp2_ctrl_data *ctrl,
+			   unsigned int flags);
 
 static int xdp2_parse_one_tlv(
 		const struct xdp2_parse_tlvs_node *parse_tlvs_node,
 		const struct xdp2_parse_tlv_node *parse_tlv_node,
 		const void *hdr, void *metadata, void *frame, int type,
-		size_t tlv_len, size_t offset, struct xdp2_ctrl_data *ctrl,
+		size_t tlv_len, struct xdp2_ctrl_data *ctrl,
 		unsigned int flags)
 {
 	const struct xdp2_proto_tlv_def *proto_tlv_def =
@@ -130,12 +130,10 @@ parse_again:
 	ops = &parse_tlv_node->tlv_ops;
 
 	if (ops->extract_metadata)
-		ops->extract_metadata(hdr, tlv_len, offset, metadata, frame,
-				      ctrl);
+		ops->extract_metadata(hdr, tlv_len, metadata, frame, ctrl);
 
 	if (ops->handler) {
-		ret = ops->handler(hdr, tlv_len, offset, metadata, frame,
-				   ctrl);
+		ret = ops->handler(hdr, tlv_len, metadata, frame, ctrl);
 		if (ret != XDP2_OKAY)
 			return ret;
 	}
@@ -149,8 +147,7 @@ parse_again:
 		ctrl->var.tlv_levels++;
 		ret = xdp2_parse_tlvs(parse_tlv_node->nested_node,
 			    hdr + nested_offset, tlv_len - nested_offset,
-			    offset + nested_offset, metadata, frame, ctrl,
-			    flags);
+			    metadata, frame, ctrl, flags);
 		ctrl->var.tlv_levels--;
 
 		if (ret != XDP2_OKAY)
@@ -186,9 +183,8 @@ parse_again:
 }
 
 static int xdp2_parse_tlvs(const struct xdp2_parse_node *parse_node,
-			   const void *hdr, size_t hlen,
-			   size_t offset, void *metadata, void *frame,
-			   struct xdp2_ctrl_data *ctrl,
+			   const void *hdr, size_t hlen, void *metadata,
+			   void *frame, struct xdp2_ctrl_data *ctrl,
 			   unsigned int flags)
 {
 	const struct xdp2_parse_tlvs_node *parse_tlvs_node;
@@ -211,14 +207,12 @@ static int xdp2_parse_tlvs(const struct xdp2_parse_node *parse_node,
 	hlen -= off;
 
 	cp += off;
-	offset += off;
 
 	while (hlen > 0) {
 		if (proto_tlvs_def->pad1_enable &&
 		   *cp == proto_tlvs_def->pad1_val) {
 			/* One byte padding, just advance */
 			cp++;
-			offset++;
 			hlen--;
 			continue;
 		}
@@ -226,7 +220,6 @@ static int xdp2_parse_tlvs(const struct xdp2_parse_node *parse_node,
 		if (proto_tlvs_def->eol_enable &&
 		    *cp == proto_tlvs_def->eol_val) {
 			cp++;
-			offset++;
 			hlen--;
 
 			/* Hit EOL, we're done */
@@ -269,10 +262,9 @@ static int xdp2_parse_tlvs(const struct xdp2_parse_node *parse_node,
 		if (parse_tlv_node) {
 parse_one_tlv:
 			ret = xdp2_parse_one_tlv(parse_tlvs_node,
-						  parse_tlv_node, cp,
-						  metadata, frame,
-						  type, tlv_len, offset,
-						  ctrl, flags);
+						 parse_tlv_node, cp,
+						 metadata, frame, type,
+						 tlv_len, ctrl, flags);
 			if (ret != XDP2_OKAY)
 				return ret;
 		} else {
@@ -297,7 +289,6 @@ parse_one_tlv:
 
 		/* Move over current header */
 		cp += tlv_len;
-		offset += tlv_len;
 		hlen -= tlv_len;
 	}
 
@@ -306,8 +297,8 @@ parse_one_tlv:
 
 static int xdp2_parse_flag_fields(const struct xdp2_parse_node *parse_node,
 				   const void *hdr, size_t hlen,
-				   size_t offset, void *metadata,
-				   void *frame, struct xdp2_ctrl_data *ctrl,
+				   void *metadata, void *frame,
+				   struct xdp2_ctrl_data *ctrl,
 				   unsigned int pflags)
 {
 	const struct xdp2_parse_flag_fields_node *parse_flag_fields_node;
@@ -331,7 +322,6 @@ static int xdp2_parse_flag_fields(const struct xdp2_parse_node *parse_node,
 	/* Position at start of field data */
 	ioff = proto_flag_fields_def->ops.start_fields_offset(hdr);
 	hdr += ioff;
-	offset += ioff;
 
 	for (i = 0; i < flag_fields->num_idx; i++) {
 		off = xdp2_flag_fields_offset(i, flags, flag_fields);
@@ -355,12 +345,12 @@ static int xdp2_parse_flag_fields(const struct xdp2_parse_node *parse_node,
 			if (ops->extract_metadata)
 				ops->extract_metadata(cp,
 					flag_fields->fields[i].size,
-					offset + off, metadata, frame, ctrl);
+					metadata, frame, ctrl);
 
 			if (ops->handler)
 				ops->handler(cp,
 					flag_fields->fields[i].size,
-					offset + off, metadata, frame, ctrl);
+					metadata, frame, ctrl);
 		}
 	}
 
@@ -369,9 +359,8 @@ static int xdp2_parse_flag_fields(const struct xdp2_parse_node *parse_node,
 
 static int xdp2_parse_array(const struct xdp2_parse_node *parse_node,
 			    const void *hdr, size_t hlen,
-			    size_t offset, void *metadata,
-			    void *frame, struct xdp2_ctrl_data *ctrl,
-			    unsigned int pflags)
+			    void *metadata, void *frame,
+			    struct xdp2_ctrl_data *ctrl, unsigned int pflags)
 {
 	const struct xdp2_parse_array_node *parse_array_node;
 	const struct xdp2_parse_arrel_node *parse_arrel_node;
@@ -390,7 +379,6 @@ static int xdp2_parse_array(const struct xdp2_parse_node *parse_node,
 	hlen -= off;
 
 	cp += off;
-	offset += off;
 
 	num_els = proto_array_def->ops.num_els(hdr, hlen);
 
@@ -421,11 +409,11 @@ parse_one_arrel:
 			if (ops->extract_metadata)
 				ops->extract_metadata(cp,
 					proto_array_def->el_length,
-					offset, metadata, frame, ctrl);
+					metadata, frame, ctrl);
 
 			if (ops->handler)
 				ops->handler(cp, proto_array_def->el_length,
-					     offset, metadata, frame, ctrl);
+					     metadata, frame, ctrl);
 		} else {
 			parse_arrel_node =
 				parse_array_node->array_wildcard_node;
@@ -448,7 +436,6 @@ parse_one_arrel:
 		}
 
 		cp += proto_array_def->el_length;
-		offset += proto_array_def->el_length;
 		hlen -= proto_array_def->el_length;
 	}
 
@@ -480,7 +467,6 @@ int __xdp2_parse(const struct xdp2_parser *parser, void *hdr,
 	const struct xdp2_parse_node *next_parse_node;
 	unsigned int nodes = parser->config.max_nodes;
 	unsigned int frame_num = 0;
-	size_t offset = 0;
 	int type, ret;
 
 	/* Main parsing loop. The loop normal teminates when we encounter a
@@ -531,12 +517,12 @@ int __xdp2_parse(const struct xdp2_parser *parser, void *hdr,
 
 		/* Extract metadata */
 		if (parse_node->ops.extract_metadata)
-			parse_node->ops.extract_metadata(hdr, hlen, offset,
-							 metadata, frame, ctrl);
+			parse_node->ops.extract_metadata(hdr, hlen, metadata,
+							 frame, ctrl);
 
 		/* Call handler */
 		if (parse_node->ops.handler)
-			parse_node->ops.handler(hdr, hlen, offset, metadata,
+			parse_node->ops.handler(hdr, hlen, metadata,
 						frame, ctrl);
 
 		switch (parse_node->node_type) {
@@ -551,8 +537,8 @@ int __xdp2_parse(const struct xdp2_parser *parser, void *hdr,
 				 * but proto_def is not TLVs type
 				 */
 				ret = xdp2_parse_tlvs(parse_node, hdr, hlen,
-						      offset, metadata,
-						      frame, ctrl, flags);
+						      metadata, frame, ctrl,
+						      flags);
 				if (ret != XDP2_OKAY)
 					goto out;
 			}
@@ -565,9 +551,9 @@ int __xdp2_parse(const struct xdp2_parser *parser, void *hdr,
 				 * type but proto_def is not flag-fields type
 				 */
 				ret = xdp2_parse_flag_fields(parse_node, hdr,
-							     hlen, offset,
-							     metadata, frame,
-							     ctrl, flags);
+							     hlen, metadata,
+							     frame, ctrl,
+							     flags);
 				if (ret != XDP2_OKAY)
 					goto out;
 			}
@@ -580,7 +566,7 @@ int __xdp2_parse(const struct xdp2_parser *parser, void *hdr,
 				 * type but proto_def is not array type
 				 */
 				ret = xdp2_parse_array(parse_node, hdr, hlen,
-						       offset, metadata, frame,
+						       metadata, frame,
 						       ctrl, flags);
 				if (ret != XDP2_OKAY)
 					goto out;
@@ -590,8 +576,8 @@ int __xdp2_parse(const struct xdp2_parser *parser, void *hdr,
 
 		/* Call handler */
 		if (parse_node->ops.post_handler)
-			parse_node->ops.post_handler(hdr, hlen, offset,
-						     metadata, frame, ctrl);
+			parse_node->ops.post_handler(hdr, hlen, metadata,
+						     frame, ctrl);
 
 		/* Proceed to next protocol layer */
 
@@ -683,7 +669,6 @@ found_next:
 
 		if (!proto_def->overlay) {
 			/* Move over current header */
-			offset += hlen;
 			hdr += hlen;
 			len -= hlen;
 		}
@@ -723,7 +708,6 @@ int __xdp2_parse_fast(const struct xdp2_parser *parser, void *hdr,
 	void *frame = metadata + parser->config.metameta_size;
 	const struct xdp2_parse_node *next_parse_node;
 	unsigned int frame_num = 0;
-	size_t offset = 0;
 	int type, ret;
 
 	/* Main parsing loop. The loop normal teminates when we encounter a
@@ -758,12 +742,12 @@ int __xdp2_parse_fast(const struct xdp2_parser *parser, void *hdr,
 
 		/* Extract metadata */
 		if (parse_node->ops.extract_metadata)
-			parse_node->ops.extract_metadata(hdr, hlen, offset,
-							 metadata, frame, ctrl);
+			parse_node->ops.extract_metadata(hdr, hlen, metadata,
+							 frame, ctrl);
 
 		/* Call handler */
 		if (parse_node->ops.handler)
-			parse_node->ops.handler(hdr, hlen, offset, metadata,
+			parse_node->ops.handler(hdr, hlen, metadata,
 						frame, ctrl);
 
 		switch (parse_node->node_type) {
@@ -773,17 +757,14 @@ int __xdp2_parse_fast(const struct xdp2_parser *parser, void *hdr,
 		case XDP2_NODE_TYPE_TLVS:
 			/* Process TLV nodes */
 			ret = xdp2_parse_tlvs(parse_node, hdr, hlen,
-					      offset, metadata,
-					      frame, ctrl, 0);
+					      metadata, frame, ctrl, 0);
 			if (ret != XDP2_OKAY)
 				return ret;
 			break;
 		case XDP2_NODE_TYPE_FLAG_FIELDS:
 			/* Process flag-fields */
-			ret = xdp2_parse_flag_fields(parse_node, hdr,
-						     hlen, offset,
-						     metadata, frame,
-						     ctrl, 0);
+			ret = xdp2_parse_flag_fields(parse_node, hdr, hlen,
+						     metadata, frame, ctrl, 0);
 			if (ret != XDP2_OKAY)
 				return ret;
 			break;
@@ -824,7 +805,6 @@ int __xdp2_parse_fast(const struct xdp2_parser *parser, void *hdr,
 
 		if (!proto_def->overlay) {
 			/* Move over current header */
-			offset += hlen;
 			hdr += hlen;
 			len -= hlen;
 		}
