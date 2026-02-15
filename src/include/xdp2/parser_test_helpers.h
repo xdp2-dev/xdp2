@@ -50,7 +50,7 @@ extern bool use_colors;
 
 #define XDP2_PTH_MAKE_SIMPLE_TCP_OPT_HANDLER(NAME, TEXT)		\
 static int handler_##NAME(const void *hdr, size_t hdr_len,		\
-			  size_t hdr_off, void *metadata, void *frame,	\
+			  void *metadata, void *frame,			\
 			  const struct xdp2_ctrl_data *ctrl)		\
 {									\
 	const __u8 *tcp_opt = hdr;					\
@@ -65,7 +65,7 @@ static int handler_##NAME(const void *hdr, size_t hdr_len,		\
 
 #define XDP2_PTH_MAKE_SIMPLE_HANDLER(NAME, TEXT)			\
 static int handler_##NAME(const void *hdr, size_t hdr_len,		\
-			  size_t hdr_off, void *metadata, void *frame,	\
+			  void *metadata, void *frame,			\
 			  const struct xdp2_ctrl_data *ctrl)		\
 {									\
 									\
@@ -77,7 +77,7 @@ static int handler_##NAME(const void *hdr, size_t hdr_len,		\
 
 #define XDP2_PTH_MAKE_SIMPLE_FLAG_FIELD_HANDLER(NAME, TEXT)		\
 static int handler_##NAME(const void *hdr, size_t hdr_len,		\
-			  size_t hdr_off, void *metadata, void *frame,	\
+			  void *metadata, void *frame,			\
 			  const struct xdp2_ctrl_data *ctrl)		\
 {									\
 	if (verbose >= 5)						\
@@ -88,8 +88,7 @@ static int handler_##NAME(const void *hdr, size_t hdr_len,		\
 
 #define XDP2_PTH_MAKE_SACK_HANDLER(NUM)					\
 static int handler_tcp_sack_##NUM(const void *hdr, size_t hdr_len,	\
-				  size_t hdr_off, void *metadata,	\
-				  void *frame,				\
+				  void *metadata, void *frame,		\
 				  const struct xdp2_ctrl_data *ctrl)	\
 {									\
 	const __u8 *tcp_opt = hdr;					\
@@ -104,7 +103,7 @@ static int handler_tcp_sack_##NUM(const void *hdr, size_t hdr_len,	\
 
 #define XDP2_PTH_MAKE_SIMPLE_EH_HANDLER(NAME, TEXT)			\
 static int handler_##NAME(const void *hdr, size_t hdr_len,		\
-			  size_t hdr_off, void *metadata, void *frame,	\
+			  void *metadata, void *frame,			\
 			  const struct xdp2_ctrl_data *ctrl)		\
 {									\
 	if (verbose >= 5)						\
