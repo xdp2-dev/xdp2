@@ -101,8 +101,8 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 	xdp2_parse_tlv(
 		const struct xdp2_parse_tlvs_node *parse_node,
 		const struct xdp2_parse_tlv_node *parse_tlv_node,
-		const __u8 *cp, const void *hdr_end, size_t offset,
-		void *_metadata, void *frame, struct xdp2_ctrl_data tlv_ctrl,
+		const __u8 *cp, const void *hdr_end, size_t tlvs_len,
+		void *_metadata, void *frame, struct xdp2_ctrl_data *ctrl,
 		unsigned int flags) {
 	const struct xdp2_parse_tlv_node_ops *ops = &parse_tlv_node->tlv_ops;
 	const struct xdp2_proto_tlv_def *proto_tlv_node =
@@ -114,8 +114,8 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 		if (parse_node->tlv_wildcard_node)
 			return xdp2_parse_tlv(parse_node,
 					      parse_node->tlv_wildcard_node,
-					      cp, hdr_end, offset, _metadata,
-					      frame, tlv_ctrl, flags);
+					      cp, hdr_end, tlvs_len, _metadata,
+					      frame, ctrl, flags);
 		else
 			return parse_node->unknown_tlv_type_ret;
 	}
@@ -128,11 +128,10 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 		return ret;
 
 	if (ops->extract_metadata)
-		ops->extract_metadata(cp, hlen, offset, _metadata,
-				      frame, &tlv_ctrl);
+		ops->extract_metadata(cp, hlen, _metadata, frame, ctrl);
 
 	if (ops->handler)
-		ops->handler(cp, hlen, offset, _metadata, frame, &tlv_ctrl);
+		ops->handler(cp, hlen, _metadata, frame, ctrl);
 
 	return XDP2_OKAY;
 }
@@ -149,14 +148,11 @@ static __attribute__((unused)) __always_inline int
 {
 	void *frame = (void *)_metadata;
 	const void *start_hdr = *hdr;
-	/* XXXTH for computing ctrl.hdr.hdr_offset. I suspect this doesn't
-	 * work across tail calls
-	 */
 	int ret = XDP2_OKAY;
 
 	if (!tailcall)
 		ret = __@!root_name!@_xdp2_parse(ctx, hdr, hdr_end, _metadata,
-						 0, frame, flags);
+						 frame, flags);
 
 	#pragma unroll
 	for (int i = 0; i < (tailcall ? 1 : XDP2_LOOP_COUNT); i++) {
@@ -166,13 +162,11 @@ static __attribute__((unused)) __always_inline int
 		else if (ctx->next == CODE_@!node!@)
 			<!--(if len(graph[node]['tlv_nodes']) == 0)-->
 			ret = __@!node!@_xdp2_parse(ctx, hdr, hdr_end,
-					_metadata, *hdr - start_hdr, frame,
-					flags);
+					_metadata, frame, flags);
 			<!--(else)-->
 			if (tailcall)
 				ret = __@!node!@_xdp2_parse(ctx, hdr, hdr_end,
-					_metadata, *hdr - start_hdr, frame,
-					flags);
+					_metadata, frame, flags);
 			else
 				return XDP2_OKAY;
 			<!--(end)-->
@@ -202,9 +196,8 @@ static __attribute__((unused)) __always_inline int
 static inline __attribute__((unused)) __attribute__((always_inline)) int
 	__@!name!@_xdp2_parse_tlvs(
 		const struct xdp2_parse_node *parse_node, const void *hdr,
-		const void *hdr_end, size_t offset, void *_metadata,
-		void *frame,
-		struct xdp2_ctrl_data ctrl, unsigned int flags)
+		const void *hdr_end, size_t hlen, void *_metadata,
+		void *frame, struct xdp2_ctrl_data *ctrl, unsigned int flags)
 {
 	const struct xdp2_parse_tlvs_node *parse_tlvs_node =
 				(const struct xdp2_parse_tlvs_node*)&@!name!@;
@@ -213,15 +206,14 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 	const struct xdp2_parse_tlv_node *parse_tlv_node;
 	const struct xdp2_parse_tlv_node_ops *ops;
 	const __u8 *cp = hdr;
-	size_t offset, len;
+	size_t ioff, len;
 	ssize_t tlv_len;
 	int type;
 
-	offset = proto_tlvs_node->ops.start_offset(hdr);
+	ioff = proto_tlvs_node->ops.start_offset(hdr);
 	/* Assume hlen marks end of TLVs */
-	len = ctrl.hdr.hdr_len - offset;
-	cp += offset;
-	ctrl.hdr.hdr_offset += offset;
+	len = hlen - ioff;
+	cp += ioff;
 
 #pragma unroll
 	for (int i = 0; i < 2; i++) {
@@ -231,7 +223,6 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 			*cp == proto_tlvs_node->pad1_val) {
 			/* One byte padding, just advance */
 			cp++;
-			ctrl.hdr.hdr_offset++;
 			len--;
 			if (xdp2_bpf_check_pkt(cp, 1, hdr_end))
 				return XDP2_STOP_LENGTH;
@@ -239,7 +230,6 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 		if (proto_tlvs_node->eol_enable &&
 			proto_tlvs_node->eol_val) {
 			cp++;
-			ctrl.hdr.hdr_offset++;
 			len--;
 			break;
 		}
@@ -250,7 +240,7 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 			return XDP2_STOP_LENGTH;
 
 		if (proto_tlvs_node->ops.len) {
-			tlv_len = proto_tlvs_node->ops.len(cp);
+			tlv_len = proto_tlvs_node->ops.len(cp, hlen);
 			if (!tlv_len || len < tlv_len)
 				return XDP2_STOP_TLV_LENGTH;
 			if (tlv_len < proto_tlvs_node->min_len)
@@ -273,7 +263,7 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 					parse_tlv_node->proto_tlv_def;
 
 			if (proto_tlv_node &&
-			    (tlv_ctrl.hdr.hdr_len < proto_tlv_node->min_len)) {
+			    (hlen < proto_tlv_node->min_len)) {
 
 		<!--(if len(tlv['overlay_nodes']) != 0)-->
 				ops = &proto_tlv_node->ops;
@@ -281,8 +271,9 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 
 				if ((ret = xdp2_parse_tlv(parse_tlvs_node,
 						parse_tlv_node, cp,
-						hdr_end, offset, _metadata, frame,
-						tlv_ctrl, flags)) != XDP2_OKAY)
+						hdr_end, tlv_len, _metadata,
+						frame, ctrl, flags)) !=
+								XDP2_OKAY)
 					return ret;
 		<!--(if len(tlv['overlay_nodes']) != 0)-->
 				if (ops->overlay_type) {
@@ -295,9 +286,9 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 						if ((ret = xdp2_parse_tlv(
 							    parse_tlvs_node,
 							    parse_tlv_node, cp,
-							    hdr_end, _metadata,
-							    frame, tlv_ctrl,
-							    flags)) !=
+							    hdr_end, tlv_len,
+							    _metadata, frame,
+							    ctrl, flags)) !=
 								XDP2_OKAY)
 							return ret;
 						break;
@@ -305,21 +296,19 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 					default:
 						break;
 					}
-			} else {
-					switch (tlv_ctrl.hdr.hdr_len) {
+				} else {
+					switch (hlen) {
 			<!--(for overlay in tlv['overlay_nodes'])-->
 					case @!overlay['type']!@:
-						tlv_ctrl.hdr.hdr_len =
-							@!overlay['type']!@;
+						hlen = @!overlay['type']!@;
 						parse_tlv_node =
 							&@!overlay['name']!@;
 						if ((ret = xdp2_parse_tlv(
 							    parse_tlvs_node,
 							    parse_tlv_node, cp,
-							    hdr_end,
+							    hdr_end, tlv_len,
 							    _metadata, frame,
-							    tlv_ctrl,
-							    flags)) !=
+							    ctrl, flags)) !=
 								XDP2_OKAY)
 							return ret;
 						break;
@@ -338,8 +327,8 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 			if (parse_tlvs_node->tlv_wildcard_node)
 				return xdp2_parse_tlv(parse_tlvs_node,
 					parse_tlvs_node->tlv_wildcard_node,
-					cp, hdr_end, offset, _metadata, frame,
-					tlv_ctrl, flags);
+					cp, hdr_end, tlv_len, _metadata, frame,
+					ctrl, flags);
 			else if (parse_tlvs_node->unknown_tlv_type_ret !=
 				 XDP2_OKAY)
 				return parse_tlvs_node->unknown_tlv_type_ret;
@@ -358,8 +347,7 @@ static inline __attribute__((unused)) __attribute__((always_inline)) int
 static __attribute__((unused)) __always_inline int
 	__@!name!@_xdp2_parse(struct xdp2_xdp_ctx *ctx,
 		const void **hdr, const void *hdr_end, void *_metadata,
-		size_t offset, void *frame, unsigned int flags)
-						__attribute__((unused));
+		void *frame, unsigned int flags) __attribute__((unused));
 <!--(end)-->
 
 <!--(macro generate_protocol_parse_function)-->
@@ -374,8 +362,8 @@ static __attribute__((unused)) __always_inline int
  */
 static __attribute__((unused)) __always_inline int __@!name!@_xdp2_parse(
 		struct xdp2_xdp_ctx *ctx, const void **hdr,
-		const void *hdr_end, void *_metadata, size_t offset,
-		void *frame, unsigned int flags)
+		const void *hdr_end, void *_metadata, void *frame,
+		unsigned int flags)
 {
 	const struct xdp2_parse_node *parse_node =
 				(const struct xdp2_parse_node*)&@!name!@;
@@ -389,12 +377,12 @@ static __attribute__((unused)) __always_inline int __@!name!@_xdp2_parse(
 		return ret;
 
 	if (parse_node->ops.extract_metadata)
-		parse_node->ops.extract_metadata(*hdr, hlen, offset,
-						 _metadata, frame, &ctrl);
+		parse_node->ops.extract_metadata(*hdr, hlen, _metadata,
+						 frame, &ctrl);
 
 	<!--(if len(graph[name]['tlv_nodes']) != 0)-->
 	ret = __@!name!@_xdp2_parse_tlvs(parse_node, *hdr, hdr_end,
-					  _metadata, frame, ctrl, flags);
+					 hlen, _metadata, frame, &ctrl, flags);
 	if (ret != XDP2_OKAY)
 		return ret;
 	<!--(end)-->
@@ -423,7 +411,7 @@ static __attribute__((unused)) __always_inline int __@!name!@_xdp2_parse(
 	/* Unknown protocol */
 		<!--(if len(graph[name]['wildcard_proto_node']) != 0)-->
 	return __@!graph[name]['wildcard_proto_node']!@_xdp2_parse(
-		parser, hdr, len, offset, _metadata, flags, max_encaps,
+		parser, hdr, len, _metadata, flags, max_encaps,
 		frame, frame_num, flags);
 		<!--(else)-->
 	return XDP2_STOP_UNKNOWN_PROTO;
