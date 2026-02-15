@@ -50,7 +50,7 @@ void run_parser(const struct xdp2_parser *parser, struct xdp2_pcap_file *pf)
 		struct xdp2_metadata_all metadata;
 	} pmetadata;
 	struct xdp2_metadata_all *metadata = &pmetadata.metadata;
-	struct xdp2_packet_data pdata;
+	struct xdp2_ctrl_data ctrl;
 	unsigned int seqno = 0;
 	__u8 packet[1500];
 	ssize_t len;
@@ -61,9 +61,9 @@ void run_parser(const struct xdp2_parser *parser, struct xdp2_pcap_file *pf)
 					 &plen)) >= 0) {
 		memset(&pmetadata, 0, sizeof(pmetadata));
 
-		XDP2_SET_BASIC_PDATA_LEN_SEQNO(pdata, packet, len, packet,
-					       len, seqno++);
-		xdp2_parse(parser, &pdata, metadata, 0);
+		XDP2_CTRL_SET_BASIC_PKT_DATA(&ctrl, packet, packet, plen,
+					     seqno++);
+		xdp2_parse(parser, packet, plen, metadata, &ctrl, 0);
 
 		/* Print IP addresses and ports in the metadata */
 		switch (metadata->addr_type) {

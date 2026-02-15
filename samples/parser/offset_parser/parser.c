@@ -54,21 +54,21 @@ struct metadata {
 };
 
 /* Extract network layer offset */
-static void extract_network(const void *v, void *_meta,
-			 const struct xdp2_ctrl_data ctrl)
+static void extract_network(const void *v, size_t hdr_len, void *_meta,
+			    void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct metadata *metadata = _meta;
 
-	metadata->network_offset = ctrl.hdr.hdr_offset;
+	metadata->network_offset = xdp2_parse_hdr_offset(v, ctrl);
 }
 
 /* Extract transport layer offset */
-static void extract_transport(const void *v, void *_meta,
-			 const struct xdp2_ctrl_data ctrl)
+static void extract_transport(const void *v, size_t hdr_len, void *_meta,
+			      void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct metadata *metadata = _meta;
 
-	metadata->transport_offset = ctrl.hdr.hdr_offset;
+	metadata->transport_offset = xdp2_parse_hdr_offset(v, ctrl);
 }
 
 /* Parse nodes */
@@ -108,7 +108,7 @@ void *usage(char *prog)
 
 void run_parser(const struct xdp2_parser *parser, struct xdp2_pcap_file *pf)
 {
-	struct xdp2_packet_data pdata;
+	struct xdp2_ctrl_data ctrl;
 	struct metadata metadata;
 	__u8 packet[1500];
 	ssize_t len;
@@ -119,10 +119,9 @@ void run_parser(const struct xdp2_parser *parser, struct xdp2_pcap_file *pf)
 					 &plen)) >= 0) {
 		memset(&metadata, 0, sizeof(metadata));
 
-		XDP2_SET_BASIC_PDATA_LEN_SEQNO(pdata, packet, plen,
-					       packet, len, i);
+		XDP2_CTRL_SET_BASIC_PKT_DATA(&ctrl, packet, packet, plen, i);
 
-		xdp2_parse(parser, &pdata, &metadata, 0);
+		xdp2_parse(parser, packet, plen, &metadata, &ctrl, 0);
 
 		printf("Network offset: %lu\n", metadata.network_offset);
 		printf("Transport offset: %lu\n", metadata.transport_offset);
