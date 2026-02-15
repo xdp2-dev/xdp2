@@ -130,6 +130,7 @@ static void run_router(const struct xdp2_parser *parser, char **pcap_files,
 
 		XDP2_CTRL_RESET_VAR_DATA(&ctrl);
 		XDP2_CTRL_SET_BASIC_PKT_DATA(&ctrl, packets[pn].packet,
+					     packets[pn].packet,
 					     packets[pn].cap_len, i);
 
 		xdp2_parse(parser, packets[pn].packet, packets[pn].cap_len,
