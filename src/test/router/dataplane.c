@@ -36,28 +36,26 @@
 #include "router.h"
 
 /* Extract EtherType from Ethernet header */
-static void extract_ether(const void *hdr, size_t hdr_len, size_t hdr_off,
-			  void *metadata, void *_frame,
-			  const struct xdp2_ctrl_data *ctrl)
+static void extract_ether(const void *hdr, size_t hdr_len, void *metadata,
+			  void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
-	((struct router_metadata *)_frame)->ether_offset = hdr_off;
+	((struct router_metadata *)_frame)->ether_offset =
+		xdp2_parse_hdr_offset(hdr, ctrl);
 }
 
 /* Extract EtherType from Ethernet header */
-static void extract_ipv4(const void *hdr, size_t hdr_len, size_t hdr_off,
-			 void *metadata, void *_frame,
-			 const struct xdp2_ctrl_data *ctrl)
+static void extract_ipv4(const void *hdr, size_t hdr_len, void *metadata,
+			 void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct router_metadata *frame = _frame;
 	const struct iphdr *iph = hdr;
 
-	frame->ip_offset = hdr_off;
+	frame->ip_offset = xdp2_parse_hdr_offset(hdr, ctrl);
 	frame->ip_src_addr = iph->saddr;
 }
 
-static int handler_ipv4(const void *hdr, size_t hdr_len, size_t hdr_off,
-			void *metadata, void *_frame,
-			const struct xdp2_ctrl_data *ctrl)
+static int handler_ipv4(const void *hdr, size_t hdr_len, void *metadata,
+			void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct iphdr *iph = hdr;
 
@@ -70,9 +68,8 @@ static int handler_ipv4(const void *hdr, size_t hdr_len, size_t hdr_off,
 	return XDP2_OKAY;
 }
 
-static int handler_okay(const void *hdr, size_t hdr_len, size_t hdr_off,
-			void *metadata, void *_frame,
-			const struct xdp2_ctrl_data *ctrl)
+static int handler_okay(const void *hdr, size_t hdr_len, void *metadata,
+			void *_frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct router_metadata *frame = _frame;
 	struct ethhdr *eth = (struct ethhdr *)
