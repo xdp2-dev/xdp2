@@ -55,8 +55,8 @@ struct my_metadata {
 	__be16 dst_port;
 };
 
-static void ipv4_metadata(const void *v, void *_meta,
-			  const struct xdp2_ctrl_data ctrl)
+static void ipv4_metadata(const void *v, size_t hdr_len, void *_meta,
+			  void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct my_metadata *metadata = _meta;
 	const struct iphdr *iph = v;
@@ -65,8 +65,8 @@ static void ipv4_metadata(const void *v, void *_meta,
 	metadata->dst_addr = iph->daddr;
 }
 
-static void ports_metadata(const void *v, void *_meta,
-			   const struct xdp2_ctrl_data ctrl)
+static void ports_metadata(const void *v, size_t hdr_len, void *_meta,
+			   void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	struct my_metadata *metadata = _meta;
 	const __be16 *ports = v;
@@ -109,8 +109,8 @@ void *usage(char *prog)
 void run_parser(const struct xdp2_parser *parser, struct xdp2_pcap_file *pf)
 {
 	struct in_addr ipsaddr, ipdaddr;
-	struct xdp2_packet_data pdata;
 	struct my_metadata metadata;
+	struct xdp2_ctrl_data ctrl;
 	__u8 packet[1500];
 	ssize_t len;
 	size_t plen;
@@ -120,10 +120,9 @@ void run_parser(const struct xdp2_parser *parser, struct xdp2_pcap_file *pf)
 					 &plen)) >= 0) {
 		memset(&metadata, 0, sizeof(metadata));
 
-		XDP2_SET_BASIC_PDATA_LEN_SEQNO(pdata, packet, plen,
-					       packet, len, i);
+		XDP2_CTRL_SET_BASIC_PKT_DATA(&ctrl, packet, packet, plen, i);
 
-		xdp2_parse(my_parser, &pdata, &metadata, 0);
+		xdp2_parse(parser, packet, plen, &metadata, &ctrl, 0);
 
 		ipsaddr.s_addr = metadata.src_addr;
 		ipdaddr.s_addr = metadata.dst_addr;
