@@ -41,9 +41,8 @@
 
 /* Parser definitions in parse_dump for SUPERp */
 
-static int handler_sunh(const void *hdr, size_t hdr_len, size_t hdr_off,
-			void *metadata, void *frame,
-			const struct xdp2_ctrl_data *ctrl)
+static int handler_sunh(const void *hdr, size_t hdr_len, void *metadata,
+			void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	const struct sunh_hdr *sunh = hdr;
 

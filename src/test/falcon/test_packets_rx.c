@@ -36,9 +36,8 @@
 
 #include "test.h"
 
-static int handler_okay(const void *hdr, size_t hdr_len, size_t hdr_off,
-			void *metadata, void *frame,
-			const struct xdp2_ctrl_data *ctrl)
+static int handler_okay(const void *hdr, size_t hdr_len, void *metadata,
+			void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
 		XDP2_PTH_LOC_PRINTFC(ctrl, "\t** Okay node\n\n");
@@ -46,9 +45,8 @@ static int handler_okay(const void *hdr, size_t hdr_len, size_t hdr_off,
 	return 0;
 }
 
-static int handler_fail(const void *hdr, size_t hdr_len, size_t hdr_off,
-			void *metadata, void *frame,
-			const struct xdp2_ctrl_data *ctrl)
+static int handler_fail(const void *hdr, size_t hdr_len, void *metadata,
+			void *frame, const struct xdp2_ctrl_data *ctrl)
 {
 	if (verbose >= 5)
 		XDP2_PTH_LOC_PRINTFC(ctrl, "\t** Fail node\n\n");
@@ -92,7 +90,7 @@ static void *test_packet_rx(void *arg)
 		}
 
 		XDP2_CTRL_RESET_VAR_DATA(&ctrl);
-		XDP2_CTRL_SET_BASIC_PKT_DATA(&ctrl, buff, n, seqno++);
+		XDP2_CTRL_SET_BASIC_PKT_DATA(&ctrl, buff, buff, n, seqno++);
 
 		xdp2_parse(falcon_test_parser_at_udp, buff, n, NULL,
 			   &ctrl, flags);
