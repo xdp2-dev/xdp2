@@ -187,7 +187,7 @@ static void print_one_config(void *cli, char *indent, const void *config,
 void xdp2_config_check_config_one(const struct xdp2_config_desc_table
 							*config_table,
 				   const char *text, bool *rval,
-				   const char *conf_name, unsigned int value)
+				   const char *conf_name, unsigned long value)
 {
 	bool fifo_low_water_mark;
 	const struct xdp2_config_desc *desc =
@@ -201,14 +201,14 @@ void xdp2_config_check_config_one(const struct xdp2_config_desc_table
 	}
 
 	if (value < desc->min) {
-		XDP2_WARN("%s%s: %u is less than minimum %u",
+		XDP2_WARN("%s%s: %lu is less than minimum %lu",
 			  text, conf_name, value, desc->min);
 		*rval = true;
 		return;
 	}
 
 	if (desc->max != -1U && value > desc->max) {
-		XDP2_WARN("%s%s: %u is greater than maximum %u",
+		XDP2_WARN("%s%s: %lu is greater than maximum %lu",
 			  text, conf_name, value, desc->max);
 		*rval = true;
 		return;
@@ -319,7 +319,7 @@ void xdp2_config_print_config_csv(const struct xdp2_config_desc_table
 					       strlc(desc->conf_name),
 					       inet_ntoa(inaddr), desc->text);
 			} else {
-				XDP2_CLI_PRINT(cli, "Value,%s,%llu,%u,%u,"
+				XDP2_CLI_PRINT(cli, "Value,%s,%llu,%lu,%lu,"
 						    "\"%s\"\n",
 					       strlc(desc->conf_name), val,
 					       desc->min, desc->max,
@@ -331,7 +331,7 @@ void xdp2_config_print_config_csv(const struct xdp2_config_desc_table
 			config_read_bytes(&fconfig, config, desc->offset,
 					  sizeof(fconfig));
 
-			XDP2_CLI_PRINT(cli, "Fifo,%s,%u,%u,%u,%u,\"%s\"\n",
+			XDP2_CLI_PRINT(cli, "Fifo,%s,%u,%u,%lu,%lu,\"%s\"\n",
 				       strlc(desc->conf_name), fconfig.limit,
 				       fconfig.low_water_mark, desc->min,
 				       desc->max, desc->text);
@@ -481,13 +481,13 @@ static int parse_one_option(const struct xdp2_config_desc_table *config_table,
 
 		if (val < desc->min) {
 			XDP2_WARN("%s: Setting %s: %llu is less than "
-				  "the minimum value %u\n",
+				  "the minimum value %lu\n",
 				  label, tok, val, desc->min);
 			return -1;
 		}
 		if (desc->max != -1U && val > desc->max) {
 			XDP2_WARN("%s: Setting %s: %llu is greater "
-				  "than the maximum value %u\n",
+				  "than the maximum value %lu\n",
 				  label, tok, val, desc->max);
 			return -1;
 		}
@@ -592,14 +592,14 @@ void xdp2_config_print_config_info(const struct xdp2_config_desc_table
 						      desc->size);
 			if (strcasestr(desc->text, "bitmap"))
 				XDP2_CLI_PRINT(cli, "%s%s%s%s: default=0x%llx "
-						    "allflags=%0x, %s\n",
+						    "allflags=%0lx, %s\n",
 					       indent, highc,
 					       strlc(desc->conf_name),
 					       highc, default_val,
 					       desc->max, desc->text);
 			else
 				XDP2_CLI_PRINT(cli, "%s%s%s%s: default=%llu "
-						    "min=%u max=%u, %s\n",
+						    "min=%lu max=%lu, %s\n",
 					       indent, highc,
 					       strlc(desc->conf_name),
 					       highc, default_val,
@@ -612,7 +612,7 @@ void xdp2_config_print_config_info(const struct xdp2_config_desc_table
 					  sizeof(fconfig));
 
 			XDP2_CLI_PRINT(cli, "%s%s%s%s_limit: default=%u, "
-					    "min=%u, max=%u Limit for "
+					    "min=%lu, max=%lu Limit for "
 					    "fifo \"%s\"\n", indent, highc,
 				       strlc(desc->conf_name), highc,
 				       fconfig.limit, desc->min, desc->max,
