@@ -40,13 +40,14 @@ static void *alloc_objects(size_t num_objs, size_t obj_size)
 static void __xdp2_obj_alloc_common_init(
 		struct xdp2_obj_allocator *allocator, unsigned int num_objs,
 		size_t obj_size, void *base, const char *name,
-		unsigned int base_index)
+		unsigned int base_index, int addr_xlat_num)
 {
 	allocator->magic_num = XDP2_OBJ_ALLOC_MAGIC_NUM;
 	/* Save the base address as a relative address */
-	allocator->base = base;
+	allocator->base = XDP2_ADDR_REV_XLAT(addr_xlat_num, base);
 	allocator->obj_size = obj_size;
 	allocator->max_objs = num_objs;
+	allocator->addr_xlat_num = addr_xlat_num;
 	allocator->base_index = base_index;
 
 	strncpy(allocator->name, name, XDP2_OBJ_ALLOC_NAME_LEN);
@@ -57,7 +58,7 @@ static void __xdp2_obj_alloc_common_init(
 void __xdp2_obj_alloc_free_list_init(
 		struct xdp2_obj_allocator *allocator, unsigned int num_objs,
 		size_t obj_size, void *base, const char *name,
-		unsigned int base_index)
+		unsigned int base_index, int addr_xlat_num)
 {
 	struct xdp2_obj_allocator_free_list *afl = &allocator->alloc_free_list;
 	void *obj;
@@ -70,22 +71,23 @@ void __xdp2_obj_alloc_free_list_init(
 	 * to the objects that are save in the allocator structure
 	 */
 	for (obj = base, i = 0; i < num_objs - 1; i++, obj += obj_size)
-		*(void **)obj = obj + obj_size;
+		*(void **)obj = XDP2_ADDR_REV_XLAT(addr_xlat_num,
+						   obj + obj_size);
 
 	*(void **)obj = NULL;
 
 	__xdp2_obj_alloc_common_init(allocator, num_objs, obj_size,
-				      base, name, base_index);
+				      base, name, base_index, addr_xlat_num);
 	afl->num_free = num_objs;
 	/* Save the base object by its relative address */
-	afl->free_list = base;
+	afl->free_list = XDP2_ADDR_REV_XLAT(addr_xlat_num, base);
 
-	pthread_mutex_init(&afl->mutex, NULL);
+	XDP2_LOCKS_MUTEX_INIT(&afl->mutex);
 }
 
 bool xdp2_obj_alloc_free_list_init(struct xdp2_obj_allocator *allocator,
 				    unsigned int num_objs, size_t obj_size,
-				    const char *name)
+				    const char *name, int addr_xlat_num)
 {
 	void *base;
 
@@ -94,7 +96,8 @@ bool xdp2_obj_alloc_free_list_init(struct xdp2_obj_allocator *allocator,
 		return false;
 
 	__xdp2_obj_alloc_free_list_init(allocator, num_objs, obj_size, base,
-					 name, XDP2_OBJ_ALLOC_BASE_INDEX);
+					name, XDP2_OBJ_ALLOC_BASE_INDEX,
+					addr_xlat_num);
 
 	return true;
 }
@@ -108,7 +111,7 @@ void __xdp2_obj_alloc_validate(struct xdp2_obj_allocator *allocator)
 
 	XDP2_OBJ_ALLOC_CHECK_MAGIC(allocator);
 
-	pthread_mutex_lock(&afl->mutex);
+	XDP2_LOCKS_MUTEX_LOCK(&afl->mutex);
 
 	/* Don't need to do address translation here since we're only
 	 * counting NULL objects (the translated address of NULL
@@ -129,22 +132,25 @@ void __xdp2_obj_alloc_validate(struct xdp2_obj_allocator *allocator)
 		    "bad. Counted %u, num_free datapath is %u\n",
 		    allocator->name, count, afl->num_free);
 
-	pthread_mutex_unlock(&afl->mutex);
+	XDP2_LOCKS_MUTEX_UNLOCK(&afl->mutex);
 }
 
 void __xdp2_obj_alloc_check_freed(struct xdp2_obj_allocator *allocator,
 				   void *cobj)
 {
+	int addr_xlat_num = allocator->addr_xlat_num;
 	struct xdp2_obj_allocator_free_list *afl =
 				&allocator->alloc_free_list;
 	void *obj;
 
 	XDP2_OBJ_ALLOC_CHECK_MAGIC(allocator);
 
-		/* Translate each object on the list to its absolute address
-		 * for the compare
-		 */
-	for (obj = afl->free_list; obj; obj = *(void **)obj)
+
+	/* Translate each object on the list to its absolute address
+	 * for the compare
+	 */
+	for (obj = XDP2_ADDR_XLAT(addr_xlat_num, afl->free_list);
+	     obj; obj = XDP2_ADDR_XLAT(addr_xlat_num, *(void **)obj))
 		XDP2_ASSERT(obj != cobj, "Allocator %s: Object %p is "
 					  "already free when trying "
 					  "to free it",
@@ -153,8 +159,8 @@ void __xdp2_obj_alloc_check_freed(struct xdp2_obj_allocator *allocator,
 
 void __xdp2_obj_alloc_show_allocator(struct xdp2_obj_allocator *allocator,
 		void *cli, void (*cb)(struct xdp2_obj_allocator *allocator,
-				      void *cli, const char *arg),
-		const char *arg)
+				      void *cli, const void *arg),
+		const void *arg)
 {
 	struct xdp2_obj_allocator_free_list *afl =
 				&allocator->alloc_free_list;

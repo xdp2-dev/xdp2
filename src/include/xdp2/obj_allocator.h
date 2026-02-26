@@ -29,6 +29,8 @@
 
 #include <stdint.h>
 
+#include "xdp2/addr_xlat.h"
+#include "xdp2/locks.h"
 #include "xdp2/utility.h"
 
 #include <stdio.h>
@@ -56,7 +58,7 @@ struct xdp2_obj_allocator_free_list {
 	unsigned long allocs;
 	unsigned long alloc_fails;
 
-	pthread_mutex_t mutex;
+	XDP2_LOCKS_MUTEX_T mutex; /* Lock for fifo structure */
 };
 
 struct xdp2_obj_allocator {
@@ -70,7 +72,12 @@ struct xdp2_obj_allocator {
 
 	unsigned int base_index;
 
-	void *base;
+	/* Number of address translators to apply to base. Default is
+	 * XDP2_ADDR_XLAT_NO_XLAT (-1) which means no address translation
+	 */
+	int addr_xlat_num;
+
+	void *base; /* Address xlat applies */
 
 	struct xdp2_obj_allocator_free_list alloc_free_list;
 };
@@ -104,11 +111,12 @@ struct xdp2_obj_allocator {
 void __xdp2_obj_alloc_free_list_init(
 			struct xdp2_obj_allocator *allocator,
 			unsigned int num_objs, size_t obj_size, void *base,
-			const char *name, unsigned int base_index);
+			const char *name, unsigned int base_index,
+			int addr_xlat_num);
 
 bool xdp2_obj_alloc_free_list_init(struct xdp2_obj_allocator *allocator,
 			unsigned int num_objs, size_t obj_size,
-			const char *name);
+			const char *name, int addr_xlat_num);
 
 void __xdp2_obj_alloc_validate(struct xdp2_obj_allocator *allocator);
 
@@ -117,8 +125,8 @@ void __xdp2_obj_alloc_check_freed(struct xdp2_obj_allocator *allocator,
 
 void __xdp2_obj_alloc_show_allocator(struct xdp2_obj_allocator *allocator,
 		void *cli, void (*cb)(struct xdp2_obj_allocator *allocator,
-				      void *cli, const char *arg),
-				      const char *arg);
+				      void *cli, const void *arg),
+				      const void *arg);
 
 static inline void xdp2_obj_alloc_show_allocator(
 		struct xdp2_obj_allocator *allocator, void *cli)
@@ -146,7 +154,7 @@ static inline void *xdp2_obj_alloc_index_to_obj(
 	/* Return the absolute address of the object based on the base
 	 * memory address
 	 */
-	return allocator->base +
+	return XDP2_ADDR_XLAT(allocator->addr_xlat_num, allocator->base) +
 			xdp2_obj_alloc_index_to_offset(allocator, index);
 }
 
@@ -159,7 +167,9 @@ static unsigned int xdp2_obj_alloc_obj_to_index(
 	 * address of the base memory address
 	 */
 	return (((uintptr_t)obj -
-		(uintptr_t)allocator->base) / allocator->obj_size) +
+		 (uintptr_t)XDP2_ADDR_XLAT(allocator->addr_xlat_num,
+					  allocator->base)) /
+				allocator->obj_size) +
 						allocator->base_index;
 }
 
@@ -172,7 +182,7 @@ static inline void *__xdp2_obj_alloc_free_list_alloc(
 
 	__XDP2_OBJ_ALLOC_CHECK_MAGIC(allocator, _file, _line);
 
-	pthread_mutex_lock(&afl->mutex);
+	XDP2_LOCKS_MUTEX_LOCK(&afl->mutex);
 
 	if (!afl->num_free) {
 		/* No memory, return NULL and let the caller deal with it.
@@ -180,7 +190,7 @@ static inline void *__xdp2_obj_alloc_free_list_alloc(
 		 * memory pressure
 		 */
 		afl->alloc_fails++;
-		pthread_mutex_unlock(&afl->mutex);
+		XDP2_LOCKS_MUTEX_UNLOCK(&afl->mutex);
 		return NULL;
 	}
 
@@ -188,18 +198,17 @@ static inline void *__xdp2_obj_alloc_free_list_alloc(
 		     allocator->name);
 
 	/* Translate relative address to absolute address of the object */
-	obj = afl->free_list;
+	obj = XDP2_ADDR_XLAT(allocator->addr_xlat_num, afl->free_list);
 	if (!obj) {
 		XDP2_ASSERT(!afl->num_free, "Allocator %s: no free objects "
 			     "for allocator, but num free is non-zero",
 			     allocator->name);
-		pthread_mutex_unlock(&afl->mutex);
 	}
 	afl->free_list = *(void **)obj;
 	afl->num_free--;
 	afl->allocs++;
 
-	pthread_mutex_unlock(&afl->mutex);
+	XDP2_LOCKS_MUTEX_UNLOCK(&afl->mutex);
 
 #ifdef XDP2_OBJ_ALLOC_DEBUG // For debugging
 	__xdp2_obj_alloc_validate(allocator);
@@ -224,14 +233,14 @@ static inline void __xdp2_obj_alloc_free_list_free(
 #ifdef XDP2_OBJ_ALLOC_DEBUG // For debugging
 	__xdp2_obj_alloc_check_freed(allocator, obj);
 #endif
-	pthread_mutex_lock(&afl->mutex);
+	XDP2_LOCKS_MUTEX_LOCK(&afl->mutex);
 
-	*(void **)obj = afl->free_list;
+	*(void **)obj = afl->free_list; /* No translation needed here */
 	/* Save object by its relative address */
-	afl->free_list = obj;
+	afl->free_list = XDP2_ADDR_REV_XLAT(allocator->addr_xlat_num, obj);
 	afl->num_free++;
 
-	pthread_mutex_unlock(&afl->mutex);
+	XDP2_LOCKS_MUTEX_UNLOCK(&afl->mutex);
 
 #ifdef XDP2_OBJ_ALLOC_DEBUG // For debugging
 	__xdp2_obj_alloc_validate(allocator);
@@ -248,27 +257,29 @@ static inline void __xdp2_obj_alloc_free_list_free(
 static inline void __xdp2_obj_alloc_init(
 		struct xdp2_obj_allocator *allocator,
 		unsigned int num_objs, size_t obj_size,
-		void *base, const char *name)
+		void *base, const char *name, int addr_xlat_num)
 {
 	__xdp2_obj_alloc_free_list_init(allocator, num_objs, obj_size,
-					 base, name, XDP2_OBJ_ALLOC_BASE_INDEX);
+					base, name, XDP2_OBJ_ALLOC_BASE_INDEX,
+					addr_xlat_num);
 }
 
 static inline void __xdp2_obj_alloc_init_base_index(
 		struct xdp2_obj_allocator *allocator,
 		unsigned int num_objs, size_t obj_size,
-		void *base, const char *name, unsigned int base_index)
+		void *base, const char *name, unsigned int base_index,
+		int addr_xlat_num)
 {
 	__xdp2_obj_alloc_free_list_init(allocator, num_objs, obj_size,
-					 base, name, base_index);
+					 base, name, base_index, addr_xlat_num);
 }
 
 static inline bool xdp2_obj_alloc_init(struct xdp2_obj_allocator *allocator,
 					unsigned int num_objs, size_t obj_size,
-					const char *name)
+					const char *name, int addr_xlat_num)
 {
 	return xdp2_obj_alloc_free_list_init(allocator, num_objs, obj_size,
-					      name);
+					      name, addr_xlat_num);
 }
 
 static inline void *__xdp2_obj_alloc_alloc(struct xdp2_obj_allocator
