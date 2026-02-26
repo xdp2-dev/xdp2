@@ -64,7 +64,7 @@ struct xdp2_cli_thread_info {
 struct xdp2_cli_show_cmd_def {
 	char *name;
 	void (*show_func)(void *cli, struct xdp2_cli_thread_info *info,
-			  const char *arg);
+			  const void *arg);
 	unsigned int class;
 	bool argok;
 } XDP2_ALIGN_SECTION;
