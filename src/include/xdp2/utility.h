@@ -148,7 +148,7 @@ static inline __u64 xdp2_rol(__u64 val, unsigned int shift,
 		((1ULL << max_bits) - 1);
 }
 
-static inline void *panda_add_len_to_ptr(void *p, size_t len)
+static inline void *xdp2_add_len_to_ptr(void *p, size_t len)
 {
 	return (void *)((__u8 *)p + len);
 }
