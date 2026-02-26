@@ -3187,7 +3187,7 @@ static inline void xdp2_pvbuf_print(xdp2_paddr_t paddr)
 /* Print information for a packet buffer manager */
 void ___xdp2_pvbuf_show_buffer_manager(struct xdp2_pvbuf_mgr *pvmgr,
 	void *cli, void (*cb)(struct xdp2_obj_allocator *allocator,
-			      void *cli, const char *arg), const char *arg);
+			      void *cli, const void *arg), const void *arg);
 
 static inline void __xdp2_pvbuf_show_buffer_manager(
 					struct xdp2_pvbuf_mgr *pvmgr,
@@ -3214,11 +3214,11 @@ static inline void xdp2_pvbuf_show_buffer_manager_details(void *cli)
 
 void xdp2_pvbuf_show_buffer_manager_from_cli(void *cli,
 					struct xdp2_cli_thread_info *info,
-					const char *arg);
+					const void *arg);
 
 void xdp2_pvbuf_show_buffer_manager_details_from_cli(void *cli,
 					struct xdp2_cli_thread_info *info,
-					const char *arg);
+					const void *arg);
 
 #define XDP2_PVBUF_SHOW_BUFFER_MANAGER_CLI()				\
 	XDP2_CLI_ADD_SHOW_CONFIG("buffer-manager",			\
