@@ -2135,7 +2135,8 @@ static int __xdp2_pvbuf_init_pbuf_allocators(struct xdp2_pvbuf_mgr *pvmgr,
 		__xdp2_obj_alloc_free_list_init(allocator,
 				pbuf_allocs->obj[i].num_objs,
 				xdp2_pbuf_buffer_tag_to_size(i),
-				pbufs_base, pname, XDP2_OBJ_ALLOC_BASE_INDEX);
+				pbufs_base, pname, XDP2_OBJ_ALLOC_BASE_INDEX,
+				XDP2_ADDR_XLAT_NO_XLAT);
 
 		pvmgr->pbuf_allocator_table[i].pbuf_base = pbufs_base;
 		pvmgr->pbuf_allocator_table[i].offset_mask =
@@ -2272,9 +2273,10 @@ static int __xdp2_pvbuf_init_pvbuf_allocators(struct xdp2_pvbuf_mgr *pvmgr,
 			 "%s-pvbuf-alloc-%u", name, i);
 
 		__xdp2_obj_alloc_free_list_init(allocator, num_pvbufs,
-					    (i + 1) * 64,
-					    entry->pvbufs_base, pname,
-					    XDP2_OBJ_ALLOC_BASE_INDEX);
+						(i + 1) * 64,
+						entry->pvbufs_base, pname,
+						XDP2_OBJ_ALLOC_BASE_INDEX,
+						XDP2_ADDR_XLAT_NO_XLAT);
 
 		/* Determine if there's a smaller size for this one */
 		if (last >= 0) {
@@ -2561,8 +2563,8 @@ void __xdp2_pvbuf_print(struct xdp2_pvbuf_mgr *pvmgr,
 /* Print information for a packet buffer manager */
 void ___xdp2_pvbuf_show_buffer_manager(struct xdp2_pvbuf_mgr *pvmgr,
 		void *cli, void (*cb)(struct xdp2_obj_allocator *allocator,
-				      void *cli, const char *arg),
-				      const char *arg)
+				      void *cli, const void *arg),
+				      const void *arg)
 
 {
 	struct xdp2_pbuf_allocator_entry *entry;
@@ -2626,14 +2628,14 @@ void __xdp2_pvbuf_show_buffer_manager_details(struct xdp2_pvbuf_mgr *pvmgr,
 
 void xdp2_pvbuf_show_buffer_manager_from_cli(void *cli,
 					 struct xdp2_cli_thread_info *info,
-					const char *arg)
+					const void *arg)
 {
 		xdp2_pvbuf_show_buffer_manager(cli);
 }
 
 void xdp2_pvbuf_show_buffer_manager_details_from_cli(void *cli,
 					struct xdp2_cli_thread_info *info,
-					const char *arg)
+					const void *arg)
 {
 	xdp2_pvbuf_show_buffer_manager_details(cli);
 }
