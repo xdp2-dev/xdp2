@@ -457,15 +457,58 @@ static inline void xdp2_fifo_init_poll_group_mem(
 	XDP2_LOCKS_MUTEX_INIT(&poll_group->mutex);
 }
 
-static inline void __xdp2_fifo_init_poll_group(
+static inline void xdp2_init_poll_groups_mem(
+		struct xdp2_fifo_poll_group *poll_group, unsigned int num)
+{
+	int i;
+
+	for (i = 0; i < num; i++)
+		xdp2_fifo_init_poll_group_mem(&poll_group[i]);
+}
+
+static inline bool ___xdp2_fifo_init_poll_group(
 		struct xdp2_fifo_poll_group *poll_group, void *cond,
 		struct xdp2_fifo_poll_group_stats *stats,
-		int addr_xlat_num, bool fifo_no_poll)
+		int addr_xlat_num, bool fifo_no_poll,
+		bool report_check)
 {
+	XDP2_FIFO_MUTEX_LOCK(&poll_group->mutex, "Poll group mutex in "
+			      "___xdp2_fifo_init_poll_group");
+
+	if (poll_group->cond) {
+		XDP2_FIFO_MUTEX_UNLOCK(&poll_group->mutex);
+		if (report_check)
+			XDP2_WARN("Poll group already initialized");
+		return false;
+	}
+
 	poll_group->cond = cond;
 	poll_group->addr_xlat_num = addr_xlat_num;
 	poll_group->stats = XDP2_ADDR_REV_XLAT(addr_xlat_num, stats);
 	poll_group->fifo_no_poll = fifo_no_poll;
+
+	XDP2_FIFO_MUTEX_UNLOCK(&poll_group->mutex);
+
+	return true;
+}
+
+static inline bool __xdp2_fifo_init_poll_group(
+		struct xdp2_fifo_poll_group *poll_group, void *cond,
+		struct xdp2_fifo_poll_group_stats *stats,
+		int addr_xlat_num, bool fifo_no_poll)
+{
+	return ___xdp2_fifo_init_poll_group(poll_group, cond,
+				stats, addr_xlat_num,
+				fifo_no_poll, true);
+}
+
+static inline bool __xdp2_fifo_init_poll_nowarn(
+		struct xdp2_fifo_poll_group *poll_group, void *cond,
+		struct xdp2_fifo_poll_group_stats *stats,
+		int addr_xlat_num, bool fifo_no_poll)
+{
+	return ___xdp2_fifo_init_poll_group(poll_group, cond,
+				stats, addr_xlat_num, fifo_no_poll, true);
 }
 
 static inline void xdp2_fifo_init_poll_group(
@@ -474,6 +517,22 @@ static inline void xdp2_fifo_init_poll_group(
 {
 	__xdp2_fifo_init_poll_group(poll_group, cond, stats,
 				    XDP2_ADDR_XLAT_NO_XLAT, false);
+}
+
+static inline void xdp2_fifo_uninit_poll_group(
+		struct xdp2_fifo_poll_group *poll_group, void *cond)
+{
+	XDP2_FIFO_MUTEX_LOCK(&poll_group->mutex, "Poll group mutex in "
+			      "xdp2_fifo_uinit_poll_group");
+
+	if (cond == poll_group->cond) {
+		poll_group->cond = NULL;
+		poll_group->addr_xlat_num = 0;
+		poll_group->stats = NULL;
+		poll_group->fifo_no_poll = 0;
+	}
+
+	XDP2_FIFO_MUTEX_UNLOCK(&poll_group->mutex);
 }
 
 #define LOCK_COUNT 1000000
@@ -1661,9 +1720,13 @@ static inline void __xdp2_fifo_init(struct xdp2_fifo *fifo,
 	fifo->num_ents = num_ents;
 	fifo->ent_size = ent_size;
 	fifo->low_water_mark = low_water_mark;
+
 	/* Save pointer to stats structure as a relative address */
-	if (stats)
+	if (stats) {
+		memset(stats, 0, sizeof(*stats));
 		fifo->stats = XDP2_ADDR_REV_XLAT(addr_xlat_num, stats);
+	}
+
 	fifo->magic_num = XDP2_FIFO_MAGIG_NUM;
 	fifo->addr_xlat_num = addr_xlat_num;
 
@@ -1681,6 +1744,41 @@ static inline void xdp2_fifo_init(struct xdp2_fifo *fifo,
 			 XDP2_ADDR_XLAT_NO_XLAT);
 }
 
+/* Return the FIFO allocation size given the number of elements in the
+ * FIFO and the size of each entry
+ */
+static inline size_t xdp2_fifo_size(unsigned int num_ents,
+				    unsigned int ent_size)
+{
+	struct xdp2_fifo *fifo;
+
+	return sizeof(*fifo) + num_ents * ent_size * sizeof(fifo->queue[0]);
+}
+
+static inline void xdp2_fifo_init_fifos(struct xdp2_fifo *fifo,
+					struct xdp2_fifo_stats *stats,
+					unsigned int num, __u8 ent_size,
+					unsigned int limit,
+					unsigned int low_water_mark,
+					int addr_xlat_num)
+{
+	int i;
+
+	for (i = 0; i < num; i++) {
+		__xdp2_fifo_init(fifo, limit, ent_size, low_water_mark,
+				 stats ? &stats[i] : NULL, addr_xlat_num);
+
+		fifo = xdp2_add_len_to_ptr(fifo,
+					   xdp2_fifo_size(limit, ent_size));
+	}
+}
+
+#define __XDP2_FIFO_SIZE(LIMIT, SIZE)				\
+	(sizeof(struct xdp2_fifo) + (LIMIT) * (SIZE) * sizeof(__u64))
+
+#define XDP2_FIFO_SIZE(LIMIT)					\
+	__XDP2_FIFO_SIZE(LIMIT, 1)
+
 /* Allocate memory and initialize a FIFO */
 static inline struct xdp2_fifo *__xdp2_fifo_create(
 		unsigned int num_ents, unsigned int ent_size,
@@ -1689,7 +1787,7 @@ static inline struct xdp2_fifo *__xdp2_fifo_create(
 {
 	struct xdp2_fifo *fifo;
 
-	fifo = calloc(1, sizeof(*fifo) + num_ents * ent_size * sizeof(__u64));
+	fifo = calloc(1, __XDP2_FIFO_SIZE(num_ents, ent_size));
 	if (!fifo)
 		return NULL;
 
@@ -1707,23 +1805,13 @@ static inline struct xdp2_fifo *xdp2_fifo_create(
 				  XDP2_ADDR_XLAT_NO_XLAT);
 }
 
-/* Return the FIFO allocation size given the number of elements in the
- * FIFO and the size of each entry
- */
-static inline size_t xdp2_fifo_size(unsigned int num_ents,
-				    unsigned int ent_size)
-{
-	struct xdp2_fifo *fifo;
-
-	return sizeof(*fifo) + num_ents * ent_size * sizeof(fifo->queue[0]);
-}
-
 /* Initialize the producer side of a FIFO.
  *
  * Takes the FIFO mutex
  */
-static inline void xdp2_fifo_init_producer(struct xdp2_fifo *fifo,
-					   XDP2_LOCKS_COND_T *cond)
+static inline bool __xdp2_fifo_init_producer(struct xdp2_fifo *fifo,
+					     XDP2_LOCKS_COND_T *cond,
+					     bool report_check)
 {
 	XDP2_FIFO_CHECK_MAGIC(fifo);
 
@@ -1735,11 +1823,47 @@ static inline void xdp2_fifo_init_producer(struct xdp2_fifo *fifo,
 
 	if (fifo->producer_cond) {
 		XDP2_FIFO_MUTEX_UNLOCK(&fifo->mutex);
-		XDP2_WARN("Producer side of FIFO already initialized");
-		return;
+		if (report_check)
+			XDP2_WARN("Producer side of FIFO already initialized");
+		return false;
 	}
 
 	fifo->producer_cond = cond;
+
+	XDP2_FIFO_MUTEX_UNLOCK(&fifo->mutex);
+
+	return true;
+}
+
+static inline bool xdp2_fifo_init_producer(struct xdp2_fifo *fifo,
+					   XDP2_LOCKS_COND_T *cond)
+{
+	return __xdp2_fifo_init_producer(fifo, cond, true);
+}
+
+static inline bool xdp2_fifo_init_producer_nowarn(struct xdp2_fifo *fifo,
+						  XDP2_LOCKS_COND_T *cond)
+{
+	return __xdp2_fifo_init_producer(fifo, cond, false);
+}
+
+/* Uninitialize the producer side of a FIFO.
+ *
+ * Takes the FIFO mutex
+ */
+static inline void xdp2_fifo_uninit_producer(struct xdp2_fifo *fifo,
+					     XDP2_LOCKS_COND_T *cond)
+{
+	XDP2_FIFO_CHECK_MAGIC(fifo);
+
+	/* fifo_init must have been called */
+	XDP2_ASSERT(fifo->initted, "Fifo structure not initialized");
+
+	XDP2_FIFO_MUTEX_LOCK(&fifo->mutex, "Fifo mutex in "
+			     "xdp2_fifo_uninit_producer");
+
+	if (cond == fifo->producer_cond)
+		fifo->producer_cond = NULL;
 
 	XDP2_FIFO_MUTEX_UNLOCK(&fifo->mutex);
 }
@@ -1748,8 +1872,9 @@ static inline void xdp2_fifo_init_producer(struct xdp2_fifo *fifo,
  *
  * Takes the FIFO mutex
  */
-static inline void xdp2_fifo_init_consumer(struct xdp2_fifo *fifo,
-					   XDP2_LOCKS_COND_T *cond)
+static inline bool __xdp2_fifo_init_consumer(struct xdp2_fifo *fifo,
+					     XDP2_LOCKS_COND_T *cond,
+					     bool report_check)
 {
 	XDP2_FIFO_CHECK_MAGIC(fifo);
 
@@ -1761,13 +1886,72 @@ static inline void xdp2_fifo_init_consumer(struct xdp2_fifo *fifo,
 
 	if (fifo->consumer_cond) {
 		XDP2_FIFO_MUTEX_UNLOCK(&fifo->mutex);
-		XDP2_WARN("Consumer side of FIFO already initialized");
-		return;
+		if (report_check)
+			XDP2_WARN("Consumer side of FIFO already initialized");
+		return false;
 	}
 
 	fifo->consumer_cond = cond;
 
 	XDP2_FIFO_MUTEX_UNLOCK(&fifo->mutex);
+
+	return true;
 }
+
+static inline bool xdp2_fifo_init_consumer(struct xdp2_fifo *fifo,
+					   XDP2_LOCKS_COND_T *cond)
+{
+	return __xdp2_fifo_init_consumer(fifo, cond, true);
+}
+
+static inline bool xdp2_fifo_init_consumer_nowarn(struct xdp2_fifo *fifo,
+						  XDP2_LOCKS_COND_T *cond)
+{
+	return __xdp2_fifo_init_consumer(fifo, cond, false);
+}
+
+/* Uninitialize the consumer side of a FIFO.
+ *
+ * Takes the FIFO mutex
+ */
+static inline void xdp2_fifo_uninit_consumer(struct xdp2_fifo *fifo,
+					     XDP2_LOCKS_COND_T *cond)
+{
+	XDP2_FIFO_CHECK_MAGIC(fifo);
+
+	/* fifo_init must have been called */
+	XDP2_ASSERT(fifo->initted, "Fifo structure not initialized");
+
+	XDP2_FIFO_MUTEX_LOCK(&fifo->mutex, "Fifo mutex in "
+			     "xdp2_fifo_uninit_consumer");
+
+	if (cond == fifo->consumer_cond)
+		fifo->consumer_cond = NULL;
+
+	XDP2_FIFO_MUTEX_UNLOCK(&fifo->mutex);
+}
+
+void xdp2_fifo_dump_one_fifo(const struct xdp2_fifo *fifo,
+			     const char *name, int id1, int id2, void *cli);
+
+void xdp2_fifo_dump_fifos(const struct xdp2_fifo *fifo,
+			  unsigned int num_fifos,
+			  unsigned int limit, const char *name,
+			  int major_index, bool active_only, void *cli);
+
+void xdp2_fifo_dump_fifos_add_base(const struct xdp2_fifo *fifo,
+				   unsigned int num_fifos,
+				   unsigned int limit, const char *name,
+				   int major_index, bool active_only,
+				   void *cli);
+
+void xdp2_fifo_dump_one_poll_group(const struct xdp2_fifo_poll_group
+								*poll_group,
+				   const char *name, int id1, int id2,
+				   void *cli);
+
+void xdp2_fifo_dump_poll_groups(const struct xdp2_fifo_poll_group *poll_group,
+				unsigned int num_poll_groups, const char *name,
+				int major_index, bool active_only, void *cli);
 
 #endif /* __XDP2_FIFO_H__ */
