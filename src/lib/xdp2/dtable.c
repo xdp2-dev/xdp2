@@ -706,7 +706,7 @@ const void *xdp2_dtable_lookup_lpm(struct xdp2_dtable_lpm_table *table,
 }
 
 /* Create a dummy table to ensure that the section is defined (if no
- * objects for a section are ever dfined then there will be a linker error).
+ * objects for a section are ever defined then there will be a linker error).
  * This entry is distinguished by table_type which is 0 (invalid type)
  */
 static struct xdp2_dtable_table XDP2_SECTION_ATTR(
@@ -865,8 +865,7 @@ void xdp2_dtable_print_all_tables(void)
 
 /* Show all tables from CLI */
 static void xdp2_dtable_show_all_cli(void *cli,
-		struct xdp2_cli_thread_info *info,
-		const char *arg)
+		struct xdp2_cli_thread_info *info, const void *arg)
 {
 	__xdp2_dtable_print_plain_tables(cli);
 	__xdp2_dtable_print_tern_tables(cli);
@@ -875,8 +874,7 @@ static void xdp2_dtable_show_all_cli(void *cli,
 
 /* Show all plain tables or one table from CLI */
 static void xdp2_dtable_show_plain_cli(void *cli,
-		struct xdp2_cli_thread_info *info,
-		const char *arg)
+		struct xdp2_cli_thread_info *info, const void *arg)
 {
 	struct xdp2_dtable_table *table;
 	int ident;
@@ -894,8 +892,7 @@ static void xdp2_dtable_show_plain_cli(void *cli,
 
 /* Show all ternary tables or one table from CLI */
 static void xdp2_dtable_show_tern_cli(void *cli,
-		struct xdp2_cli_thread_info *info,
-		const char *arg)
+		struct xdp2_cli_thread_info *info, const void *arg)
 {
 	struct xdp2_dtable_table *table;
 	int ident;
@@ -913,8 +910,7 @@ static void xdp2_dtable_show_tern_cli(void *cli,
 
 /* Show all longest prefix match tables or one table from CLI */
 static void xdp2_dtable_show_lpm_cli(void *cli,
-		struct xdp2_cli_thread_info *info,
-		const char *arg)
+		struct xdp2_cli_thread_info *info, const void *arg)
 {
 	struct xdp2_dtable_table *table;
 	int ident;
@@ -937,8 +933,7 @@ XDP2_CLI_ADD_SHOW_CONFIG_ARGOK("lpm", xdp2_dtable_show_lpm_cli, 0xffff);
 
 /* List all tables */
 static void xdp2_dtable_show_table_list_cli(void *cli,
-		struct xdp2_cli_thread_info *info,
-		const char *arg)
+		struct xdp2_cli_thread_info *info, const void *arg)
 {
 	__xdp2_dtable_list_tables(cli, &plain_tables, "plain");
 	__xdp2_dtable_list_tables(cli, &tern_tables, "tern");
@@ -947,24 +942,20 @@ static void xdp2_dtable_show_table_list_cli(void *cli,
 
 /* List plain tables */
 static void xdp2_dtable_show_table_list_plain_cli(void *cli,
-		struct xdp2_cli_thread_info *info,
-		const char *arg)
-{
+		struct xdp2_cli_thread_info *info, const void *arg) {
 	__xdp2_dtable_list_tables(cli, &plain_tables, "plain");
 }
 
 /* List ternary tables */
 static void xdp2_dtable_show_table_list_tern_cli(void *cli,
-		struct xdp2_cli_thread_info *info,
-		const char *arg)
+		struct xdp2_cli_thread_info *info, const void *arg)
 {
 	__xdp2_dtable_list_tables(cli, &tern_tables, "tern");
 }
 
 /* List longest prefix match tables */
 static void xdp2_dtable_show_table_list_lpm_cli(void *cli,
-		struct xdp2_cli_thread_info *info,
-		const char *arg)
+		struct xdp2_cli_thread_info *info, const void *arg)
 {
 	__xdp2_dtable_list_tables(cli, &lpm_tables, "lpm");
 }

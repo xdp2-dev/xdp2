@@ -45,7 +45,7 @@ static void set_verbose_from_cli(void *cli, struct xdp2_cli_thread_info *info,
 XDP2_CLI_ADD_SET_CONFIG("verbose", set_verbose_from_cli, 0xffff);
 
 static void show_uet_config_plain(void *cli,
-		struct xdp2_cli_thread_info *info, const char *arg)
+		struct xdp2_cli_thread_info *info, const void *arg)
 {
 	xdp2_config_print_config(&uet_config_table, cli, "", &uet_config);
 }

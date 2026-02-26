@@ -193,7 +193,7 @@ XDP2_CLI_MAKE_NUMBER_SET(check_interval, check-interval);
 XDP2_PVBUF_SHOW_BUFFER_MANAGER_CLI();
 
 static void show_pvbuf_config_plain(void *cli,
-		struct xdp2_cli_thread_info *info, const char *arg)
+		struct xdp2_cli_thread_info *info, const void *arg)
 {
 	xdp2_config_print_config(&pvbuf_config_table, cli, "", &config);
 }
@@ -201,7 +201,7 @@ static void show_pvbuf_config_plain(void *cli,
 XDP2_CLI_ADD_SHOW_CONFIG("config", show_pvbuf_config_plain, 0xffff);
 
 static void show_buffer(void *cli,
-		struct xdp2_cli_thread_info *info, const char *arg)
+		struct xdp2_cli_thread_info *info, const void *arg)
 {
 	do_show_buffer = true;
 }
@@ -1215,7 +1215,7 @@ static void print_op_counts(void *cli)
 }
 
 static void print_op_counts_cli(void *cli, struct xdp2_cli_thread_info *info,
-				const char *arg)
+				const void *arg)
 {
 	print_op_counts(cli);
 }

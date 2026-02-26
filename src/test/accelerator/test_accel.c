@@ -1034,7 +1034,7 @@ XDP2_PVBUF_SHOW_BUFFER_MANAGER_CLI();
 XDP2_CLI_MAKE_NUMBER_SET(verbose, verbose);
 
 static void show_pipelines(void *cli,
-		struct xdp2_cli_thread_info *info, const char *arg)
+		struct xdp2_cli_thread_info *info, const void *arg)
 {
 	unsigned int num_my_pipes = xdp2_section_array_size_all_my_piplines();
 	struct my_pipeline_s *plines = xdp2_section_base_all_my_piplines();

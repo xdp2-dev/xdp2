@@ -229,7 +229,7 @@ static void run_test(unsigned long count, int num_timers,
 XDP2_CLI_MAKE_NUMBER_SET(verbose, verbose);
 
 static void show_timer_wheel(void *cli,
-			     struct xdp2_cli_thread_info *info, const char *arg)
+			     struct xdp2_cli_thread_info *info, const void *arg)
 {
 	xdp2_timer_show_wheel(main_wheel, cli);
 }
@@ -237,7 +237,7 @@ static void show_timer_wheel(void *cli,
 XDP2_CLI_ADD_SHOW_CONFIG("wheel", show_timer_wheel, 0xffff);
 
 static void show_timers_all(void *cli,
-			    struct xdp2_cli_thread_info *info, const char *arg)
+			    struct xdp2_cli_thread_info *info, const void *arg)
 {
 	xdp2_timer_show_wheel_all(main_wheel, cli);
 }
