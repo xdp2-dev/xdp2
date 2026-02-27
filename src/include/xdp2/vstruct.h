@@ -191,7 +191,7 @@ __unused() static inline size_t						\
 	size_t init_offset = base_struct_size;				\
 	size_t size;							\
 									\
-	XDP2_ASSERT(num_els == XDP2_PMACRO_NARGS(__VA_ARGS__),	\
+	XDP2_ASSERT(num_els == XDP2_PMACRO_NARGS(__VA_ARGS__),		\
 		     "Vstruct instantiate length mismatch for %s: "	\
 		     "num_els is but %u, but num_args is %u",		\
 		     #STRUCT"_vsmap", num_els,				\
@@ -200,7 +200,7 @@ __unused() static inline size_t						\
 	XDP2_PMACRO_APPLY_ALL(						\
 		__XDP2_VSTRUCT_VFIELD_STRUCT_SET_ENTRY_DEPAIR,		\
 			       __VA_ARGS__)				\
-	size = xdp2_vstruct_instantiate_vsmap(vsmap, def_vsmap,	\
+	size = xdp2_vstruct_instantiate_vsmap(vsmap, def_vsmap,		\
 				       num_els, init_offset);		\
 									\
 	return size;							\
@@ -213,6 +213,16 @@ __unused() static inline size_t	STRUCT##_instantiate_vsmap_from_config(	\
 {									\
 	return STRUCT##_instantiate_vsmap_from_config_arg(config,	\
 		vsmap, def_vsmap, base_struct_size, NULL);		\
+}									\
+									\
+__unused() static inline size_t STRUCT##_get_size_from_config(		\
+	const CONFIG_TYPE config, size_t base_struct_size)		\
+{									\
+	struct STRUCT##_vsmap vsmap;					\
+	struct STRUCT##_def_vsmap def_vsmap;				\
+									\
+	return STRUCT##_instantiate_vsmap_from_config(config,		\
+		&vsmap, &def_vsmap, base_struct_size);			\
 }
 
 /* Extraction helper macros for printing vsmaps */
