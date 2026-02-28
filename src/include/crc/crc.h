@@ -20,7 +20,7 @@
 //_u64 crc64(_u64 crc, const unsigned char *s, _u64 l);
 //-----------------------------------------------------------------------------
 
-/* SDPU DSA Changes */
+/* DSA Changes */
 __u64 crc_dsa(unsigned char bitw, __u64 crc, const void *data, size_t len);
 
 // TODO: Support pvbuf changes for crc

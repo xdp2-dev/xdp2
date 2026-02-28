@@ -16,7 +16,7 @@ uint32_t MurmurHash3_x86_32(const void *key, size_t length);
 
 //-----------------------------------------------------------------------------
 
-/* SDPU DSA Changes */
+/* DSA Changes */
 uint64_t murmur3hash_dsa(const void *data, size_t len);
 # if 0
 

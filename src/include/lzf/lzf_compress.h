@@ -19,7 +19,7 @@ size_t lzf_compress(const void *data, size_t len, void *data_out,
 
 //-----------------------------------------------------------------------------
 
-/* SDPU DSA Changes */
+/* DSA Changes */
 __u64 lzf_compress_dsa(const void *data, size_t len, void *data_out,
 		       size_t len_out);
 __u64 lzfc_crc_pipeline_dsa(const void *data, size_t len, void *data_out,

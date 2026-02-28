@@ -20,7 +20,7 @@ size_t lzf_decompress(const void *data, size_t len, void *data_out,
 
 //-----------------------------------------------------------------------------
 
-/* SDPU DSA Changes */
+/* DSA Changes */
 __u64 lzf_decompress_dsa(const void *data, size_t len, void *data_out,
 			 size_t len_out);
 
