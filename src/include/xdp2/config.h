@@ -27,7 +27,7 @@
 #ifndef __XDP2_CONFIG_H__
 #define __XDP2_CONFIG_H__
 
-/* Definitions for XDP2 configuration system
+/* Definitions for configuration system
  *
  * This utility allows a common method to define and manage numeric
  * configuration. The set of configuration parameters are declared in a
@@ -42,17 +42,29 @@
 #include <stddef.h>
 #include <sys/types.h>
 
+#include "xdp2/fifo.h"
 #include "xdp2/pmacro.h"
+
+/* Structure describing FIFO configuration */
+struct xdp2_config_fifo_config {
+	__u16 limit;
+	__u16 low_water_mark;
+	__u8 ent_size;
+};
+
+#define XDP2_FIFO_SIZE_CONFIG(FIFO_CONFIG)				\
+	__XDP2_FIFO_SIZE((FIFO_CONFIG)->limit,  (FIFO_CONFIG)->ent_size)
 
 /* Descriptor for one configuration parameter */
 struct xdp2_config_desc {
 	size_t offset;
 	size_t size;
-	__u64 min;
-	__u64 max;
+	unsigned long min;
+	unsigned long max;
 	const char *conf_name;
 	const char *text;
 	__u64 (*derived_func)(const void *arg);
+	bool fifo;
 };
 
 /* Configuration descriptor table */
@@ -73,13 +85,13 @@ struct xdp2_config_desc_table {
 								PREFIX
 
 #define __XDP2_CONFIG_GET_STRUCT_NAME(PREFIX, STRUCT_NAME, PRIV,	\
-				       USE_CONST) STRUCT_NAME
+				      USE_CONST) STRUCT_NAME
 
 #define __XDP2_CONFIG_GET_PRIV(PREFIX, STRUCT_NAME, PRIV, USE_CONST)	\
 								PRIV
 
 #define __XDP2_CONFIG_GET_USE_CONST(PREFIX, STRUCT_NAME, PRIV,		\
-				     USE_CONST)	USE_CONST
+				    USE_CONST)	USE_CONST
 
 /* Macros to extract values from a list of attributes for one configuration
  * parameter
@@ -90,51 +102,112 @@ struct xdp2_config_desc_table {
  *	<maximum-value>, <text-description>, <derived-function>
  */
 #define __XDP2_CONFIG_GET_NAME(NAME, DEFAULT, TYPE, MIN, MAX, TEXT,	\
-				DERIVED_FUNC) NAME
+			       DERIVED_FUNC) NAME
 
 #define __XDP2_CONFIG_GET_DEFAULT(NAME, DEFAULT, TYPE, MIN, MAX, TEXT,	\
-				   DERIVED_FUNC) DEFAULT
+				  DERIVED_FUNC) DEFAULT
 
 #define __XDP2_CONFIG_GET_TYPE(NAME, DEFAULT, TYPE, MIN, MAX, TEXT,	\
-				DERIVED_FUNC) TYPE
+			       DERIVED_FUNC) TYPE
 
 #define __XDP2_CONFIG_GET_MIN(NAME, DEFAULT, TYPE, MIN, MAX, TEXT,	\
-			       DERIVED_FUNC) MIN
+			      DERIVED_FUNC) MIN
 
 #define __XDP2_CONFIG_GET_MAX(NAME, DEFAULT, TYPE, MIN, MAX, TEXT,	\
-			       DERIVED_FUNC) MAX
+			      DERIVED_FUNC) MAX
 
 #define __XDP2_CONFIG_GET_TEXT(NAME, DEFAULT, TYPE, MIN, MAX, TEXT,	\
-				DERIVED_FUNC) TEXT
+			       DERIVED_FUNC) TEXT
 
 #define __XDP2_CONFIG_GET_DERIVED_FUNC(NAME, DEFAULT, TYPE, MIN, MAX,	\
-					TEXT, DERIVED_FUNC) DERIVED_FUNC
+				       TEXT, DERIVED_FUNC) DERIVED_FUNC
+
+/* Macros to extract values from a list of attributes for one FIFO
+ * configuration parameter
+ *
+ * A list contains:
+ *
+ *	<name>, <default-limit>, <default-low-water-mark>, <minimum-limit>,
+ *	<maximum-limit>, <text-description>
+ */
+#define __XDP2_CONFIG_GET_FIFO_NAME(NAME, LIMIT, LOW_WATER_MARK,	\
+				    LIMIT_MIN, LIMIT_MAX, TEXT_NAME) NAME
+
+#define __XDP2_CONFIG_GET_FIFO_LIMIT(NAME, LIMIT, LOW_WATER_MARK,	\
+				     LIMIT_MIN, LIMIT_MAX, TEXT_NAME) LIMIT
+
+#define __XDP2_CONFIG_GET_FIFO_LOW_WATER_MARK(NAME, LIMIT,		\
+					      LOW_WATER_MARK,		\
+					      LIMIT_MIN, LIMIT_MAX,	\
+					      TEXT_NAME) LOW_WATER_MARK
+
+#define __XDP2_CONFIG_GET_FIFO_LIMIT_MIN(NAME, LIMIT, LOW_WATER_MARK,	\
+					 LIMIT_MIN, LIMIT_MAX,		\
+					 TEXT_NAME) LIMIT_MIN
+
+#define __XDP2_CONFIG_GET_FIFO_LIMIT_MAX(NAME, LIMIT, LOW_WATER_MARK,	\
+					 LIMIT_MIN, LIMIT_MAX,		\
+					 TEXT_NAME) LIMIT_MAX
+
+#define __XDP2_CONFIG_GET_FIFO_TEXT_NAME(NAME, LIMIT, LOW_WATER_MARK,	\
+					 LIMIT_MIN, LIMIT_MAX,		\
+					 TEXT_NAME) TEXT_NAME
 
 /* Output enum values for one parameter */
 #define __XDP2_CONFIG_ENUM_ONE(NAME, DEFAULT, TYPE, MIN, MAX, PREFIX)	\
 	XDP2_JOIN3(PREFIX, _DEFAULT_, NAME) = DEFAULT,			\
 	XDP2_JOIN3(PREFIX, _MIN_, NAME) = MIN,				\
-	XDP2_JOIN3(PREFIX, _MAX_,  NAME) = MAX,			\
+	XDP2_JOIN3(PREFIX, _MAX_,  NAME) = MAX,				\
 
 #define __XDP2_CONFIG_ENUM_ONE_APPLY(PARAMS, ARGS)			\
-	__XDP2_CONFIG_ENUM_ONE(					\
+	__XDP2_CONFIG_ENUM_ONE(						\
 		__XDP2_CONFIG_GET_NAME ARGS,				\
-		__XDP2_CONFIG_GET_DEFAULT ARGS,			\
+		__XDP2_CONFIG_GET_DEFAULT ARGS,				\
 		__XDP2_CONFIG_GET_TYPE ARGS,				\
 		__XDP2_CONFIG_GET_MIN ARGS,				\
 		__XDP2_CONFIG_GET_MAX ARGS,				\
 		__XDP2_CONFIG_GET_PREFIX PARAMS)
 
 /* Output enums for plain parameters */
-#define __XDP2_CONFIG_ENUM(PARAMS, ...)				\
+#define __XDP2_CONFIG_ENUM(PARAMS, ...)					\
 	XDP2_PMACRO_APPLY_ALL_CARG(__XDP2_CONFIG_ENUM_ONE_APPLY,	\
-				    PARAMS, __VA_ARGS__)
+				   PARAMS, __VA_ARGS__)
+
+/* Output enums for one FIFO parameter */
+#define __XDP2_CONFIG_FIFO_ENUM_ONE(NAME, LIMIT, LOW_WATER_MARK,	\
+				    PREFIX)				\
+	XDP2_JOIN4(PREFIX, _DEFAULT_, NAME, _FIFO_LIMIT) = LIMIT,	\
+	XDP2_JOIN4(PREFIX, _DEFAULT_, NAME,				\
+		    _FIFO_LOW_WATER_MARK) = LOW_WATER_MARK,
+
+#define __XDP2_CONFIG_GET_FIFO_LIMIT(NAME, LIMIT, LOW_WATER_MARK,	\
+				     LIMIT_MIN, LIMIT_MAX, TEXT_NAME) LIMIT
+
+#define __XDP2_CONFIG_FIFO_ENUM_ONE_APPLY(PARAMS, ARGS)			\
+	__XDP2_CONFIG_FIFO_ENUM_ONE(					\
+		__XDP2_CONFIG_GET_FIFO_NAME ARGS,			\
+		__XDP2_CONFIG_GET_FIFO_LIMIT ARGS,			\
+		__XDP2_CONFIG_GET_FIFO_LOW_WATER_MARK ARGS,		\
+		__XDP2_CONFIG_GET_PREFIX PARAMS)
+
+/* Output enums for FIFO parameters */
+#define __XDP2_CONFIG_FIFO_ENUM(PARAMS, ...)				\
+	XDP2_PMACRO_APPLY_ALL_CARG(__XDP2_CONFIG_FIFO_ENUM_ONE_APPLY,	\
+				   PARAMS, __VA_ARGS__)
 
 /* Macros to create all enums */
 #define __XDP2_CONFIG_MAKE_ENUMS(PARAMS, CONFIGS)			\
 	enum {								\
 		__XDP2_CONFIG_ENUM(PARAMS,				\
-				    XDP2_DEPAIR(CONFIGS))		\
+				   XDP2_DEPAIR(CONFIGS))		\
+	};
+
+#define __XDP2_CONFIG_MAKE_ENUMS_FIFOS(PARAMS, CONFIGS, FIFO_CONFIGS)	\
+	enum {								\
+		__XDP2_CONFIG_FIFO_ENUM(PARAMS,				\
+					XDP2_DEPAIR(FIFO_CONFIGS))	\
+		__XDP2_CONFIG_ENUM(PARAMS,				\
+				   XDP2_DEPAIR(CONFIGS))		\
 	};
 
 /* Output one field for a plain parameter in the configuration structure */
@@ -149,14 +222,31 @@ struct xdp2_config_desc_table {
 /* Output fields for the plain parameters in the configuration structure */
 #define __XDP2_CONFIG_STRUCT(PARAMS, ...)				\
 	XDP2_PMACRO_APPLY_ALL_CARG(__XDP2_CONFIG_STRUCT_ONE_APPLY,	\
-				    PARAMS, __VA_ARGS__)
+				   PARAMS, __VA_ARGS__)
+
+/* Output one field for a FIFO parameter in the configuration structure */
+#define __XDP2_CONFIG_FIFO_STRUCT_ONE(NAME)				\
+	struct xdp2_config_fifo_config NAME;
+
+#define __XDP2_CONFIG_FIFO_STRUCT_ONE_APPLY(PARAMS, ARGS)		\
+	__XDP2_CONFIG_FIFO_STRUCT_ONE(__XDP2_CONFIG_GET_FIFO_NAME ARGS)
 
 /* Macros to create all configuration structures */
 #define __XDP2_CONFIG_MAKE_CONFIG_STRUCT_X(PARAMS, CONFIGS,		\
-					    STRUCT_NAME, PRIV)		\
+					   STRUCT_NAME, PRIV)		\
 	struct STRUCT_NAME {						\
 		void *priv;						\
 		__XDP2_CONFIG_STRUCT(PARAMS, XDP2_DEPAIR(CONFIGS))	\
+	};
+
+#define __XDP2_CONFIG_MAKE_CONFIG_STRUCT_X_FIFOS(PARAMS, CONFIGS,	\
+						  FIFO_CONFIGS,		\
+						  STRUCT_NAME, PRIV)	\
+	struct STRUCT_NAME {						\
+		void *priv;						\
+		__XDP2_CONFIG_STRUCT(PARAMS, XDP2_DEPAIR(CONFIGS))	\
+		__XDP2_CONFIG_FIFO_STRUCT(PARAMS,			\
+					  XDP2_DEPAIR(FIFO_CONFIGS))	\
 	};
 
 /* Output fields for the plain parameters in the configuration structure */
@@ -164,6 +254,19 @@ struct xdp2_config_desc_table {
 	__XDP2_CONFIG_MAKE_CONFIG_STRUCT_X(PARAMS, CONFIGS,		\
 				__XDP2_CONFIG_GET_STRUCT_NAME PARAMS,	\
 				__XDP2_CONFIG_GET_PRIV PARAMS)
+
+#define __XDP2_CONFIG_MAKE_CONFIG_STRUCT_FIFOS(PARAMS, CONFIGS,		\
+						FIFO_CONFIGS)		\
+	__XDP2_CONFIG_MAKE_CONFIG_STRUCT_X_FIFOS(PARAMS, CONFIGS,	\
+				FIFO_CONFIGS,				\
+				__XDP2_CONFIG_GET_STRUCT_NAME PARAMS,	\
+				__XDP2_CONFIG_GET_PRIV PARAMS)
+
+/* Output fields for the FIFO parameters in the configuration structure */
+#define __XDP2_CONFIG_FIFO_STRUCT(PARAMS, ...)				\
+	XDP2_PMACRO_APPLY_ALL_CARG(					\
+			__XDP2_CONFIG_FIFO_STRUCT_ONE_APPLY, PARAMS,	\
+			__VA_ARGS__)
 
 /* Output setting one entry in configuration structure to a default value */
 #define __XDP2_CONFIG_DEFAULT_ONE(NAME, PREFIX)			\
@@ -177,14 +280,38 @@ struct xdp2_config_desc_table {
 /* Output setting entries in configuration structure to default values */
 #define __XDP2_CONFIG_DEFAULT_X(PARAMS, ...)				\
 	XDP2_PMACRO_APPLY_ALL_CARG(__XDP2_CONFIG_DEFAULT_ONE_APPLY,	\
-				    PARAMS, __VA_ARGS__)
+				   PARAMS, __VA_ARGS__)
 
-#define __XDP2_CONFIG_DEFAULT(PARAMS, CONFIGS)				\
+#define __XDP2_CONFIG_DEFAULT(PARAMS, CONFIGS, FIFO_CONFIGS)		\
 	__XDP2_CONFIG_DEFAULT_X(PARAMS, XDP2_DEPAIR(CONFIGS))
+
+/* Output setting one FIFO entry in configuration structure to a default
+ * value
+ */
+#define __XDP2_CONFIG_FIFO_DEFAULT_ONE(NAME, PREFIX)			\
+	config->NAME.limit = XDP2_JOIN4(PREFIX, _DEFAULT_, NAME,	\
+					_FIFO_LIMIT);			\
+	config->NAME.low_water_mark = XDP2_JOIN4(PREFIX, _DEFAULT_,	\
+						 NAME,	_FIFO_LOW_WATER_MARK);
+
+#define __XDP2_CONFIG_FIFO_DEFAULT_ONE_APPLY(PARAMS, ARGS)		\
+	__XDP2_CONFIG_FIFO_DEFAULT_ONE(					\
+		__XDP2_CONFIG_GET_FIFO_NAME ARGS,			\
+		__XDP2_CONFIG_GET_PREFIX PARAMS)
+
+/* Output setting entries in configuration structure to default values */
+#define __XDP2_CONFIG_FIFO_DEFAULT_X(PARAMS, ...)			\
+	XDP2_PMACRO_APPLY_ALL_CARG(					\
+				__XDP2_CONFIG_FIFO_DEFAULT_ONE_APPLY,	\
+				PARAMS, __VA_ARGS__)
+
+#define __XDP2_CONFIG_FIFO_DEFAULT(PARAMS, CONFIGS, FIFO_CONFIGS)	\
+	__XDP2_CONFIG_FIFO_DEFAULT_X(PARAMS,				\
+				     XDP2_DEPAIR(FIFO_CONFIGS))
 
 /* Macros for creating set_default_config function */
 #define __XDP2_CONFIG_MAKE_CONFIG_DEFAULT_X_PREAMBLE(PREFIX,		\
-						      STRUCT_NAME)	\
+						     STRUCT_NAME)	\
 	__unused() static inline void XDP2_JOIN2(PREFIX,		\
 				       _set_default_config_priv)(	\
 		 void *config_x, void *priv)				\
@@ -196,7 +323,7 @@ struct xdp2_config_desc_table {
 #define __XDP2_CONFIG_MAKE_CONFIG_DEFAULT_X_POSTAMBLE(PREFIX)		\
 	}								\
 	__unused() static inline void XDP2_JOIN2(PREFIX,		\
-						_set_default_config)(	\
+						 _set_default_config)(	\
 				 void *config_x)			\
 	{								\
 		XDP2_JOIN2(PREFIX, _set_default_config_priv)(		\
@@ -204,10 +331,20 @@ struct xdp2_config_desc_table {
 	}
 
 #define __XDP2_CONFIG_MAKE_CONFIG_DEFAULT_X(PARAMS, CONFIGS,		\
-					     PREFIX, STRUCT_NAME)	\
+					    PREFIX, STRUCT_NAME)	\
 	__XDP2_CONFIG_MAKE_CONFIG_DEFAULT_X_PREAMBLE(PREFIX,		\
-						      STRUCT_NAME)	\
-		__XDP2_CONFIG_DEFAULT(PARAMS, CONFIGS)			\
+						     STRUCT_NAME)	\
+		__XDP2_CONFIG_DEFAULT(PARAMS, CONFIGS, FIFO_CONFIGS)	\
+	__XDP2_CONFIG_MAKE_CONFIG_DEFAULT_X_POSTAMBLE(PREFIX)
+
+#define __XDP2_CONFIG_MAKE_CONFIG_DEFAULT_X_FIFOS(PARAMS, CONFIGS,	\
+						  FIFO_CONFIGS,	\
+						  PREFIX, STRUCT_NAME)	\
+	__XDP2_CONFIG_MAKE_CONFIG_DEFAULT_X_PREAMBLE(PREFIX,		\
+						     STRUCT_NAME)	\
+		__XDP2_CONFIG_FIFO_DEFAULT(PARAMS, CONFIGS,		\
+					   FIFO_CONFIGS)		\
+		__XDP2_CONFIG_DEFAULT(PARAMS, CONFIGS, FIFO_CONFIGS)	\
 	__XDP2_CONFIG_MAKE_CONFIG_DEFAULT_X_POSTAMBLE(PREFIX)
 
 #define __XDP2_CONFIG_MAKE_CONFIG_DEFAULT(PARAMS, CONFIGS)		\
@@ -215,13 +352,20 @@ struct xdp2_config_desc_table {
 			   __XDP2_CONFIG_GET_PREFIX PARAMS,		\
 			   __XDP2_CONFIG_GET_STRUCT_NAME PARAMS)
 
+#define __XDP2_CONFIG_MAKE_CONFIG_DEFAULT_FIFOS(PARAMS, CONFIGS,	\
+						FIFO_CONFIGS)		\
+	__XDP2_CONFIG_MAKE_CONFIG_DEFAULT_X_FIFOS(			\
+			PARAMS, CONFIGS, FIFO_CONFIGS,			\
+			__XDP2_CONFIG_GET_PREFIX PARAMS,		\
+			__XDP2_CONFIG_GET_STRUCT_NAME PARAMS)
+
 /* Macros to create function to get a configuration parameter value. If
  * USE_CONST is set then the constant default value is returned, else the
  * value in the configuration parameter structure or the derived value
  * is returned
  */
 #define __XDP2_CONFIG_GET_FUNC_ONE(NAME, TYPE, DERIVED_FUNC,		\
-				    PREFIX, STRUCT_NAME, USE_CONST)	\
+				   PREFIX, STRUCT_NAME, USE_CONST)	\
 	__unused() static inline TYPE XDP2_JOIN3(PREFIX, _, NAME)(	\
 			const struct STRUCT_NAME *config)		\
 	{								\
@@ -246,15 +390,59 @@ struct xdp2_config_desc_table {
 /* Macro to create the functions for getting configuration parameters */
 #define __XDP2_CONFIG_GET_FUNC(PARAMS, ...)				\
 	XDP2_PMACRO_APPLY_ALL_CARG(__XDP2_CONFIG_GET_FUNC_ONE_APPLY,	\
-				    PARAMS, __VA_ARGS__)
+				   PARAMS, __VA_ARGS__)
+
+/* Macros to create function to get a FIFO configuration parameter value. If
+ * USE_CONST is set then the constant default value is returned, else the
+ * value in the configuration parameter structure is returned
+ */
+#define __XDP2_CONFIG_FIFO_GET_FUNC_ONE(NAME, PREFIX, STRUCT_NAME,	\
+					USE_CONST)			\
+	__unused() static inline __u16 XDP2_JOIN4(PREFIX, _, NAME,	\
+						  _FIFO_LIMIT) (	\
+			const struct STRUCT_NAME *config) {		\
+		if (USE_CONST)						\
+			return XDP2_JOIN4(PREFIX, _DEFAULT_, NAME,	\
+					  _FIFO_LIMIT);			\
+		else							\
+			return config->NAME.limit;			\
+	}								\
+									\
+	__unused() static inline __u16 XDP2_JOIN4(PREFIX, _, NAME,	\
+						_FIFO_LOW_WATER_MARK) (	\
+			const struct STRUCT_NAME *config) {		\
+		if (USE_CONST)						\
+			return XDP2_JOIN4(PREFIX, _DEFAULT_, NAME,	\
+					  _FIFO_LOW_WATER_MARK);	\
+		else							\
+			return config->NAME.low_water_mark;		\
+	}
+
+#define __XDP2_CONFIG_FIFO_GET_FUNC_ONE_APPLY(PARAMS, ARGS)		\
+	__XDP2_CONFIG_FIFO_GET_FUNC_ONE(				\
+		__XDP2_CONFIG_GET_FIFO_NAME ARGS,			\
+		__XDP2_CONFIG_GET_PREFIX PARAMS,			\
+		__XDP2_CONFIG_GET_STRUCT_NAME PARAMS,			\
+		__XDP2_CONFIG_GET_USE_CONST PARAMS)
+
+/* Macro to create the functions for getting FIFO configuration parameters */
+#define __XDP2_CONFIG_FIFO_GET_FUNC(PARAMS, ...)			\
+	XDP2_PMACRO_APPLY_ALL_CARG(					\
+			__XDP2_CONFIG_FIFO_GET_FUNC_ONE_APPLY,		\
+			PARAMS, __VA_ARGS__)
 
 /* Macro to create all the parameter get functions */
 #define __XDP2_CONFIG_MAKE_GET_FUNC(PARAMS, CONFIGS)			\
 	__XDP2_CONFIG_GET_FUNC(PARAMS, XDP2_DEPAIR(CONFIGS))
 
+#define __XDP2_CONFIG_MAKE_GET_FUNC_FIFOS(PARAMS, CONFIGS,		\
+					  FIFO_CONFIGS)			\
+	__XDP2_CONFIG_GET_FUNC(PARAMS, XDP2_DEPAIR(CONFIGS))		\
+	__XDP2_CONFIG_FIFO_GET_FUNC(PARAMS, XDP2_DEPAIR(FIFO_CONFIGS))
+
 /* Macro for creating one configuration parameter descriptor entry */
 #define __XDP2_CONFIG_TABLE_ONE(NAME, TYPE, MIN, MAX, DERIVED_FUNC,	\
-				 TEXT, PREFIX, STRUCT_NAME)		\
+				TEXT, PREFIX, STRUCT_NAME)		\
 {									\
 	.offset = offsetof(struct STRUCT_NAME, NAME),			\
 	.min = MIN,							\
@@ -283,20 +471,46 @@ struct xdp2_config_desc_table {
 			__XDP2_CONFIG_TABLE_ONE_APPLY,			\
 			PARAMS, __VA_ARGS__)
 
+/* Macro for creating one FIFO configuration parameter descriptor entry */
+#define __XDP2_CONFIG_FIFO_TABLE_ONE(NAME, LIMIT_MIN,			\
+				     LIMIT_MAX, TEXT, STRUCT_NAME)	\
+{									\
+	.offset = offsetof(struct STRUCT_NAME, NAME),			\
+	.min = LIMIT_MIN,						\
+	.max = LIMIT_MAX,						\
+	.conf_name = XDP2_STRING_IT(NAME),				\
+	.text = TEXT,							\
+	.fifo = true,							\
+},
+
+#define __XDP2_CONFIG_FIFO_TABLE_ONE_APPLY(PARAMS, ARGS)		\
+	__XDP2_CONFIG_FIFO_TABLE_ONE(					\
+		__XDP2_CONFIG_GET_FIFO_NAME ARGS,			\
+		__XDP2_CONFIG_GET_FIFO_LIMIT_MIN ARGS,			\
+		__XDP2_CONFIG_GET_FIFO_LIMIT_MAX ARGS,			\
+		__XDP2_CONFIG_GET_FIFO_TEXT_NAME ARGS,			\
+		__XDP2_CONFIG_GET_STRUCT_NAME PARAMS)
+
+/* Macro to create configuration descriptors for FIFO parameters */
+#define __XDP2_CONFIG_FIFO_TABLE(PARAMS, ...)				\
+	XDP2_PMACRO_APPLY_ALL_CARG(					\
+			__XDP2_CONFIG_FIFO_TABLE_ONE_APPLY,		\
+			PARAMS, __VA_ARGS__)
+
 /* Macros for creating the configuration descriptors and the configuration
  * descriptors table
  */
-#define __XDP2_CONFIG_MAKE_CONFIG_TABLE_X_PREAMBLE(STRUCT_NAME)	\
+#define __XDP2_CONFIG_MAKE_CONFIG_TABLE_X_PREAMBLE(STRUCT_NAME)		\
 static const struct xdp2_config_desc XDP2_JOIN2(STRUCT_NAME,		\
-						  _entries)[]		\
+						_entries)[]		\
 						__unused() = {
 
 #define __XDP2_CONFIG_MAKE_CONFIG_TABLE_X_POSTAMBLE(STRUCT_NAME,	\
 						     PREFIX)		\
 };									\
 static const struct xdp2_config_desc_table				\
-					XDP2_JOIN2(STRUCT_NAME,	\
-						    _table) = {		\
+					XDP2_JOIN2(STRUCT_NAME,		\
+						   _table) = {		\
 	.table = XDP2_JOIN2(STRUCT_NAME, _entries),			\
 	.table_size = ARRAY_SIZE(XDP2_JOIN2(STRUCT_NAME, _entries)),	\
 	.config_struct_size = sizeof(struct STRUCT_NAME),		\
@@ -304,10 +518,20 @@ static const struct xdp2_config_desc_table				\
 };
 
 #define __XDP2_CONFIG_MAKE_CONFIG_TABLE_X(PARAMS, CONFIGS,		\
-					   STRUCT_NAME,	PREFIX,		\
-					   GET_DERIVED_BY_NAME)		\
-	__XDP2_CONFIG_MAKE_CONFIG_TABLE_X_PREAMBLE(STRUCT_NAME)	\
+					  STRUCT_NAME,	PREFIX,		\
+					  GET_DERIVED_BY_NAME)		\
+	__XDP2_CONFIG_MAKE_CONFIG_TABLE_X_PREAMBLE(STRUCT_NAME)		\
 		__XDP2_CONFIG_TABLE(PARAMS, XDP2_DEPAIR(CONFIGS))	\
+	__XDP2_CONFIG_MAKE_CONFIG_TABLE_X_POSTAMBLE(STRUCT_NAME, PREFIX)
+
+#define __XDP2_CONFIG_MAKE_CONFIG_TABLE_X_FIFOS(PARAMS, CONFIGS,	\
+						FIFO_CONFIGS,		\
+						STRUCT_NAME, PREFIX,	\
+						GET_DERIVED_BY_NAME)	\
+	__XDP2_CONFIG_MAKE_CONFIG_TABLE_X_PREAMBLE(STRUCT_NAME)		\
+		__XDP2_CONFIG_TABLE(PARAMS, XDP2_DEPAIR(CONFIGS))	\
+		__XDP2_CONFIG_FIFO_TABLE(PARAMS,			\
+					 XDP2_DEPAIR(FIFO_CONFIGS))	\
 	__XDP2_CONFIG_MAKE_CONFIG_TABLE_X_POSTAMBLE(STRUCT_NAME, PREFIX)
 
 /* Macro for making all the configuration tables */
@@ -319,9 +543,17 @@ static const struct xdp2_config_desc_table				\
 				   __XDP2_CONFIG_GET_DERIVED_BY_NAME	\
 							PARAMS)
 
+#define __XDP2_CONFIG_MAKE_CONFIG_TABLE_FIFOS(PARAMS, CONFIGS,		\
+					      FIFO_CONFIGS)		\
+	__XDP2_CONFIG_MAKE_CONFIG_TABLE_X_FIFOS(PARAMS, CONFIGS,	\
+			FIFO_CONFIGS,					\
+			__XDP2_CONFIG_GET_STRUCT_NAME PARAMS,		\
+			__XDP2_CONFIG_GET_PREFIX PARAMS,		\
+			__XDP2_CONFIG_GET_DERIVED_BY_NAME PARAMS)
+
 /* Null derived function */
 #define __XDP2_CONFIG_MAKE_NULL_DERIVED_FUNC(PREFIX)			\
-	__unused() static inline __u64 XDP2_JOIN2(PREFIX,	\
+	__unused() static inline __u64 XDP2_JOIN2(PREFIX,		\
 				_DERIVED_FUNC_)(const void *config) {	\
 		return 0;						\
 	}
@@ -336,7 +568,22 @@ static const struct xdp2_config_desc_table				\
  *
  * <params> A list of parameter tuples
  * <configs> A list of plain parameter configuration tuples
+ * <fifo_configs> A list of FIFO parameter configuration tuples
  */
+#define XDP2_CONFIG_MAKE_ALL_CONFIGS_FIFOS(PARAMS, CONFIGS,		\
+					   FIFO_CONFIGS)		\
+	__XDP2_CONFIG_MAKE_ENUMS_FIFOS(PARAMS, CONFIGS, FIFO_CONFIGS)	\
+	__XDP2_CONFIG_MAKE_CONFIG_STRUCT_FIFOS(PARAMS, CONFIGS,		\
+					       FIFO_CONFIGS)		\
+	__XDP2_CONFIG_MAKE_NULL_DERIVED_FUNCX(PARAMS)			\
+	__XDP2_CONFIG_MAKE_CONFIG_DEFAULT_FIFOS(PARAMS, CONFIGS,	\
+						FIFO_CONFIGS)		\
+	__XDP2_CONFIG_MAKE_GET_FUNC_FIFOS(PARAMS, CONFIGS,		\
+					  FIFO_CONFIGS)			\
+	__XDP2_CONFIG_MAKE_CONFIG_TABLE_FIFOS(PARAMS, CONFIGS,		\
+					      FIFO_CONFIGS)
+
+/* Macro to make structures and functions for configuration without FIFOs */
 #define XDP2_CONFIG_MAKE_ALL_CONFIGS(PARAMS, CONFIGS)			\
 	__XDP2_CONFIG_MAKE_ENUMS(PARAMS, CONFIGS)			\
 	__XDP2_CONFIG_MAKE_CONFIG_STRUCT(PARAMS, CONFIGS)		\
@@ -349,12 +596,11 @@ static const struct xdp2_config_desc_table				\
 
 /* Prototypes for parse config functions */
 
-int xdp2_config_parse_options(const struct xdp2_config_desc_table
-								*config_table,
-			       void *config, char *text);
+int xdp2_config_parse_options(const struct xdp2_config_desc_table *config_table,
+			      void *config, char *text);
 int xdp2_config_parse_options_file(const struct xdp2_config_desc_table
 								*config_table,
-				    void *config, const char *filename);
+				   void *config, const char *filename);
 int xdp2_config_parse_options_with_defaults(
 		const struct xdp2_config_desc_table *config_table,
 		void *config, char *text);
@@ -363,28 +609,28 @@ int xdp2_config_parse_options_with_defaults(
 
 void xdp2_config_check_config_one(const struct xdp2_config_desc_table
 								*config_table,
-				   const char *text, bool *rval,
-				   const char *conf_name, unsigned int value);
+				  const char *text, bool *rval,
+				  const char *conf_name, unsigned long value);
 /* Prototypes for print config functions */
 
 void xdp2_config_print_config(const struct xdp2_config_desc_table
 							*config_table,
-			       void *cli, char *indent, const void *config);
+			      void *cli, char *indent, const void *config);
 void xdp2_config_print_config_csv(const struct xdp2_config_desc_table
 								*config_table,
-				   void *cli, const void *config, bool key);
+				  void *cli, const void *config, bool key);
 void xdp2_config_print_config_csv_short(const struct xdp2_config_desc_table
 								*config_table,
-					 void *cli, const void *config,
-					 char sep, bool key);
+					void *cli, const void *config,
+					char sep, bool key);
 void xdp2_config_print_config_info(const struct xdp2_config_desc_table
 							*config_table,
-				    void *cli, char *indent, bool highlight);
+				   void *cli, char *indent, bool highlight);
 void xdp2_config_print_config_help(const struct xdp2_config_desc_table
 							*config_table,
-				    void *cli, bool highlight);
+				   void *cli, bool highlight);
 void xdp2_print_config_csv(const struct xdp2_config_desc_table *config_table,
-			    void *cli, void *config, bool key);
+			   void *cli, void *config, bool key);
 
 void xdp2_config_print_derived_config(
 		const struct xdp2_config_desc_table *config_table,
@@ -394,6 +640,24 @@ void xdp2_config_print_derived_config(
 
 void xdp2_config_print_config_info(const struct xdp2_config_desc_table
 							*config_table,
-				    void *cli, char *indent, bool highlight);
+				   void *cli, char *indent, bool highlight);
+
+#ifdef XDP2_CONFIG_USE_DEFAULT_CONFIG
+#define XDP2_CONFIG_USE_CONST true
+#else
+#define XDP2_CONFIG_USE_CONST false
+#endif
+
+/* Helper macro to return default value. If default configuration is being
+ * built the default parameter value is used, else the get function for the
+ * parameter is called
+ */
+#ifdef XDP2_CONFIG_USE_DEFAULT_CONFIG
+#define XDP2_CONFIG_DEF_GET(CONFIG, PREFIX, NAME)			\
+	XDP2_JOIN3(PREFIX, _DEFAULT_, NAME)
+#else
+#define XDP2_CONFIG_DEF_GET(CONFIG, PREFIX, NAME)			\
+	XDP2_JOIN3(PREFIX, _, NAME)(CONFIG)
+#endif
 
 #endif /* __XDP2_CONFIG_H__ */
