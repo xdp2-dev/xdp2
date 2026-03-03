@@ -64,14 +64,14 @@ CCOPTS ?= -O2
 WFLAGS := -Wall -Wstrict-prototypes  -Wmissing-prototypes
 WFLAGS += -Wmissing-declarations -Wold-style-definition -Wformat=2
 
-CFLAGS := $(WFLAGS) $(CCOPTS) -I$(CURRDIR)/include -I$(CURRDIR)/../thirdparty
+CFLAGS := $(WFLAGS) $(CCOPTS) -I$(CURRDIR)/include -I$(CURRDIR)/../thirdparty -I$(CURRDIR)/../platform/src/include
 CFLAGS += $(DEFINES)
 
 YACCFLAGS = -d -t -v
 LDFLAGS += -L$(CURRDIR)/lib/siphash -L$(CURRDIR)/lib/flowdis
 LDFLAGS += -L$(CURRDIR)/lib/xdp2 -L$(CURRDIR)/lib/parselite
 
-SUBDIRS= tools include lib test
+SUBDIRS= tools include lib test ../platform/src
 
 all: config.mk $(EXTRA_TARGETS)
 	@set -e; \
