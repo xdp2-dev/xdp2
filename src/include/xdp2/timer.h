@@ -260,4 +260,13 @@ void xdp2_timer_show_wheel(struct xdp2_timer_wheel *wheel, void *cli);
 /* Show timer wheel with timers on cli */
 void xdp2_timer_show_wheel_all(struct xdp2_timer_wheel *wheel, void *cli);
 
+static inline unsigned long xdp2_get_current_time(void)
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+
+	return (ts.tv_sec * 1000000000) + ts.tv_nsec;
+}
+
 #endif /* __XDP2_TIMER_H__ */
