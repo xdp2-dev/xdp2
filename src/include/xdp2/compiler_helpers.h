@@ -86,6 +86,15 @@ static inline TYPE *xdp2_section_base_##NAME(void)			\
 #define XDP2_ALIGN_SECTION  __aligned(64)
 #endif
 
+#ifndef __static_assert
+#define __static_assert(X) ({						\
+	extern int __attribute__((error("assertion failure: not true")))\
+					compile_time_check(void);	\
+									\
+	((X) ? 0 : compile_time_check()), 0;				\
+})
+#endif
+
 /* Macros to disable/endable -Wextra warnings. A use case is to disable
  * warnings when we're overriding initializers
  */
@@ -95,5 +104,6 @@ static inline TYPE *xdp2_section_base_##NAME(void)			\
 
 #define XDP2_POP_NO_WEXTRA()						\
 	_Pragma("GCC diagnostic pop")
+
 
 #endif /* __XDP2_COMPILER_HELPERS_H__ */
