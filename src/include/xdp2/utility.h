@@ -78,6 +78,9 @@
 
 #define XDP2_STRING_IT(X) #X
 
+#define XDP2_MAX(A, B) ((A) > (B) ? (A) : (B))
+#define XDP2_MIN(A, B) ((A) < (B) ? (A) : (B))
+
 #define XDP2_DEPAIR2(...) __VA_ARGS__
 #define XDP2_DEPAIR(X) XDP2_DEPAIR2 X
 
