@@ -1164,6 +1164,9 @@ static inline unsigned int __xdp2_fifo_sw_poll(
  * the caller can subtract sixty-four to derive a canonical FIFO poll number
  */
 
+#define XDP2_FIFO_MAX_READ_POLL		64
+#define XDP2_FIFO_MAX_WRITE_POLL	128
+
 /* Perform a pseudo poll by just returning the FIFOs that are set in the
  * mask of the poll group. There is no check whether the FIFOs are actually
  * ready, so in most case these are just going to result in spurious polls.
@@ -1607,6 +1610,8 @@ static inline bool ___xdp2_fifo_sw_dequeue(struct xdp2_fifo *fifo,
 	       num * sizeof(__u64));
 
 	fifo->consumer = (fifo->consumer + 1) % fifo->num_ents;
+
+	 __XDP2_FIFO_BUMP_CONS_COUNT(fifo, requests);
 
 	non_readable = (fifo->producer == fifo->consumer);
 
