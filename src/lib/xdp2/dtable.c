@@ -926,10 +926,13 @@ static void xdp2_dtable_show_lpm_cli(void *cli,
 	}
 }
 
-XDP2_CLI_ADD_SHOW_CONFIG("all", xdp2_dtable_show_all_cli, 0xffff);
-XDP2_CLI_ADD_SHOW_CONFIG_ARGOK("plain", xdp2_dtable_show_plain_cli, 0xffff);
-XDP2_CLI_ADD_SHOW_CONFIG_ARGOK("tern", xdp2_dtable_show_tern_cli, 0xffff);
-XDP2_CLI_ADD_SHOW_CONFIG_ARGOK("lpm", xdp2_dtable_show_lpm_cli, 0xffff);
+XDP2_CLI_ADD_SHOW_CONFIG("all", xdp2_dtable_show_all_cli, XDP2_CLI_TABLES);
+XDP2_CLI_ADD_SHOW_CONFIG_ARGOK("plain", xdp2_dtable_show_plain_cli,
+			       XDP2_CLI_TABLES);
+XDP2_CLI_ADD_SHOW_CONFIG_ARGOK("tern", xdp2_dtable_show_tern_cli,
+			       XDP2_CLI_TABLES);
+XDP2_CLI_ADD_SHOW_CONFIG_ARGOK("lpm", xdp2_dtable_show_lpm_cli,
+			       XDP2_CLI_TABLES);
 
 /* List all tables */
 static void xdp2_dtable_show_table_list_cli(void *cli,
@@ -960,13 +963,14 @@ static void xdp2_dtable_show_table_list_lpm_cli(void *cli,
 	__xdp2_dtable_list_tables(cli, &lpm_tables, "lpm");
 }
 
-XDP2_CLI_ADD_SHOW_CONFIG("list", xdp2_dtable_show_table_list_cli, 0xffff);
+XDP2_CLI_ADD_SHOW_CONFIG("list", xdp2_dtable_show_table_list_cli,
+			 XDP2_CLI_TABLES);
 XDP2_CLI_ADD_SHOW_CONFIG("list-plain", xdp2_dtable_show_table_list_plain_cli,
-			 0xffff);
+			 XDP2_CLI_TABLES);
 XDP2_CLI_ADD_SHOW_CONFIG("list-tern", xdp2_dtable_show_table_list_tern_cli,
-			 0xffff);
+			 XDP2_CLI_TABLES);
 XDP2_CLI_ADD_SHOW_CONFIG("list-lpm", xdp2_dtable_show_table_list_lpm_cli,
-			 0xffff);
+			 XDP2_CLI_TABLES);
 
 /* Initialize dynamic tables */
 void xdp2_dtable_init(void)

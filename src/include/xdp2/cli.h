@@ -140,4 +140,8 @@ void xdp2_cli_start(struct xdp2_cli_thread_info *info);
 void xdp2_cli_register_start(void (*func)(void *));
 void xdp2_cli_register_done(void (*func)(void *));
 
+#define XDP2_CLI_TABLES		XDP2_BIT(0)
+
+#define XDP2_CLI_EXTERNAL_BASE	8
+
 #endif /* __XDP2_CLI_H__ */
