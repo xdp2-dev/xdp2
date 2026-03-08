@@ -307,6 +307,9 @@ static void *run_cli_thread(void *arg)
 	for (i = 0; i < show_count; i++) {
 		if (!show_def_base[i].name)
 			continue;
+		if (!(show_def_base[i].class & info->classes))
+			continue;
+
 		cli_register_command(cli, c, show_def_base[i].name,
 				     xdp2_prep_cmd,
 			     PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
@@ -317,6 +320,8 @@ static void *run_cli_thread(void *arg)
 	/* Register the CLI "set" commands */
 	for (i = 0; i < set_count; i++) {
 		if (!set_def_base[i].name)
+			continue;
+		if (!(set_def_base[i].class & info->classes))
 			continue;
 		cli_register_command(cli, c, set_def_base[i].name,
 				     xdp2_prep_cmd, PRIVILEGE_UNPRIVILEGED,
