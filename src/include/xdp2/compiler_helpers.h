@@ -46,6 +46,11 @@
 #define __unused() __attribute__((unused))
 #endif
 
+/* Define the __unused macro if it's not already defined */
+#ifndef __used
+#define __used() __attribute__((used))
+#endif
+
 /* Define the __always_inline macro if it's not already defined */
 #ifndef __always_inline
 #define __always_inline __attribute__((always_inline)) inline
