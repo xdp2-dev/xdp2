@@ -17,7 +17,7 @@ XLDFLAGS=
 CC= gcc
 CFLAGS= -I$(INCDIR)
 CFLAGS+= -g
-LDFLAGS= -L$(LIBDIR)
+LDFLAGS= -L$(LIBDIR) -Wl,-rpath,$(LIBDIR)
 
 TARGETS= flow_tracker.xdp.o flow_parser
 TMPFILES= parser.xdp.h parser.p.c parser.p.h
