@@ -113,8 +113,9 @@ public:
     }
 };
 
-bool log_handler::_display_warning = true;
-bool log_handler::_display_log = false;
+// Inline to avoid ODR violations when header is included in multiple TUs
+inline bool log_handler::_display_warning = true;
+inline bool log_handler::_display_log = false;
 
 }
 
