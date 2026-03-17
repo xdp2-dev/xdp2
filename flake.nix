@@ -104,6 +104,15 @@
           xdp2 = xdp2-debug;  # Tests use debug build with assertions
         };
 
+        # =====================================================================
+        # Phase 1: Packaging (x86_64 .deb only)
+        # See: documentation/nix/microvm-implementation-phase1.md
+        # =====================================================================
+        packaging = import ./nix/packaging {
+          inherit pkgs lib;
+          xdp2 = xdp2;  # Use production build for distribution
+        };
+
         # Convenience target to run all sample tests
         run-sample-tests = pkgs.writeShellApplication {
           name = "run-sample-tests";
@@ -141,6 +150,19 @@
           # Run all sample tests in one go
           # Usage: nix run .#run-sample-tests
           inherit run-sample-tests;
+
+          # ===================================================================
+          # Phase 1: Packaging outputs (x86_64 .deb only)
+          # See: documentation/nix/microvm-implementation-phase1.md
+          # ===================================================================
+
+          # Staging directory (for inspection/debugging)
+          # Usage: nix build .#deb-staging
+          deb-staging = packaging.staging.x86_64;
+
+          # Debian package
+          # Usage: nix build .#deb-x86_64
+          deb-x86_64 = packaging.deb.x86_64;
         };
 
         # Development shell
