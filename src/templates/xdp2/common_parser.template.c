@@ -50,7 +50,7 @@ static inline __unused() int
 	<!--(end)-->
 
 	ret = __@!parser_name!@_@!root_name!@_xdp2_parse(
-			parser, hdr, len, metadata, frame, 0, ctrl, flags);
+			parser, hdr, len, metadata, &frame, 0, ctrl, flags);
 
 	ctrl->var.ret_code = ret;
 
