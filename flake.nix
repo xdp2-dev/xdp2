@@ -316,6 +316,44 @@
                 xdp2 = xdp2-debug-riscv64;
                 prebuiltSamples = prebuiltSamplesRiscv64;
               };
+
+              # ─── AArch64 cross-compilation (same pattern as RISC-V) ───
+              pkgsCrossAarch64 = import nixpkgs {
+                localSystem = "x86_64-linux";
+                crossSystem = "aarch64-linux";
+                config = { allowUnfree = true; };
+                overlays = [
+                  (final: prev: {
+                    boehmgc = prev.boehmgc.overrideAttrs (old: { doCheck = false; });
+                    libuv = prev.libuv.overrideAttrs (old: { doCheck = false; });
+                    meson = prev.meson.overrideAttrs (old: { doCheck = false; doInstallCheck = false; });
+                    libseccomp = prev.libseccomp.overrideAttrs (old: { doCheck = false; });
+                  })
+                ];
+              };
+
+              packagesModuleAarch64 = import ./nix/packages.nix { pkgs = pkgsCrossAarch64; llvmPackages = llvmConfig.llvmPackages; };
+
+              xdp2-debug-aarch64 = import ./nix/derivation.nix {
+                pkgs = pkgsCrossAarch64;
+                lib = pkgsCrossAarch64.lib;
+                llvmConfig = llvmConfig;
+                inherit (packagesModuleAarch64) nativeBuildInputs buildInputs;
+                enableAsserts = true;
+              };
+
+              prebuiltSamplesAarch64 = import ./nix/samples {
+                inherit pkgs;
+                xdp2 = xdp2-debug;
+                xdp2Target = xdp2-debug-aarch64;
+                targetPkgs = pkgsCrossAarch64;
+              };
+
+              testsAarch64 = import ./nix/tests {
+                pkgs = pkgsCrossAarch64;
+                xdp2 = xdp2-debug-aarch64;
+                prebuiltSamples = prebuiltSamplesAarch64;
+              };
             in {
               # Cross-compiled xdp2 for RISC-V
               xdp2-debug-riscv64 = xdp2-debug-riscv64;
@@ -342,6 +380,36 @@
                   # Use expect to run the tests
                   ${microvms.expect.riscv64.runCommand}/bin/xdp2-vm-expect-run-riscv64 \
                     "${testsRiscv64.all}/bin/xdp2-test-all"
+                '';
+              };
+
+              # ─── AArch64 exports ───
+
+              # Cross-compiled xdp2 for AArch64
+              xdp2-debug-aarch64 = xdp2-debug-aarch64;
+
+              # Pre-built samples for AArch64 (built on x86_64, runs on aarch64)
+              prebuilt-samples-aarch64 = prebuiltSamplesAarch64.all;
+
+              # Cross-compiled tests for AArch64 (using pre-built samples)
+              aarch64-tests = testsAarch64;
+
+              # Runner script for AArch64 tests in VM
+              run-aarch64-tests = pkgs.writeShellApplication {
+                name = "run-aarch64-tests";
+                runtimeInputs = [ pkgs.expect pkgs.netcat-gnu ];
+                text = ''
+                  echo "========================================"
+                  echo "  XDP2 AArch64 Sample Tests"
+                  echo "========================================"
+                  echo ""
+                  echo "Test binary: ${testsAarch64.all}/bin/xdp2-test-all"
+                  echo ""
+                  echo "Running tests inside AArch64 VM..."
+
+                  # Use expect to run the tests
+                  ${microvms.expect.aarch64.runCommand}/bin/xdp2-vm-expect-run-aarch64 \
+                    "${testsAarch64.all}/bin/xdp2-test-all"
                 '';
               };
             }
