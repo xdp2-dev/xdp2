@@ -92,8 +92,7 @@
 	bool _found = false;						\
 									\
 	if (V) {							\
-		_bit_num = XDP2_JOIN3(xdp2_bitmap_word, NUM_WORD_BITS,	\
-				      _find)(V);			\
+		_bit_num = XDP2_JOIN3(xdp2_bitmap_word, NUM_WORD_BITS, _find)(V); \
 		(RET) = _bit_num + ADDER;				\
 		_found = true;						\
 	}								\

@@ -31,7 +31,8 @@
 
 #include <linux/types.h>
 
-#ifndef __KERNEL__
+/* For userspace builds (not kernel or BPF), include standard headers */
+#if !defined(__KERNEL__) && !defined(__bpf__)
 #include <stddef.h>
 #include <sys/types.h>
 #endif
