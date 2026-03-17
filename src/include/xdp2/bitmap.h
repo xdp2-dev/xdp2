@@ -97,7 +97,18 @@
 #include "xdp2/bswap.h"
 #include "xdp2/utility.h"
 
-#define XDP2_BITMAP_BITS_PER_WORD      __BITS_PER_LONG
+/* XDP2_BITMAP_BITS_PER_WORD must be a plain literal (32 or 64) for token pasting.
+ * On some platforms, __BITS_PER_LONG is defined as a computed expression like
+ * (__CHAR_BIT__ * __SIZEOF_LONG__) which breaks XDP2_JOIN2 macros.
+ * Use __SIZEOF_LONG__ to determine the value at compile time.
+ */
+#if __SIZEOF_LONG__ == 8
+#define XDP2_BITMAP_BITS_PER_WORD      64
+#elif __SIZEOF_LONG__ == 4
+#define XDP2_BITMAP_BITS_PER_WORD      32
+#else
+#error "Unsupported long size"
+#endif
 
 #define XDP2_BITMAP_NUM_BITS_TO_WORDS(NUM_BITS)				\
 	((NUM_BITS + XDP2_BITMAP_BITS_PER_WORD - 1) /			\

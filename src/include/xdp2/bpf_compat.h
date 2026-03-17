@@ -24,38 +24,46 @@
  * SUCH DAMAGE.
  */
 
-#ifndef __XDP2_BPF_H__
-#define __XDP2_BPF_H__
+#ifndef __XDP2_BPF_COMPAT_H__
+#define __XDP2_BPF_COMPAT_H__
 
-#ifndef __bpf__
-#include <stdlib.h>
-#endif
-#include <linux/bpf.h>
-
-#include "xdp2/parser.h"
-
-/* We use the tc-bpf map layout.
- * Maps are pinned in '/sys/fs/bpf/tc/globals'
+/*
+ * BPF compatibility header for network byte order functions.
+ *
+ * This header provides htons/ntohs/htonl/ntohl functions that work in both
+ * BPF and userspace contexts. BPF programs cannot use libc's arpa/inet.h,
+ * so we use libbpf's bpf_endian.h and map the standard names to BPF versions.
  */
 
-#define PIN_GLOBAL_NS 2
+#ifdef __bpf__
+/* BPF context: use libbpf's endian helpers */
+#include <bpf/bpf_endian.h>
 
-struct bpf_elf_map {
-	__u32 type;
-	__u32 size_key;
-	__u32 size_value;
-	__u32 max_elem;
-	__u32 flags;
-	__u32 id;
-	__u32 pinning;
-	__u32 inner_id;
-	__u32 inner_idx;
-};
+/* BPF: Include linux/in.h for IPPROTO_* constants and linux/stddef.h for offsetof */
+#include <linux/in.h>
+#include <linux/stddef.h>
 
-/* Macros used by the compiler when targeting bpf */
+/* Map standard network byte order functions to BPF versions */
+#ifndef htons
+#define htons(x)	bpf_htons(x)
+#endif
+#ifndef ntohs
+#define ntohs(x)	bpf_ntohs(x)
+#endif
+#ifndef htonl
+#define htonl(x)	bpf_htonl(x)
+#endif
+#ifndef ntohl
+#define ntohl(x)	bpf_ntohl(x)
+#endif
 
-#define xdp2_bpf_cast_ptr(ptr) ((unsigned char *)ptr)
-#define xdp2_bpf_check_pkt(hdr, len, hdr_end)                                 \
-	(xdp2_bpf_cast_ptr(hdr) + len > xdp2_bpf_cast_ptr(hdr_end))
+#elif defined(__KERNEL__)
+/* Kernel context: byte order functions come from linux headers */
 
-#endif /* __XDP2_BPF_H__ */
+#else
+/* Userspace context: use standard arpa/inet.h */
+#include <arpa/inet.h>
+
+#endif /* __bpf__ / __KERNEL__ / userspace */
+
+#endif /* __XDP2_BPF_COMPAT_H__ */

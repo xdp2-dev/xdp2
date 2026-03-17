@@ -27,11 +27,34 @@
 #ifndef __XDP2_PROTO_ARP_RARP_H__
 #define __XDP2_PROTO_ARP_RARP_H__
 
-#ifndef __KERNEL__
-#include <arpa/inet.h>
-#endif
+#include "xdp2/bpf_compat.h"
+#include <linux/if_ether.h>
 
-#include <netinet/ether.h>
+#ifdef __bpf__
+/* BPF: provide minimal ARP definitions - avoid heavy linux/if_arp.h */
+#ifndef ARPHRD_ETHER
+#define ARPHRD_ETHER 1
+#endif
+#ifndef ARPOP_REQUEST
+#define ARPOP_REQUEST 1
+#endif
+#ifndef ARPOP_REPLY
+#define ARPOP_REPLY 2
+#endif
+/* Basic arphdr structure for BPF */
+struct arphdr {
+	__be16 ar_hrd;
+	__be16 ar_pro;
+	__u8 ar_hln;
+	__u8 ar_pln;
+	__be16 ar_op;
+};
+#elif defined(__KERNEL__)
+#include <linux/if_arp.h>
+#else
+/* Userspace: use glibc's net/if_arp.h (not linux/if_arp.h to avoid conflicts) */
+#include <net/if_arp.h>
+#endif
 
 #include "xdp2/parser.h"
 

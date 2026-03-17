@@ -29,11 +29,29 @@
 
 /* Type definitions for XDP2 parser */
 
+#include <linux/types.h>
+
+/* For BPF targets, use compiler builtins instead of full libc headers */
+#ifdef __bpf__
+
+/* Include stddef.h from clang's resource directory for size_t, NULL, etc. */
+#include <stddef.h>
+
+/* Include stdint.h from clang's resource directory for uintptr_t, etc. */
+#include <stdint.h>
+
+/* BPF-compatible definitions for types not in stddef.h */
+typedef __s64 ssize_t;
+typedef _Bool bool;
+#define true 1
+#define false 0
+
+#else
+/* Userspace builds use standard headers */
 #include <stddef.h>
 #include <stdbool.h>
 #include <sys/types.h>
-
-#include <linux/types.h>
+#endif
 
 #include "xdp2/compiler_helpers.h"
 #include "xdp2/utility.h"

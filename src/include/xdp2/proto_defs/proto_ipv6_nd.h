@@ -29,8 +29,21 @@
 
 /* IPv6 neighbor discovery ICMP messages */
 
-#include <linux/icmp.h>
+/*
+ * This file requires icmp6hdr and struct in6_addr to be defined.
+ * In normal usage via proto_defs.h, proto_icmp.h is included first
+ * which provides icmp6hdr. For BPF, proto_icmp.h provides minimal defs.
+ */
+#ifdef __bpf__
+/* For BPF, ensure we have in6_addr */
+#include <linux/in6.h>
+/* proto_icmp.h provides icmp6hdr for BPF - it's included via proto_defs.h */
+#else
+/* For non-BPF, include standard headers if not already included */
+#ifndef _LINUX_ICMPV6_H
 #include <linux/icmpv6.h>
+#endif
+#endif
 
 #include "xdp2/parser.h"
 

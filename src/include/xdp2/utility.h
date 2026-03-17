@@ -31,7 +31,9 @@
  * Definitions and functions for XDP2 library.
  */
 
-#ifndef __KERNEL__
+/* Include different headers based on target environment */
+#if !defined(__KERNEL__) && !defined(__bpf__)
+/* Userspace includes */
 #include <arpa/inet.h>
 #include <ctype.h>
 #include <err.h>
@@ -47,12 +49,18 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#elif defined(__bpf__)
+/* BPF includes - minimal set for BPF programs */
+#include <linux/types.h>
 #else
-/* To get ARRAY_SIZE, container_of, etc. */
+/* Kernel includes */
 #include <linux/kernel.h>
-#endif /* __KERNEL__ */
+#endif
 
+/* CLI library is userspace-only */
+#if !defined(__KERNEL__) && !defined(__bpf__)
 #include "cli/cli.h"
+#endif
 
 #include "xdp2/compiler_helpers.h"
 
@@ -353,7 +361,7 @@ static inline unsigned long xdp2_round_up_to_page(unsigned long x)
 #define XDP2_BUILD_BUG_ON(condition)					\
 	typedef char static_assertion_##__LINE__[(condition) ? 1 : -1]
 
-#ifndef __KERNEL__
+#if !defined(__KERNEL__) && !defined(__bpf__)
 
 /* Userspace only defines */
 
@@ -514,14 +522,18 @@ static inline char *xdp2_getline(void)
 	return linep;
 }
 
-#endif /* __KERNEL__ */
+#endif /* !defined(__KERNEL__) && !defined(__bpf__) */
 
+/* These macros are userspace-only since they use stdout */
+#if !defined(__KERNEL__) && !defined(__bpf__)
 #define XDP2_PRINT_COLOR(COLOR, ...)				\
 	__XDP2_PRINT_COLOR(stdout, COLOR, __VA_ARGS__)
 
 #define XDP2_PRINT_COLOR_SEL(SEL, ...)				\
 	XDP2_PRINT_COLOR(xdp2_print_color_select(SEL), __VA_ARGS__)
+#endif /* !__KERNEL__ && !__bpf__ - XDP2_PRINT_COLOR macros */
 
+/* These macros are safe for all targets (just arithmetic) */
 #define XDP2_ROUND_POW_TWO(v) (1 +					\
 	(((((((((v) - 1) | (((v) - 1) >> 0x10) |			\
 	      (((v) - 1) | (((v) - 1) >> 0x10) >> 0x08)) |		\
@@ -569,6 +581,8 @@ static inline unsigned long xdp2_round_up_div(unsigned long x, unsigned int r)
 #define	XDP2_LOG_64BITS(n) (((n) >= 1ULL << 32) ?			\
 		(32 + __XDP2_LOG_16((n) >> 32)) : __XDP2_LOG_16(n))
 
+/* xdp2_line_is_whitespace uses isspace() from ctype.h - userspace only */
+#if !defined(__KERNEL__) && !defined(__bpf__)
 static inline bool xdp2_line_is_whitespace(const char *line)
 {
 	for (; *line != '\0'; line++)
@@ -577,6 +591,7 @@ static inline bool xdp2_line_is_whitespace(const char *line)
 
 	return true;
 }
+#endif /* !__KERNEL__ && !__bpf__ */
 
 #define XDP2_BITS_TO_WORDS64(VAL) ((((VAL) - 1) / 64) + 1)
 
