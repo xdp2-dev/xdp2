@@ -30,6 +30,10 @@
 # Recommended term:
 # export TERM=xterm-256color
 #
+# To run the sample test:
+# nix build .#tests.simple-parser
+# ./result/bin/xdp2-test-simple-parser
+#
 {
   description = "XDP2 packet processing framework";
 
@@ -81,10 +85,38 @@
           enableAsserts = true;
         };
 
+        # XDP sample programs (BPF bytecode)
+        # Uses xdp2-debug for xdp2-compiler and headers
+        xdp-samples = import ./nix/xdp-samples.nix {
+          inherit pkgs;
+          xdp2 = xdp2-debug;
+        };
+
         # Import development shell module
         devshell = import ./nix/devshell.nix {
           inherit pkgs lib llvmConfig compilerConfig envVars;
           packages = packagesModule;
+        };
+
+        # Import tests module (uses debug build for assertion support)
+        tests = import ./nix/tests {
+          inherit pkgs;
+          xdp2 = xdp2-debug;  # Tests use debug build with assertions
+        };
+
+        # Convenience target to run all sample tests
+        run-sample-tests = pkgs.writeShellApplication {
+          name = "run-sample-tests";
+          runtimeInputs = [];
+          text = ''
+            echo "========================================"
+            echo "  XDP2 Sample Tests Runner"
+            echo "========================================"
+            echo ""
+
+            # Run all tests via the combined test runner
+            ${tests.all}/bin/xdp2-test-all
+          '';
         };
 
       in
@@ -94,6 +126,21 @@
           default = xdp2;
           xdp2 = xdp2;
           xdp2-debug = xdp2-debug;  # Debug build with assertions
+          xdp-samples = xdp-samples;  # XDP sample programs (BPF bytecode)
+
+          # Tests (build with: nix build .#tests.simple-parser)
+          tests = tests;
+
+          # Convenience aliases for individual tests
+          simple-parser-test = tests.simple-parser;
+          offset-parser-test = tests.offset-parser;
+          ports-parser-test = tests.ports-parser;
+          flow-tracker-combo-test = tests.flow-tracker-combo;
+          xdp-build-test = tests.xdp-build;
+
+          # Run all sample tests in one go
+          # Usage: nix run .#run-sample-tests
+          inherit run-sample-tests;
         };
 
         # Development shell
