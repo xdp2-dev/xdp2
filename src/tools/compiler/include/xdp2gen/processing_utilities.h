@@ -127,6 +127,8 @@ void connect_vertices(G &g, auto const &src,
                       std::vector<xdp2_proto_table_extract_data> const
                           &consumed_proto_table_data)
 {
+    plog::log(std::cout) << "connect_vertices: src=" << src
+                         << " table=" << g[src].table << std::endl;
     if (!g[src].table.empty()) {
         auto table_it =
             find_table_by_name(g[src].table, consumed_proto_table_data);
@@ -146,6 +148,8 @@ void connect_vertices(G &g, auto const &src,
                     };
                     g[edge.first] = { to_hex(entry.first), entry.second, false,
                                       entry.first };
+                    plog::log(std::cout) << "  Created edge: " << src << " -> " << dst
+                                         << " key=" << entry.first << std::endl;
                 } else {
                     plog::log(std::cerr) << "Not found destination "
                                             "edge: "
