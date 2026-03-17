@@ -1,0 +1,100 @@
+# nix/patches/01-nix-clang-system-includes.patch
+#
+# Purpose: Add system include paths for Nix build environments
+#
+# When xdp2-compiler uses libclang's ClangTool API directly, it bypasses the
+# Nix clang wrapper that normally sets up include paths. This causes header
+# resolution failures and AST parse errors.
+#
+# This patch reads include paths from environment variables set by the Nix
+# derivation and adds them as -isystem arguments to ClangTool. The environment
+# variables are only set during `nix build`, so this is a no-op on Ubuntu/Fedora.
+#
+# Also adds optional debug diagnostic output (LLVM 21 compatible).
+#
+# See: documentation/nix/phase6_segfault_defect.md
+#
+diff --git a/src/tools/compiler/src/main.cpp b/src/tools/compiler/src/main.cpp
+index ec547c4..426356a 100644
+--- a/src/tools/compiler/src/main.cpp
++++ b/src/tools/compiler/src/main.cpp
+@@ -67,6 +67,7 @@
+ // Clang
+ #include <clang/Tooling/Tooling.h>
+ #include <clang/Tooling/CommonOptionsParser.h>
++#include <clang/Frontend/TextDiagnosticPrinter.h>  // [nix-patch] For optional debug diagnostics
+ 
+ // LLVM
+ #include <llvm/ADT/Twine.h>
+@@ -203,8 +204,6 @@ clang::tooling::ClangTool create_clang_tool(
+     // The actual resource directory is set via -resource-dir flag below.
+     plog::log(std::cout)
+         << "/usr/lib/clang/" << version << "/include" << std::endl;
+-    if (getenv("XDP2_C_INCLUDE_PATH"))
+-        setenv("C_INCLUDE_PATH", getenv("XDP2_C_INCLUDE_PATH"), 1);
+ 
+     plog::log(std::cout) << "OptionsParser->getSourcePathList()" << std::endl;
+     for (auto &&item : OptionsParser->getSourcePathList())
+@@ -240,6 +239,43 @@ clang::tooling::ClangTool create_clang_tool(
+     }
+ #endif
+ 
++    // [nix-patch] Add system include paths for Nix environments.
++    //
++    // PROBLEM: When using libclang/ClangTool directly (as xdp2-compiler does),
++    // we bypass the Nix clang wrapper script which normally adds -isystem flags
++    // for system headers. Without these flags, header resolution fails and the
++    // AST contains RecoveryExpr/contains-errors nodes, causing hasInit() to
++    // return unexpected values and ultimately leading to null pointer crashes.
++    //
++    // SOLUTION: Read include paths from environment variables set by the Nix
++    // derivation and add them as -isystem arguments. These env vars are only
++    // set during `nix build`, so this code is a no-op on traditional systems.
++    //
++    // Environment variables (set in nix/derivation.nix buildPhase):
++    //   XDP2_C_INCLUDE_PATH:      Clang builtins (stddef.h, stdint.h, etc.)
++    //   XDP2_GLIBC_INCLUDE_PATH:  glibc headers (stdlib.h, stdio.h, etc.)
++    //   XDP2_LINUX_HEADERS_PATH:  Linux kernel headers (<linux/types.h>, etc.)
++    //
++    // See: documentation/nix/phase6_segfault_defect.md for full details.
++    const char* clang_include = getenv("XDP2_C_INCLUDE_PATH");
++    const char* glibc_include = getenv("XDP2_GLIBC_INCLUDE_PATH");
++    const char* linux_headers = getenv("XDP2_LINUX_HEADERS_PATH");
++    if (linux_headers) {
++        Tool.appendArgumentsAdjuster(clang::tooling::getInsertArgumentAdjuster(
++            {"-isystem", linux_headers},
++            clang::tooling::ArgumentInsertPosition::BEGIN));
++    }
++    if (glibc_include) {
++        Tool.appendArgumentsAdjuster(clang::tooling::getInsertArgumentAdjuster(
++            {"-isystem", glibc_include},
++            clang::tooling::ArgumentInsertPosition::BEGIN));
++    }
++    if (clang_include) {
++        Tool.appendArgumentsAdjuster(clang::tooling::getInsertArgumentAdjuster(
++            {"-isystem", clang_include},
++            clang::tooling::ArgumentInsertPosition::BEGIN));
++    }
++
+     return Tool;
+ };
+ 
+@@ -271,8 +307,18 @@ void parse_file(G &g, std::vector<xdp2gen::parser<G>> &roots,
+     // Extract basic graph information
+     graph_info graph_consumed_data{ &g, &roots };
+ 
++    // [nix-patch] Optional diagnostic output for debugging AST parse errors.
++    // Enable by adding -DXDP2_COMPILER_DEBUG to CXXFLAGS in compiler Makefile.
++    // Uses LLVM 21+ compatible API (DiagnosticOptions by reference, not pointer).
++#ifdef XDP2_COMPILER_DEBUG
++    clang::DiagnosticOptions diagOpts;
++    diagOpts.ShowColors = true;
++    clang::TextDiagnosticPrinter diagPrinter(llvm::errs(), diagOpts);
++    Tool.setDiagnosticConsumer(&diagPrinter);
++#else
+     clang::IgnoringDiagConsumer diagConsumer;
+     Tool.setDiagnosticConsumer(&diagConsumer);
++#endif
+ 
+     int action1 =
+         Tool.run(extract_graph_constants_factory(graph_consumed_data).get());
