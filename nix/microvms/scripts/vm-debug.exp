@@ -1,0 +1,143 @@
+#!/usr/bin/env expect
+###############################################################################
+# vm-debug.exp - Debug XDP2 MicroVM with multiple diagnostic commands
+#
+# Runs a series of diagnostic commands and captures output properly.
+# Uses hostname-based prompt matching for reliability.
+#
+# Usage:
+#   vm-debug.exp <port> <hostname> [debug_level]
+#
+# Example:
+#   vm-debug.exp 23501 xdp2-test-x86-64
+#   vm-debug.exp 23501 xdp2-test-x86-64 100
+#
+###############################################################################
+
+if {$argc < 2} {
+    send_user "Usage: vm-debug.exp <port> <hostname> \[debug_level\]\n"
+    exit 1
+}
+
+set port [lindex $argv 0]
+set hostname [lindex $argv 1]
+set output_level [expr {$argc > 2 ? [lindex $argv 2] : 0}]
+set timeout_secs 10
+
+# Prompt pattern based on hostname
+# Matches: root@xdp2-test-x86-64:~# or root@xdp2-test-x86-64:/path#
+set prompt_pattern "root@${hostname}:\[^#\]*#"
+
+###############################################################################
+# run_diagnostic_cmd - Run a single command and display output
+###############################################################################
+proc run_diagnostic_cmd {spawn_id prompt cmd description timeout_secs} {
+    global output_level
+
+    send_user -- "--- $description ---\n"
+
+    if {$output_level > 100} {
+        send_user "CMD: $cmd\n"
+    }
+
+    # Send command
+    send -i $spawn_id "$cmd\r"
+
+    set timeout $timeout_secs
+    set skip_first 1
+    set line_count 0
+
+    expect {
+        -i $spawn_id -re "\r\n" {
+            set buf $expect_out(buffer)
+
+            # Clean buffer
+            regsub {\r\n$} $buf {} buf
+            regsub -all {\r} $buf {} buf
+            regsub -all {\x1b\[[0-9;]*[a-zA-Z]} $buf {} buf
+            regsub -all {\x1b\][^\x07]*\x07} $buf {} buf
+            regsub -all {\[\?[0-9]+[a-z]} $buf {} buf
+
+            if {$skip_first} {
+                set skip_first 0
+                exp_continue -continue_timer
+            } else {
+                if {[string length $buf] > 0} {
+                    send_user -- "$buf\n"
+                    incr line_count
+                }
+                exp_continue -continue_timer
+            }
+        }
+        -i $spawn_id -re $prompt {
+            # Done
+        }
+        timeout {
+            send_user "(timeout)\n"
+        }
+        eof {
+            send_user "(connection lost)\n"
+            return 0
+        }
+    }
+
+    send_user "\n"
+    return 1
+}
+
+###############################################################################
+# Main
+###############################################################################
+
+log_user 0
+
+send_user "========================================\n"
+send_user "  XDP2 MicroVM Debug\n"
+send_user "========================================\n"
+send_user "Port: $port\n"
+send_user "========================================\n"
+send_user "\n"
+
+# Connect
+spawn nc 127.0.0.1 $port
+set nc_id $spawn_id
+
+sleep 0.3
+send "\r"
+
+set timeout $timeout_secs
+expect {
+    -re $prompt_pattern { }
+    timeout {
+        send_user "ERROR: Timeout waiting for prompt\n"
+        exit 1
+    }
+    eof {
+        send_user "ERROR: Connection failed (is VM running?)\n"
+        exit 1
+    }
+}
+
+# Run diagnostic commands
+set ok 1
+
+if {$ok} { set ok [run_diagnostic_cmd $nc_id $prompt_pattern "uname -a" "Kernel Version" $timeout_secs] }
+if {$ok} { set ok [run_diagnostic_cmd $nc_id $prompt_pattern "hostname" "Hostname" $timeout_secs] }
+if {$ok} { set ok [run_diagnostic_cmd $nc_id $prompt_pattern "systemctl is-active xdp2-self-test.service" "Self-Test Service Status" $timeout_secs] }
+if {$ok} { set ok [run_diagnostic_cmd $nc_id $prompt_pattern "systemctl status xdp2-self-test.service --no-pager 2>&1 | head -15" "Self-Test Service Details" $timeout_secs] }
+if {$ok} { set ok [run_diagnostic_cmd $nc_id $prompt_pattern "ls -la /sys/kernel/btf/vmlinux" "BTF Availability" $timeout_secs] }
+if {$ok} { set ok [run_diagnostic_cmd $nc_id $prompt_pattern "bpftool version" "bpftool Version" $timeout_secs] }
+if {$ok} { set ok [run_diagnostic_cmd $nc_id $prompt_pattern "ip -br link show" "Network Interfaces" $timeout_secs] }
+if {$ok} { set ok [run_diagnostic_cmd $nc_id $prompt_pattern "bpftool prog list 2>/dev/null | head -10 || echo 'No BPF programs loaded'" "Loaded BPF Programs" $timeout_secs] }
+if {$ok} { set ok [run_diagnostic_cmd $nc_id $prompt_pattern "free -h" "Memory Usage" $timeout_secs] }
+if {$ok} { set ok [run_diagnostic_cmd $nc_id $prompt_pattern "uptime" "Uptime" $timeout_secs] }
+
+# Exit
+send "exit\r"
+expect eof
+
+send_user "========================================\n"
+send_user "  Debug Complete\n"
+send_user "========================================\n"
+
+exit 0
