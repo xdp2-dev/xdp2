@@ -40,9 +40,16 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+
+    # MicroVM for eBPF testing (Phase 1)
+    # See: documentation/nix/microvm-implementation-phase1.md
+    microvm = {
+      url = "github:astro/microvm.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, microvm }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
@@ -113,6 +120,20 @@
           xdp2 = xdp2;  # Use production build for distribution
         };
 
+        # =====================================================================
+        # Phase 2: MicroVM infrastructure (x86_64, aarch64, riscv64)
+        # See: documentation/nix/microvm-phase2-arm-riscv-plan.md
+        #
+        # Cross-compilation: We pass buildSystem so that when building for
+        # non-native architectures (e.g., riscv64 on x86_64), we use true
+        # cross-compilation with native cross-compilers instead of slow
+        # binfmt emulation.
+        # =====================================================================
+        microvms = import ./nix/microvms {
+          inherit pkgs lib microvm nixpkgs;
+          buildSystem = system;  # Pass host system for cross-compilation
+        };
+
         # Convenience target to run all sample tests
         run-sample-tests = pkgs.writeShellApplication {
           name = "run-sample-tests";
@@ -163,6 +184,90 @@
           # Debian package
           # Usage: nix build .#deb-x86_64
           deb-x86_64 = packaging.deb.x86_64;
+
+          # ===================================================================
+          # Phase 2: MicroVM outputs (x86_64, aarch64, riscv64)
+          # See: documentation/nix/microvm-phase2-arm-riscv-plan.md
+          # ===================================================================
+          #
+          # Primary interface (nested):
+          #   nix build .#microvms.x86_64
+          #   nix run .#microvms.test-x86_64
+          #   nix run .#microvms.test-all
+          #
+          # Legacy interface (flat, backwards compatible):
+          #   nix build .#microvm-x86_64
+          #   nix run .#xdp2-lifecycle-full-test
+          #
+
+          # ─────────────────────────────────────────────────────────────────
+          # Nested MicroVM structure (primary interface)
+          # ─────────────────────────────────────────────────────────────────
+          microvms = {
+            # VM derivations
+            x86_64 = microvms.vms.x86_64;
+            aarch64 = microvms.vms.aarch64;
+            riscv64 = microvms.vms.riscv64;
+
+            # Individual architecture tests
+            test-x86_64 = microvms.tests.x86_64;
+            test-aarch64 = microvms.tests.aarch64;
+            test-riscv64 = microvms.tests.riscv64;
+
+            # Combined test (all architectures)
+            test-all = microvms.tests.all;
+
+            # Lifecycle scripts (nested by arch)
+            lifecycle = microvms.lifecycleByArch;
+
+            # Helper scripts (nested by arch)
+            helpers = microvms.helpers;
+
+            # Expect scripts (nested by arch)
+            expect = microvms.expect;
+          };
+
+          # ─────────────────────────────────────────────────────────────────
+          # Legacy flat exports (backwards compatibility)
+          # ─────────────────────────────────────────────────────────────────
+
+          # VM derivations (legacy names)
+          microvm-x86_64 = microvms.vms.x86_64;
+          microvm-aarch64 = microvms.vms.aarch64;
+          microvm-riscv64 = microvms.vms.riscv64;
+
+          # Test runner (legacy name)
+          xdp2-test-phase1 = microvms.testRunner;
+
+          # Helper scripts (legacy names, x86_64 default)
+          xdp2-vm-console = microvms.connectConsole;
+          xdp2-vm-serial = microvms.connectSerial;
+          xdp2-vm-status = microvms.vmStatus;
+
+          # Login helpers
+          xdp2-vm-login-serial = microvms.loginSerial;
+          xdp2-vm-login-virtio = microvms.loginVirtio;
+
+          # Command execution helpers
+          xdp2-vm-run-serial = microvms.runCommandSerial;
+          xdp2-vm-run-virtio = microvms.runCommandVirtio;
+
+          # Expect-based helpers
+          xdp2-vm-expect-run = microvms.expectRunCommand;
+          xdp2-vm-debug-expect = microvms.debugVmExpect;
+          xdp2-vm-expect-verify-service = microvms.expectVerifyService;
+
+          # Lifecycle scripts (legacy names, x86_64 default)
+          xdp2-lifecycle-0-build = microvms.lifecycle.checkBuild;
+          xdp2-lifecycle-1-check-process = microvms.lifecycle.checkProcess;
+          xdp2-lifecycle-2-check-serial = microvms.lifecycle.checkSerial;
+          xdp2-lifecycle-2b-check-virtio = microvms.lifecycle.checkVirtio;
+          xdp2-lifecycle-3-verify-ebpf-loaded = microvms.lifecycle.verifyEbpfLoaded;
+          xdp2-lifecycle-4-verify-ebpf-running = microvms.lifecycle.verifyEbpfRunning;
+          xdp2-lifecycle-5-shutdown = microvms.lifecycle.shutdown;
+          xdp2-lifecycle-6-wait-exit = microvms.lifecycle.waitExit;
+          xdp2-lifecycle-force-kill = microvms.lifecycle.forceKill;
+          xdp2-lifecycle-full-test = microvms.lifecycle.fullTest;
         };
 
         # Development shell

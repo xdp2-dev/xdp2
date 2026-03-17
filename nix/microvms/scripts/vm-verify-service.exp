@@ -1,0 +1,286 @@
+#!/usr/bin/env expect
+###############################################################################
+# vm-verify-service.exp - Verify xdp2-self-test service status
+#
+# Uses native expect stream monitoring with journalctl -f for efficient
+# detection of service completion. Falls back to initial status check for
+# already-completed services.
+#
+# Returns exit code 0 if service completed successfully.
+# Uses hostname-based prompt matching for reliability.
+#
+# Usage:
+#   vm-verify-service.exp <port> <hostname> [timeout] [poll_interval]
+#
+# Example:
+#   vm-verify-service.exp 23501 xdp2-test-x86-64 60 2
+#
+###############################################################################
+
+if {$argc < 2} {
+    send_user "Usage: vm-verify-service.exp <port> <hostname> \[timeout\] \[poll_interval\]\n"
+    exit 1
+}
+
+set port [lindex $argv 0]
+set hostname [lindex $argv 1]
+set max_timeout [expr {$argc > 2 ? [lindex $argv 2] : 60}]
+set poll_interval [expr {$argc > 3 ? [lindex $argv 3] : 2}]
+
+# Prompt pattern based on hostname
+set prompt_pattern "root@${hostname}:\[^#\]*#"
+
+log_user 0
+
+send_user "=== Verify Self-Test Service ===\n"
+send_user "Port: $port\n"
+send_user "Timeout: ${max_timeout}s (progress every ${poll_interval}s)\n"
+send_user "\n"
+
+# Record script start time
+set script_start_ms [clock milliseconds]
+
+# Connect
+spawn nc 127.0.0.1 $port
+set nc_id $spawn_id
+
+send "\r"
+
+# Wait for initial prompt - may take a while as VM is still booting
+set timeout 30
+set prompt_attempts 0
+set max_prompt_attempts 3
+
+while {$prompt_attempts < $max_prompt_attempts} {
+    expect {
+        -re $prompt_pattern {
+            break
+        }
+        timeout {
+            incr prompt_attempts
+            if {$prompt_attempts < $max_prompt_attempts} {
+                send_user "  Waiting for shell prompt... (attempt $prompt_attempts/$max_prompt_attempts)\n"
+                send "\r"
+            } else {
+                send_user "ERROR: No prompt from VM after $max_prompt_attempts attempts\n"
+                exit 1
+            }
+        }
+        eof {
+            send_user "ERROR: Connection failed\n"
+            exit 1
+        }
+    }
+}
+
+# Record time when prompt is ready (monitoring begins)
+set monitor_start_ms [clock milliseconds]
+set prompt_elapsed_ms [expr {$monitor_start_ms - $script_start_ms}]
+send_user "  Prompt ready (connect: ${prompt_elapsed_ms}ms)\n"
+
+###############################################################################
+# Phase 1: Quick initial status check
+#
+# Handle the case where service already completed before we connected.
+###############################################################################
+
+set service_status "unknown"
+set detection_method "unknown"
+
+send "systemctl is-active xdp2-self-test.service 2>/dev/null\r"
+
+set timeout 5
+expect {
+    -re {(active)[\r\n]} {
+        set service_status "success"
+        set detection_method "systemctl (active)"
+    }
+    -re {(inactive)[\r\n]} {
+        # inactive is expected for oneshot services that completed successfully
+        set service_status "success"
+        set detection_method "systemctl (inactive)"
+    }
+    -re {(failed)[\r\n]} {
+        set service_status "failed"
+        set detection_method "systemctl (failed)"
+    }
+    -re {(activating)[\r\n]} {
+        set service_status "activating"
+    }
+    -re $prompt_pattern {
+        # Got prompt without clear status
+    }
+    timeout {
+        # Continue to stream monitoring
+    }
+}
+
+# Wait for prompt after status check
+expect {
+    -re $prompt_pattern { }
+    timeout { }
+}
+
+# Handle already-completed cases
+if {$service_status eq "success"} {
+    set detect_ms [clock milliseconds]
+    set detect_elapsed_ms [expr {$detect_ms - $monitor_start_ms}]
+    set total_elapsed_ms [expr {$detect_ms - $script_start_ms}]
+    send_user "PASS: Service already completed\n"
+    send_user "  Detection: ${detection_method}\n"
+    send_user "  Time: ${detect_elapsed_ms}ms (total: ${total_elapsed_ms}ms)\n"
+    send "exit\r"
+    expect eof
+    exit 0
+} elseif {$service_status eq "failed"} {
+    set detect_ms [clock milliseconds]
+    set detect_elapsed_ms [expr {$detect_ms - $monitor_start_ms}]
+    set total_elapsed_ms [expr {$detect_ms - $script_start_ms}]
+    send_user "FAIL: Service failed\n"
+    send_user "  Detection: ${detection_method}\n"
+    send_user "  Time: ${detect_elapsed_ms}ms (total: ${total_elapsed_ms}ms)\n"
+    send "exit\r"
+    expect eof
+    exit 1
+}
+
+###############################################################################
+# Phase 2: Stream monitoring with journalctl -f
+#
+# Service is still activating - use native expect stream monitoring for
+# efficient detection of completion patterns.
+###############################################################################
+
+set stream_start_ms [clock milliseconds]
+send_user "  Service activating, monitoring journal...\n"
+
+# Start following the journal
+send "journalctl -fu xdp2-self-test.service --no-pager 2>&1\r"
+
+set timeout $poll_interval
+set total_elapsed 0
+set skip_first_line 1
+
+expect {
+    # ============================================================
+    # SPECIFIC patterns FIRST (order matters - these win over \r\n)
+    # ============================================================
+
+    # Success patterns from self-test script
+    -re {Self-Test Complete: SUCCESS} {
+        set service_status "success"
+        set detection_method "journal (Self-Test Complete: SUCCESS)"
+        send_user "PASS: Self-test completed successfully\n"
+    }
+
+    # Systemd completion message
+    -re {Finished XDP2 MicroVM Self-Test} {
+        set service_status "success"
+        set detection_method "journal (Finished XDP2 MicroVM Self-Test)"
+        send_user "PASS: Service finished (systemd)\n"
+    }
+
+    # Alternative success: systemd says service succeeded
+    -re {xdp2-self-test.service: Succeeded} {
+        set service_status "success"
+        set detection_method "journal (Succeeded)"
+        send_user "PASS: Service succeeded (systemd)\n"
+    }
+
+    # Deactivated is also success for oneshot
+    -re {xdp2-self-test.service: Deactivated successfully} {
+        set service_status "success"
+        set detection_method "journal (Deactivated successfully)"
+        send_user "PASS: Service deactivated successfully\n"
+    }
+
+    # Failure patterns
+    -re {Self-Test Complete: FAIL} {
+        set service_status "failed"
+        set detection_method "journal (Self-Test Complete: FAIL)"
+        send_user "FAIL: Self-test reported failure\n"
+    }
+
+    -re {xdp2-self-test.service: Failed} {
+        set service_status "failed"
+        set detection_method "journal (Failed)"
+        send_user "FAIL: Service failed (systemd)\n"
+    }
+
+    -re {xdp2-self-test.service: Main process exited, code=exited, status=1} {
+        set service_status "failed"
+        set detection_method "journal (exit status=1)"
+        send_user "FAIL: Service exited with error\n"
+    }
+
+    # ============================================================
+    # GENERAL catch-all LAST (keeps buffer small)
+    # ============================================================
+
+    -re "\r\n" {
+        # Consume ALL lines to keep expect buffer small
+        if {$skip_first_line} {
+            # First line is echoed command - skip it
+            set skip_first_line 0
+        }
+        # Continue waiting, preserve timeout
+        exp_continue -continue_timer
+    }
+
+    # ============================================================
+    # Timeout - progress reporting
+    # ============================================================
+    timeout {
+        incr total_elapsed $poll_interval
+        if {$total_elapsed >= $max_timeout} {
+            set service_status "timeout"
+            set detection_method "timeout"
+            send_user "FAIL: Timeout after ${max_timeout}s\n"
+        } else {
+            set now_ms [clock milliseconds]
+            set elapsed_ms [expr {$now_ms - $stream_start_ms}]
+            send_user "  Waiting... (${elapsed_ms}ms / ${max_timeout}s)\n"
+            exp_continue  ;# Reset timer and continue
+        }
+    }
+
+    eof {
+        set service_status "eof"
+        set detection_method "connection closed"
+        send_user "ERROR: Connection closed unexpectedly\n"
+    }
+}
+
+###############################################################################
+# Phase 3: Cleanup
+###############################################################################
+
+# Record detection time
+set detect_ms [clock milliseconds]
+set stream_elapsed_ms [expr {$detect_ms - $stream_start_ms}]
+set monitor_elapsed_ms [expr {$detect_ms - $monitor_start_ms}]
+set total_elapsed_ms [expr {$detect_ms - $script_start_ms}]
+
+# Kill journalctl (Ctrl+C) and return to prompt
+send "\x03"
+send "\r"
+set timeout 5
+expect {
+    -re $prompt_pattern { }
+    timeout { }
+}
+
+# Report timing
+send_user "  Detection: ${detection_method}\n"
+send_user "  Stream monitor: ${stream_elapsed_ms}ms\n"
+send_user "  Total monitor: ${monitor_elapsed_ms}ms (total: ${total_elapsed_ms}ms)\n"
+
+# Exit cleanly
+send "exit\r"
+expect eof
+
+# Return appropriate exit code
+switch $service_status {
+    "success" { exit 0 }
+    default   { exit 1 }
+}
