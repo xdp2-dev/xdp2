@@ -268,7 +268,85 @@
           xdp2-lifecycle-6-wait-exit = microvms.lifecycle.waitExit;
           xdp2-lifecycle-force-kill = microvms.lifecycle.forceKill;
           xdp2-lifecycle-full-test = microvms.lifecycle.fullTest;
-        };
+        } // (
+          # ===================================================================
+          # Cross-compiled packages for RISC-V (built on x86_64, runs on riscv64)
+          # ===================================================================
+          if system == "x86_64-linux" then
+            let
+              pkgsCrossRiscv = import nixpkgs {
+                localSystem = "x86_64-linux";
+                crossSystem = "riscv64-linux";
+                config = { allowUnfree = true; };
+                overlays = [
+                  (final: prev: {
+                    boehmgc = prev.boehmgc.overrideAttrs (old: { doCheck = false; });
+                    libuv = prev.libuv.overrideAttrs (old: { doCheck = false; });
+                    meson = prev.meson.overrideAttrs (old: { doCheck = false; doInstallCheck = false; });
+                    libseccomp = prev.libseccomp.overrideAttrs (old: { doCheck = false; });
+                  })
+                ];
+              };
+
+              # For cross-compilation, use HOST LLVM for xdp2-compiler (runs on build machine)
+              # Use target packages for the actual xdp2 libraries
+              packagesModuleRiscv = import ./nix/packages.nix { pkgs = pkgsCrossRiscv; llvmPackages = llvmConfig.llvmPackages; };
+
+              xdp2-debug-riscv64 = import ./nix/derivation.nix {
+                pkgs = pkgsCrossRiscv;
+                lib = pkgsCrossRiscv.lib;
+                # Use HOST llvmConfig, not target, because xdp2-compiler runs on HOST
+                llvmConfig = llvmConfig;
+                inherit (packagesModuleRiscv) nativeBuildInputs buildInputs;
+                enableAsserts = true;
+              };
+
+              # Pre-built samples for RISC-V cross-compilation
+              # Key: xdp2-compiler runs on HOST (x86_64), generates .p.c files
+              # which are then compiled with TARGET (RISC-V) toolchain
+              prebuiltSamplesRiscv64 = import ./nix/samples {
+                inherit pkgs;                    # Host pkgs (for xdp2-compiler)
+                xdp2 = xdp2-debug;               # Host xdp2 with compiler (x86_64)
+                xdp2Target = xdp2-debug-riscv64; # Target xdp2 libraries (RISC-V)
+                targetPkgs = pkgsCrossRiscv;     # Target pkgs for binaries
+              };
+
+              testsRiscv64 = import ./nix/tests {
+                pkgs = pkgsCrossRiscv;
+                xdp2 = xdp2-debug-riscv64;
+                prebuiltSamples = prebuiltSamplesRiscv64;
+              };
+            in {
+              # Cross-compiled xdp2 for RISC-V
+              xdp2-debug-riscv64 = xdp2-debug-riscv64;
+
+              # Pre-built samples for RISC-V (built on x86_64, runs on riscv64)
+              prebuilt-samples-riscv64 = prebuiltSamplesRiscv64.all;
+
+              # Cross-compiled tests for RISC-V (using pre-built samples)
+              riscv64-tests = testsRiscv64;
+
+              # Runner script for RISC-V tests in VM
+              run-riscv64-tests = pkgs.writeShellApplication {
+                name = "run-riscv64-tests";
+                runtimeInputs = [ pkgs.expect pkgs.netcat-gnu ];
+                text = ''
+                  echo "========================================"
+                  echo "  XDP2 RISC-V Sample Tests"
+                  echo "========================================"
+                  echo ""
+                  echo "Test binary: ${testsRiscv64.all}/bin/xdp2-test-all"
+                  echo ""
+                  echo "Running tests inside RISC-V VM..."
+
+                  # Use expect to run the tests
+                  ${microvms.expect.riscv64.runCommand}/bin/xdp2-vm-expect-run-riscv64 \
+                    "${testsRiscv64.all}/bin/xdp2-test-all"
+                '';
+              };
+            }
+          else {}
+        );
 
         # Development shell
         devShells.default = devshell;
