@@ -83,9 +83,16 @@ int main(int argc, char **argv)
 	return (0);
 }
 EOF
-        $HOST_CXX -o "$TMPDIR"/wavetest "$TMPDIR"/wavetest.cpp 		\
-						-lboost_system -lboost_wave
-	case $? in
+	# Since Boost 1.69, boost_system is header-only
+	# Try without -lboost_system first, then fall back for older versions
+	$HOST_CXX -o "$TMPDIR"/wavetest "$TMPDIR"/wavetest.cpp -lboost_wave > /dev/null 2>&1
+	COMPILE_EXIT=$?
+	if [ $COMPILE_EXIT -ne 0 ]; then
+		$HOST_CXX -o "$TMPDIR"/wavetest "$TMPDIR"/wavetest.cpp \
+							-lboost_system -lboost_wave > /dev/null 2>&1
+		COMPILE_EXIT=$?
+	fi
+	case $COMPILE_EXIT in
 		0)	;;
 		*)	echo Boost.Wave missing or broken\! 1>&2
 			exit 1
@@ -107,9 +114,17 @@ int main(int argc, char **argv)
 	return (0);
 }
 EOF
-	$HOST_CXX -o "$TMPDIR"/threadtest "$TMPDIR"/threadtest.cpp		\
-			-lboost_thread   -lboost_system >/dev/null 2>&1
-	case $? in
+	# Since Boost 1.69, boost_system is header-only
+	# Try without -lboost_system first, then fall back for older versions
+	$HOST_CXX -o "$TMPDIR"/threadtest "$TMPDIR"/threadtest.cpp \
+			-lboost_thread > /dev/null 2>&1
+	COMPILE_EXIT=$?
+	if [ $COMPILE_EXIT -ne 0 ]; then
+		$HOST_CXX -o "$TMPDIR"/threadtest "$TMPDIR"/threadtest.cpp \
+				-lboost_thread -lboost_system > /dev/null 2>&1
+		COMPILE_EXIT=$?
+	fi
+	case $COMPILE_EXIT in
 		0)	;;
 		*)	echo Boost.Thread missing or broken\! 1>&2
 			exit 1
@@ -132,13 +147,28 @@ int main(int argc, char **argv)
 	return (0);
 }
 EOF
+	# Since Boost 1.69, boost_system is header-only and doesn't need linking
+	# Try header-only first (no -lboost_system), then fall back to linking
 	if [ "${CONFIGURE_DEBUG_LEVEL:-0}" -ge 5 ]; then
-		$HOST_CXX -o "$TMPDIR"/systemtest "$TMPDIR"/systemtest.cpp -lboost_system
+		# Try header-only first
+		$HOST_CXX -o "$TMPDIR"/systemtest "$TMPDIR"/systemtest.cpp 2>&1
 		COMPILE_EXIT=$?
+		if [ $COMPILE_EXIT -ne 0 ]; then
+			# Fall back to linking for older Boost versions
+			debug_print 6 "Boost.System: Header-only failed, trying with -lboost_system"
+			$HOST_CXX -o "$TMPDIR"/systemtest "$TMPDIR"/systemtest.cpp -lboost_system 2>&1
+			COMPILE_EXIT=$?
+		fi
 	else
-		$HOST_CXX -o "$TMPDIR"/systemtest "$TMPDIR"/systemtest.cpp		\
-						-lboost_system > /dev/null 2>&1
+		# Try header-only first
+		$HOST_CXX -o "$TMPDIR"/systemtest "$TMPDIR"/systemtest.cpp > /dev/null 2>&1
 		COMPILE_EXIT=$?
+		if [ $COMPILE_EXIT -ne 0 ]; then
+			# Fall back to linking for older Boost versions
+			$HOST_CXX -o "$TMPDIR"/systemtest "$TMPDIR"/systemtest.cpp \
+							-lboost_system > /dev/null 2>&1
+			COMPILE_EXIT=$?
+		fi
 	fi
 	case $COMPILE_EXIT in
 		0)
@@ -166,9 +196,17 @@ int main(int argc, char **argv)
 	return (0);
 }
 EOF
-	$HOST_CXX -o "$TMPDIR"/filesystemtest "$TMPDIR"/filesystemtest.cpp	\
-			-lboost_system -lboost_filesystem > /dev/null 2>&1
-	case $? in
+	# Since Boost 1.69, boost_system is header-only
+	# Try without -lboost_system first, then fall back for older versions
+	$HOST_CXX -o "$TMPDIR"/filesystemtest "$TMPDIR"/filesystemtest.cpp \
+			-lboost_filesystem > /dev/null 2>&1
+	COMPILE_EXIT=$?
+	if [ $COMPILE_EXIT -ne 0 ]; then
+		$HOST_CXX -o "$TMPDIR"/filesystemtest "$TMPDIR"/filesystemtest.cpp \
+				-lboost_system -lboost_filesystem > /dev/null 2>&1
+		COMPILE_EXIT=$?
+	fi
+	case $COMPILE_EXIT in
 		0)	;;
 		*)	echo Boost.Filesystem missing or broken\! 1>&2
 			exit 1
@@ -217,13 +255,13 @@ EOF
 	fi
 
 	# Get llvm-config flags
-	LLVM_LDFLAGS=`$HOST_LLVM_CONFIG --ldflags 2>&1`
-	LLVM_CXXFLAGS=`$HOST_LLVM_CONFIG --cxxflags 2>&1`
-	LLVM_LIBDIR=`$HOST_LLVM_CONFIG --libdir 2>&1`
+	LLVM_LDFLAGS=$($HOST_LLVM_CONFIG --ldflags 2>&1)
+	LLVM_CXXFLAGS=$($HOST_LLVM_CONFIG --cxxflags 2>&1)
+	LLVM_LIBDIR=$($HOST_LLVM_CONFIG --libdir 2>&1)
 	debug_print 4 "Clang.Lib: llvm-config --ldflags: $LLVM_LDFLAGS"
 	debug_print 4 "Clang.Lib: llvm-config --cxxflags: $LLVM_CXXFLAGS"
 	debug_print 4 "Clang.Lib: llvm-config --libdir: $LLVM_LIBDIR"
-	LLVM_LIBS=`$HOST_LLVM_CONFIG --libs 2>/dev/null`
+	LLVM_LIBS=$($HOST_LLVM_CONFIG --libs 2>/dev/null)
 	debug_print 4 "Clang.Lib: llvm-config --libs: $LLVM_LIBS"
 
 	# Discover clang libraries needed for the test program
@@ -251,11 +289,11 @@ EOF
 			if [ -L "$LLVM_LIBDIR/libclang-cpp.so" ] || [ -f "$LLVM_LIBDIR/libclang-cpp.so" ]; then
 				# Use -l flag if symlink exists
 				CLANG_LIBS_FOUND="$CLANG_LIBS_FOUND -lclang-cpp"
-				debug_print 4 "Clang.Lib: Found clang-cpp: $(basename $CLANG_CPP_LIB) -> -lclang-cpp (via symlink)"
+				debug_print 4 "Clang.Lib: Found clang-cpp: $(basename "$CLANG_CPP_LIB") -> -lclang-cpp (via symlink)"
 			else
 				# Use full path if no symlink exists
 				CLANG_LIBS_FOUND="$CLANG_LIBS_FOUND $CLANG_CPP_LIB"
-				debug_print 4 "Clang.Lib: Found clang-cpp: $(basename $CLANG_CPP_LIB) -> using full path"
+				debug_print 4 "Clang.Lib: Found clang-cpp: $(basename "$CLANG_CPP_LIB") -> using full path"
 			fi
 		else
 			debug_print 2 "Clang.Lib: Warning: clang-cpp library not found in $LLVM_LIBDIR"
@@ -275,15 +313,15 @@ EOF
 			if echo "$CLANG_TOOLING_LIB" | grep -q "\.a$"; then
 				# Static library - use -l flag
 				CLANG_LIBS_FOUND="$CLANG_LIBS_FOUND -lclangTooling"
-				debug_print 4 "Clang.Lib: Found clangTooling: $(basename $CLANG_TOOLING_LIB) -> -lclangTooling"
+				debug_print 4 "Clang.Lib: Found clangTooling: $(basename "$CLANG_TOOLING_LIB") -> -lclangTooling"
 			else
 				# Shared library - check for symlink
 				if [ -L "$LLVM_LIBDIR/libclangTooling.so" ] || [ -f "$LLVM_LIBDIR/libclangTooling.so" ]; then
 					CLANG_LIBS_FOUND="$CLANG_LIBS_FOUND -lclangTooling"
-					debug_print 4 "Clang.Lib: Found clangTooling: $(basename $CLANG_TOOLING_LIB) -> -lclangTooling"
+					debug_print 4 "Clang.Lib: Found clangTooling: $(basename "$CLANG_TOOLING_LIB") -> -lclangTooling"
 				else
 					CLANG_LIBS_FOUND="$CLANG_LIBS_FOUND $CLANG_TOOLING_LIB"
-					debug_print 4 "Clang.Lib: Found clangTooling: $(basename $CLANG_TOOLING_LIB) -> using full path"
+					debug_print 4 "Clang.Lib: Found clangTooling: $(basename "$CLANG_TOOLING_LIB") -> using full path"
 				fi
 			fi
 		fi
@@ -353,8 +391,9 @@ int main(int argc, char **argv)
 	return (0);
 }
 EOF
-		$HOST_CXX -o "$TMPDIR"/check_python "$TMPDIR"/check_python.cpp	\
-			`$PKG_CONFIG --cflags --libs python3-embed`
+		# shellcheck disable=SC2046
+		$HOST_CXX -o "$TMPDIR"/check_python "$TMPDIR"/check_python.cpp \
+			$($PKG_CONFIG --cflags --libs python3-embed)
 	case $? in
 		0)	;;
 		*)	echo Python missing or broken\! 1>&2
@@ -382,19 +421,19 @@ check_cross_compiler_environment()
 	if [ ! -d "$DEF_CC_ENV_LOC" ]; then
 		echo "$DEF_CC_ENV_LOC is not found!"
 		# SC2242 shellcheck
-		exit -1
+		exit 1
 	fi
 
 	if [ ! -d "$SYSROOT_LOC" ]; then
 		echo "$SYSROOT_LOC is not found!"
 		# SC2242 shellcheck
-		exit -1
+		exit 1
 	fi
 
 	if [ ! -d "$CC_ENV_TOOLCHAIN" ]; then
 		echo "$CC_ENV_TOOLCHAIN is not found!"
 		# SC2242 shellcheck
-		exit -1
+		exit 1
 	fi
 }
 
@@ -432,7 +471,7 @@ usage_platforms()
 	echo "Usage $0 [--platform { $1 } ] [ <platform_paramters> ]"
 }
 
-PLATFORMS=($(ls ../platforms))
+mapfile -t PLATFORMS < <(ls ../platforms)
 
 PLATFORM="default"
 
@@ -442,7 +481,7 @@ if [ "$1" == "--platform" ]; then
 	shift 2
 fi
 
-for i in ${PLATFORMS[@]}; do
+for i in "${PLATFORMS[@]}"; do
 	if [ "$PLATFORM" == "$i" ]; then
 		FOUND_PLAT="true"
 	fi
@@ -521,13 +560,13 @@ if [ "$NO_BUILD_COMPILER" == "y" ]; then
 		echo -n "No build compiler and optimized parser cannot be "
 		echo "configured at the same time"
 		# SC2242 shellcheck
-		exit -1
+		exit 1
 	fi
 	if [ "$BUILD_PARSER_JSON" == "y" ]; then
 		echo -n "No build compiler an build parser .json cannot be "
 		echo "configured at the same time"
 		# SC2242 shellcheck
-		exit -1
+		exit 1
 	fi
 fi
 

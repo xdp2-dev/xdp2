@@ -1,0 +1,200 @@
+#!/usr/bin/env expect
+###############################################################################
+# vm-expect.exp - Expect script for XDP2 MicroVM interaction
+#
+# Robust terminal interaction with proper output buffering for large outputs.
+# Uses hostname-based prompt matching for reliability.
+#
+# Usage:
+#   vm-expect.exp <port> <hostname> <command> [timeout] [debug_level]
+#
+# Examples:
+#   vm-expect.exp 23501 xdp2-test-x86-64 "uname -a"
+#   vm-expect.exp 23501 xdp2-test-x86-64 "bpftool prog list" 30 100
+#
+# Debug levels:
+#   0   - Quiet (just command output)
+#   10  - Basic progress messages
+#   100 - Detailed debugging
+#   110 - Very verbose (buffer contents)
+#
+###############################################################################
+
+# Parse arguments
+if {$argc < 3} {
+    send_user "Usage: vm-expect.exp <port> <hostname> <command> \[timeout\] \[debug_level\]\n"
+    send_user "\n"
+    send_user "Examples:\n"
+    send_user "  vm-expect.exp 23501 xdp2-test-x86-64 \"uname -a\"\n"
+    send_user "  vm-expect.exp 23501 xdp2-test-x86-64 \"systemctl status xdp2-self-test\" 30 100\n"
+    exit 1
+}
+
+set port [lindex $argv 0]
+set hostname [lindex $argv 1]
+set command [lindex $argv 2]
+set timeout_secs [expr {$argc > 3 ? [lindex $argv 3] : 10}]
+set output_level [expr {$argc > 4 ? [lindex $argv 4] : 0}]
+
+# Prompt pattern based on hostname
+# Matches: root@xdp2-test-x86-64:~# or root@xdp2-test-x86-64:/path#
+set prompt_pattern "root@${hostname}:\[^#\]*#"
+
+###############################################################################
+# expect_and_catch_output - Run command and capture output line by line
+#
+# This keeps the expect buffer small by processing line-by-line,
+# allowing for large command outputs without buffer overflow.
+#
+# Returns: list of output lines
+###############################################################################
+proc expect_and_catch_output {spawn_id prompt timeout_secs} {
+    global output_level
+
+    set timeout $timeout_secs
+    set timeout_count 0
+    set max_timeouts 3
+    set output_lines {}
+    set skip_first_line 1
+
+    if {$output_level > 10} {
+        send_user -- "-- Waiting for command output (timeout: ${timeout_secs}s) --\n"
+    }
+
+    expect {
+        -i $spawn_id -re "\r\n" {
+            # Match newlines to process line by line (keeps buffer small)
+            set buf $expect_out(buffer)
+
+            # Clean up the buffer
+            regsub {\r\n$} $buf {} buf
+            regsub -all {\r} $buf {} buf
+
+            # Remove ANSI escape sequences
+            regsub -all {\x1b\[[0-9;]*[a-zA-Z]} $buf {} buf
+            regsub -all {\x1b\][^\x07]*\x07} $buf {} buf
+            regsub -all {\[\?[0-9]+[a-z]} $buf {} buf
+
+            if {$output_level > 110} {
+                send_user -- "LINE: '$buf'\n"
+            }
+
+            if {$skip_first_line} {
+                # Skip the first line (echoed command)
+                if {$output_level > 100} {
+                    send_user -- "SKIP: '$buf'\n"
+                }
+                set skip_first_line 0
+                exp_continue -continue_timer
+            } else {
+                # Accumulate output lines
+                if {[string length $buf] > 0} {
+                    lappend output_lines $buf
+                }
+                exp_continue -continue_timer
+            }
+        }
+        -i $spawn_id -re $prompt {
+            # Found prompt - command complete
+            if {$output_level > 10} {
+                send_user -- "-- Command complete --\n"
+            }
+        }
+        -i $spawn_id eof {
+            if {$output_level > 0} {
+                send_user "ERROR: Connection closed unexpectedly\n"
+            }
+        }
+        timeout {
+            incr timeout_count
+            if {$timeout_count < $max_timeouts} {
+                if {$output_level > 10} {
+                    send_user "TIMEOUT: Retry $timeout_count of $max_timeouts\n"
+                }
+                exp_continue
+            } else {
+                if {$output_level > 0} {
+                    send_user "ERROR: Command timed out after ${timeout_secs}s x $max_timeouts\n"
+                }
+            }
+        }
+    }
+
+    return $output_lines
+}
+
+###############################################################################
+# Main script
+###############################################################################
+
+if {$output_level > 10} {
+    send_user "======================================\n"
+    send_user "XDP2 VM Expect Runner\n"
+    send_user "======================================\n"
+    send_user "Port: $port\n"
+    send_user "Command: $command\n"
+    send_user "Timeout: $timeout_secs seconds\n"
+    send_user "Debug level: $output_level\n"
+    send_user "======================================\n"
+}
+
+# Disable stdout buffering
+log_user 0
+
+# Connect to VM console
+if {$output_level > 10} {
+    send_user "Connecting to 127.0.0.1:$port...\n"
+}
+
+spawn nc 127.0.0.1 $port
+set nc_spawn_id $spawn_id
+
+# Wait a moment for connection
+sleep 0.3
+
+# Send newline to get prompt
+send "\r"
+
+# Wait for initial prompt
+set timeout $timeout_secs
+expect {
+    -re $prompt_pattern {
+        if {$output_level > 10} {
+            send_user "Got initial prompt\n"
+        }
+    }
+    timeout {
+        send_user "ERROR: Timeout waiting for prompt\n"
+        exit 1
+    }
+    eof {
+        send_user "ERROR: Connection failed\n"
+        exit 1
+    }
+}
+
+# Send the command
+if {$output_level > 10} {
+    send_user "Sending command: $command\n"
+}
+send "$command\r"
+
+# Capture output
+set output_lines [expect_and_catch_output $nc_spawn_id $prompt_pattern $timeout_secs]
+
+# Print output lines
+foreach line $output_lines {
+    send_user -- "$line\n"
+}
+
+# Clean exit
+send "exit\r"
+expect eof
+
+if {$output_level > 10} {
+    send_user "======================================\n"
+    send_user "Lines captured: [llength $output_lines]\n"
+    send_user "======================================\n"
+}
+
+exit 0

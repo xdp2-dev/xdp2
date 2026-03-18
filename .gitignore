@@ -71,3 +71,6 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# install directory when using nix
+install

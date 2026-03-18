@@ -11,7 +11,7 @@ The goals of using Nix in this repository are to:
 
 > ⚠️ **Linux only:** This flake currently supports **Linux only** because [`libbpf`](https://github.com/NixOS/nixpkgs/blob/nixos-unstable/pkgs/os-specific/linux/libbpf/default.nix) is Linux-specific.
 
-Feedback and merge requests are welcome. If we're missing a tool, please open an issue or PR. See the `corePackages` section in `flake.nix`.
+Feedback and merge requests are welcome. If we're missing a tool, please open an issue or PR. See `nix/packages.nix` for package definitions.
 
 ---
 
@@ -27,6 +27,22 @@ Feedback and merge requests are welcome. If we're missing a tool, please open an
     - [3. First Run Considerations](#3-first-run-considerations)
     - [4. Smart Configure](#4-smart-configure)
     - [5. Build and Test](#5-build-and-test)
+  - [Building and Testing](#building-and-testing)
+    - [Makefile Targets](#makefile-targets)
+    - [Native x86_64 Tests](#native-x86_64-tests)
+    - [Test Validation](#test-validation)
+  - [Cross-Compilation](#cross-compilation)
+    - [Architecture](#architecture)
+    - [RISC-V Cross-Compilation](#risc-v-cross-compilation)
+    - [AArch64 Cross-Compilation](#aarch64-cross-compilation)
+    - [Running Cross-Compiled Tests](#running-cross-compiled-tests)
+  - [MicroVM Integration Testing](#microvm-integration-testing)
+    - [Overview](#overview)
+    - [Supported Architectures](#supported-architectures)
+    - [VM Lifecycle Test Phases](#vm-lifecycle-test-phases)
+    - [Expect-Based Automation](#expect-based-automation)
+    - [Running MicroVM Tests](#running-microvm-tests)
+  - [Debian Packaging](#debian-packaging)
   - [Debugging](#debugging)
     - [Debugging nix develop](#debugging-nix-develop)
     - [Shellcheck](#shellcheck)
@@ -63,11 +79,82 @@ Feedback and merge requests are welcome. If we're missing a tool, please open an
 
 ### What This Repository Provides
 
-This repository includes `flake.nix` and `flake.lock`:
-- **`flake.nix`** defines the development environment (compilers, libraries, tools, helper functions)
-- **`flake.lock`** pins exact versions so all developers use **identical** inputs
+This repository includes `flake.nix`, `flake.lock`, and modular Nix files in `nix/`:
+
+- **`flake.nix`** - Main entry point; imports modules from `nix/` and wires up native builds, cross-compilation, tests, MicroVMs, and packaging
+- **`flake.lock`** - Pins exact versions so all developers use **identical** inputs
+- **`nix/packages.nix`** - Package definitions (nativeBuildInputs, buildInputs, devTools)
+- **`nix/llvm.nix`** - LLVM/Clang configuration with wrapped llvm-config
+- **`nix/env-vars.nix`** - Environment variable exports
+- **`nix/devshell.nix`** - Development shell configuration
+- **`nix/derivation.nix`** - Package derivation for `nix build`
+- **`nix/patches/`** - Historical patches documenting Nix-specific issues (not applied; fixes are in source)
+- **`nix/shell-functions/`** - Modular shell functions (build, clean, configure, etc.)
+- **`nix/samples/`** - Pre-built sample binaries for native and cross-compilation
+- **`nix/tests/`** - Test infrastructure with expected-output validation
+- **`nix/xdp-samples.nix`** - XDP BPF bytecode compilation
+- **`nix/microvms/`** - QEMU-based MicroVM integration testing (x86_64, aarch64, riscv64)
+- **`nix/packaging/`** - Debian package generation
+- **`nix/cross-tests.nix`** - Reusable cross-compilation module
+- **`Makefile`** - Top-level convenience targets wrapping nix commands
 
 Running `nix develop` spawns a shell with the correct toolchains, libraries, and environment variables configured for you.
+
+### Current Toolchain Versions
+
+The Nix development environment provides the following tool and library versions (as of February 2026):
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| GCC | 15.2.0 | Primary C/C++ compiler for final libraries |
+| LLVM/Clang | 21.1.8 | Host compiler for xdp2-compiler, AST parsing |
+| Boost | 1.87.0 | C++ libraries (graph, wave, program_options) |
+| libbpf | 1.5.0 | BPF library for eBPF/XDP programs |
+| libelf | 0.192 | ELF file handling |
+| libpcap | 1.10.5 | Packet capture library |
+| Python | 3.13.3 | Scripting and packet generation (with scapy) |
+
+### Nix-Specific Issues (Historical)
+
+During Nix integration, two issues were discovered where Nix clang behaves differently from Ubuntu/Fedora clang. Both issues have been **fixed in the source code** — the patch files in `nix/patches/` are kept as historical documentation only (`derivation.nix` applies no patches).
+
+**Background:** When using libclang's `ClangTool` API directly (as xdp2-compiler does), it bypasses the Nix clang wrapper that normally sets up include paths. Additionally, different clang versions handle certain C constructs differently.
+
+#### Patch 1: System Include Paths (`01-nix-clang-system-includes.patch`)
+
+**Problem:** ClangTool bypasses the Nix clang wrapper script which normally adds `-isystem` flags for system headers. Without these flags, header resolution fails and the AST contains error nodes.
+
+**Solution:** Reads include paths from environment variables set by the Nix derivation and adds them as `-isystem` arguments to ClangTool. These environment variables are only set during `nix build`, so this is a no-op on Ubuntu/Fedora.
+
+Environment variables used:
+- `XDP2_C_INCLUDE_PATH`: Clang builtins (stddef.h, stdint.h, etc.)
+- `XDP2_GLIBC_INCLUDE_PATH`: glibc headers (stdlib.h, stdio.h, etc.)
+- `XDP2_LINUX_HEADERS_PATH`: Linux kernel headers (<linux/types.h>, etc.)
+
+#### Patch 2: Tentative Definition Null Check (`02-tentative-definition-null-check.patch`)
+
+**Problem:** C tentative definitions like `static const struct T name;` (created by `XDP2_DECL_PROTO_TABLE` macro) behave differently across clang versions:
+- Ubuntu clang 18.1.3: `hasInit()` returns false, these are skipped
+- Nix clang 18.1.8+: `hasInit()` returns true with void-type InitListExpr
+
+When `getAs<RecordType>()` is called on void type, it returns nullptr, causing a segfault.
+
+**Solution:** Adds a null check and skips tentative definitions gracefully. The actual definition is processed when encountered later in the AST.
+
+For detailed investigation notes, see [phase6_segfault_defect.md](phase6_segfault_defect.md).
+
+### BPF/XDP Development Tools
+
+The development shell includes additional tools for BPF/XDP development and debugging:
+
+| Tool | Purpose |
+|------|---------|
+| `bpftools` | BPF program inspection and manipulation |
+| `bpftrace` | High-level tracing language for eBPF |
+| `bcc` | BPF Compiler Collection with Python bindings |
+| `perf` | Linux performance analysis tool |
+| `pahole` | DWARF debugging info analyzer (useful for BTF) |
+| `clang-tools` | clang-tidy, clang-format, and other code quality tools |
 
 ---
 
@@ -157,15 +244,295 @@ The `build-all` function applies various changes to ensure the build works insid
 
 After running `build-all` once, the necessary changes will have been applied to the files, and you could then do `cd ./src; make`
 
+---
+
+## Building and Testing
+
+A top-level `Makefile` wraps nix commands for common operations. Run `make help` to see all targets.
+
+### Makefile Targets
+
+| Target | Description |
+|--------|-------------|
+| **Native builds** | |
+| `make build` | Production build (`nix build .#xdp2`) |
+| `make build-debug` | Debug build with assertions |
+| `make samples` | Pre-built sample binaries |
+| **Native tests** | |
+| `make test` | Run all sample tests |
+| `make test-simple` | simple_parser tests only |
+| `make test-offset` | offset_parser tests only |
+| `make test-ports` | ports_parser tests only |
+| `make test-flow` | flow_tracker_combo tests only |
+| **RISC-V cross** | |
+| `make riscv64` | Cross-compiled xdp2 for riscv64 |
+| `make riscv64-samples` | Cross-compiled sample binaries |
+| `make test-riscv64` | Run tests via binfmt emulation |
+| `make test-riscv64-vm` | Run tests inside RISC-V MicroVM |
+| **AArch64 cross** | |
+| `make aarch64` | Cross-compiled xdp2 for aarch64 |
+| `make aarch64-samples` | Cross-compiled sample binaries |
+| `make test-aarch64` | Run tests via binfmt emulation |
+| `make test-aarch64-vm` | Run tests inside AArch64 MicroVM |
+| **MicroVMs** | |
+| `make vm-x86` | Build x86_64 MicroVM |
+| `make vm-aarch64` | Build AArch64 MicroVM |
+| `make vm-riscv64` | Build RISC-V MicroVM |
+| `make vm-test-all` | Full VM lifecycle tests (all architectures) |
+| **Packaging & dev** | |
+| `make deb` | Build Debian package |
+| `make dev` / `make shell` | Enter development shell |
+| `make eval` | Evaluate all flake outputs (syntax check) |
+| `make clean` | Remove result-* symlinks |
+| `make gc` | Nix garbage collection |
+
+### Native x86_64 Tests
+
+Tests build sample parsers from source, run them against pcap test data, and validate output:
+
+```bash
+# Build and run all tests
+nix build .#tests.simple-parser && ./result/bin/xdp2-test-simple-parser
+
+# Or use the combined runner
+nix run .#run-sample-tests
+
+# Or via Make
+make test
+```
+
+Individual test targets are also available:
+
+```bash
+nix build .#tests.offset-parser
+nix build .#tests.ports-parser
+nix build .#tests.flow-tracker-combo
+```
+
+### Test Validation
+
+Each test builds a sample parser, runs it against pcap files, and checks for expected output strings:
+
+- **Protocol detection**: "IPv6:", "IPv4:" — verifies protocol headers are parsed correctly
+- **Field extraction**: "TCP timestamps" — verifies deep packet fields are extracted
+- **Hash computation**: "Hash" — verifies hash-based features work
+- **Mode comparison**: basic mode vs optimized (`-O`) mode must produce identical output; discrepancies indicate proto_table extraction issues
+
+---
+
+## Cross-Compilation
+
+Cross-compilation is available for RISC-V (riscv64) and AArch64 (aarch64), building on an x86_64 host. Cross-compilation outputs are guarded by `system == "x86_64-linux"` in `flake.nix`.
+
+### Architecture
+
+Cross-compilation uses a **HOST-TARGET model**:
+
+```
+x86_64 HOST                              TARGET (riscv64 / aarch64)
+┌─────────────────────┐                  ┌────────────────────────────┐
+│ xdp2-compiler       │─── generates ──→ │ .p.c (optimized parser)    │
+│ (ClangTool, runs    │                  │                            │
+│  on build machine)  │                  │ Compiled with TARGET gcc   │
+│                     │                  │ Linked against TARGET      │
+│ HOST LLVM/Clang     │                  │ xdp2 libraries             │
+└─────────────────────┘                  └────────────────────────────┘
+```
+
+The xdp2-compiler runs **natively** on the build host (x86_64) because it uses the LLVM ClangTool API for AST parsing. It generates `.p.c` source files which are then compiled with the target architecture's GCC toolchain and linked against target-architecture xdp2 libraries. This is much faster than emulating the compiler under QEMU.
+
+### RISC-V Cross-Compilation
+
+```bash
+# Build xdp2 libraries for RISC-V
+make riscv64            # or: nix build .#xdp2-debug-riscv64
+
+# Build sample binaries for RISC-V
+make riscv64-samples    # or: nix build .#prebuilt-samples-riscv64
+
+# Build test derivations
+make riscv64-tests
+```
+
+**How it works** (in `flake.nix`):
+
+1. `pkgsCrossRiscv` is created with `localSystem = "x86_64-linux"` and `crossSystem = "riscv64-linux"` — this gives us **native cross-compilers** (no binfmt emulation during build)
+2. `xdp2-debug-riscv64` builds xdp2 libraries using the RISC-V GCC toolchain, but uses HOST `llvmConfig` because xdp2-compiler runs on the build machine
+3. `prebuiltSamplesRiscv64` (in `nix/samples/default.nix`) runs xdp2-compiler on the HOST to generate `.p.c` files, then compiles them with the RISC-V GCC toolchain, linking against the RISC-V xdp2 libraries
+4. `testsRiscv64` imports `nix/tests/` in **pre-built mode** (`prebuiltSamples` is set), so tests use the pre-compiled RISC-V binaries instead of rebuilding from source
+
+**Overlays for cross-compilation**: Several packages have their test suites disabled via overlays because they fail under QEMU binfmt emulation (boehmgc, libuv, meson, libseccomp). The packages themselves build correctly — only their tests are problematic under emulation.
+
+### AArch64 Cross-Compilation
+
+Identical pattern to RISC-V:
+
+```bash
+make aarch64            # or: nix build .#xdp2-debug-aarch64
+make aarch64-samples    # or: nix build .#prebuilt-samples-aarch64
+make aarch64-tests
+```
+
+### Running Cross-Compiled Tests
+
+There are two ways to run cross-compiled tests:
+
+**1. binfmt emulation** (QEMU user-mode, simpler, requires NixOS config):
+
+```bash
+# Requires: boot.binfmt.emulatedSystems = [ "riscv64-linux" ]; in NixOS config
+make test-riscv64       # checks binfmt registration, then runs tests
+make test-aarch64
+```
+
+The Makefile checks for `/proc/sys/fs/binfmt_misc/riscv64-linux` (or `aarch64-linux`) and prints an error with recovery instructions if binfmt is not registered.
+
+**2. MicroVM** (full system VM, no binfmt needed, see next section):
+
+```bash
+make test-riscv64-vm
+make test-aarch64-vm
+```
+
+---
+
+## MicroVM Integration Testing
+
+### Overview
+
+MicroVMs provide full-system testing environments using QEMU. This is essential for:
+- **eBPF/XDP testing** that requires a real kernel (not possible with binfmt user-mode)
+- **Cross-architecture testing** without requiring binfmt configuration
+- **Reproducing kernel-level behavior** across architectures
+
+The infrastructure uses the [microvm.nix](https://github.com/astro/microvm.nix) framework with Expect-based automation for VM lifecycle management.
+
+### Supported Architectures
+
+| Architecture | Emulation | CPU | RAM | Console Ports |
+|---|---|---|---|---|
+| **x86_64** | KVM (hardware) | host | 1 GB | serial: 23500, virtio: 23501 |
+| **aarch64** | QEMU TCG (software) | cortex-a72 | 1 GB | serial: 23510, virtio: 23511 |
+| **riscv64** | QEMU TCG (software) | rv64 | 1 GB | serial: 23520, virtio: 23521 |
+
+x86_64 uses KVM hardware acceleration for near-native speed. aarch64 and riscv64 use software emulation (slower but fully functional on an x86_64 host).
+
+Each architecture has a dedicated port block (10 ports each, starting at 23500) so multiple VMs can run simultaneously without conflicts.
+
+### VM Configuration
+
+VMs are intentionally minimal to reduce build time and dependencies:
+
+- **Kernel**: stable (x86_64) or latest (aarch64/riscv64) with `CONFIG_DEBUG_INFO_BTF=y` for CO-RE eBPF
+- **Filesystem**: 9P mount of `/nix/store` (read-only, instant access to all Nix-built binaries)
+- **Networking**: QEMU user networking with TAP/virtio interface (eth0)
+- **Console**: Serial (ttyS0/ttyAMA0 at 115200) and virtio (hvc0, higher throughput) on separate TCP ports
+- **Login**: Auto-login as root via systemd getty
+- **Disabled**: Documentation, fonts, Nix daemon, firmware, polkit — only what's needed for eBPF testing
+- **Included**: bpftool, iproute2, tcpdump, ethtool, systemd
+
+### VM Lifecycle Test Phases
+
+The full lifecycle test (`make vm-test-all`) runs 7 sequential phases per architecture:
+
+| Phase | Description | Timeout (KVM) | Timeout (riscv64) |
+|-------|-------------|---------------|--------------------|
+| **0. Build** | Build NixOS VM derivation | 600s | 3600s |
+| **1. Start** | Launch QEMU, verify process | 5s | 10s |
+| **2. Serial** | Wait for serial console TCP port | 30s | 60s |
+| **2b. Virtio** | Wait for virtio console TCP port | 45s | 90s |
+| **3. Self-Test** | Wait for `xdp2-self-test.service` | 60s | 180s |
+| **4. eBPF Status** | Verify BTF, bpftool, XDP interface | 10s/cmd | 15s/cmd |
+| **5-6. Shutdown** | Graceful poweroff + wait for exit | 30s | 60s |
+
+The self-test service runs at boot and verifies:
+- BTF availability (`/sys/kernel/btf/vmlinux`)
+- bpftool version and BPF feature probes
+- XDP support on the network interface
+
+Architecture-specific timeouts prevent brittle tests — RISC-V emulation is 3-6x slower than KVM.
+
+### Expect-Based Automation
+
+VM interaction is automated via Expect scripts in `nix/microvms/scripts/`:
+
+- **`vm-expect.exp`** — Executes commands inside the VM via TCP (netcat → VM console). Handles large output with line-by-line buffering, strips ANSI escape sequences, and retries on timeout.
+- **`vm-verify-service.exp`** — Monitors `xdp2-self-test.service` completion by streaming `journalctl`. Two-phase: quick `systemctl is-active` check first, then falls back to journal stream monitoring if the service is still activating.
+
+Both scripts use hostname-based prompt detection (e.g., `root@xdp2-test-riscv-64:~#`) and support configurable debug levels (0=quiet, 10=basic, 100+=verbose).
+
+### Running MicroVM Tests
+
+```bash
+# Build a VM for a specific architecture
+make vm-x86             # nix build .#microvms.x86_64
+make vm-riscv64         # nix build .#microvms.riscv64
+
+# Run full lifecycle test for one architecture
+nix run .#microvms.test-x86_64
+nix run .#microvms.test-riscv64
+
+# Run all architectures sequentially (x86_64 → aarch64 → riscv64)
+make vm-test-all        # nix run .#microvms.test-all
+
+# Run cross-compiled sample tests inside a VM
+make test-riscv64-vm    # nix run .#run-riscv64-tests
+make test-aarch64-vm    # nix run .#run-aarch64-tests
+```
+
+Individual lifecycle phases can be run separately for debugging:
+
+```bash
+nix run .#xdp2-lifecycle-0-build          # Build x86_64 VM
+nix run .#xdp2-lifecycle-2-check-serial   # Test serial console
+nix run .#xdp2-lifecycle-full-test        # Complete lifecycle
+```
+
+**Typical timing (cached builds):**
+- x86_64 (KVM): ~2-5 minutes
+- aarch64 (TCG): ~5-10 minutes
+- riscv64 (TCG): ~10-20 minutes
+- All three architectures: ~20-35 minutes
+
+---
+
+## Debian Packaging
+
+Generate a `.deb` package from the nix build output:
+
+```bash
+make deb                # or: nix build .#deb-x86_64
+
+# Inspect the staging directory
+nix build .#deb-staging
+```
+
+The packaging is defined in `nix/packaging/{default,metadata,deb}.nix` and uses the production (non-debug) build for distribution.
+
+---
+
 ## Debugging
 
 ### Debugging nix develop
 
-The `flake.nix` and embedded bash code make use of the environment variable `XDP2_NIX_DEBUG`. This variable uses syslog levels between 0 (default) and 7.
+The shell functions use the environment variable `XDP2_NIX_DEBUG` at runtime. This variable uses syslog-style levels between 0 (default) and 7.
+
+Debug levels:
+- **0** - No debug output (default)
+- **3** - Basic debug info
+- **5** - Show compiler selection and config.mk details
+- **7** - Maximum verbosity (all debug info)
 
 For maximum debugging:
 ```bash
 XDP2_NIX_DEBUG=7 nix develop --verbose --print-build-logs
+```
+
+You can also set the debug level after entering the shell:
+```bash
+nix develop
+export XDP2_NIX_DEBUG=5
+build-all  # Will show debug output
 ```
 
 ### Shellcheck

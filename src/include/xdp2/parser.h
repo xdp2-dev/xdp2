@@ -33,7 +33,14 @@
  */
 
 #include <linux/types.h>
+
+/* For BPF targets, use compiler builtins instead of libc string functions */
+#ifdef __bpf__
+#define memset(dest, c, n) __builtin_memset((dest), (c), (n))
+#define memcpy(dest, src, n) __builtin_memcpy((dest), (src), (n))
+#else
 #include <string.h>
+#endif
 
 #include "xdp2/arrays.h"
 #include "xdp2/compiler_helpers.h"
@@ -43,10 +50,13 @@
 #include "xdp2/tlvs.h"
 #include "xdp2/utility.h"
 
-#ifndef __KERNEL__
+/* Siphash is userspace-only */
+#if !defined(__KERNEL__) && !defined(__bpf__)
 #include "siphash/siphash.h"
 #endif
 
+/* Text code debugging utilities are userspace-only (use snprintf) */
+#if !defined(__KERNEL__) && !defined(__bpf__)
 static const struct {
 	int code;
 	char *text;
@@ -84,6 +94,7 @@ static inline const char *xdp2_get_text_code(int code)
 
 	return buff;
 }
+#endif /* !__KERNEL__ && !__bpf__ */
 
 #define XDP2_PARSER_DEFAULT_MAX_NODES		255
 #define XDP2_PARSER_DEFAULT_MAX_ENCAPS		4
@@ -450,7 +461,8 @@ static inline int __xdp2_parse_run_exit_node(const struct xdp2_parser *parser,
 /* Helper macro when accessing a parse node in named parameters or elsewhere */
 #define XDP2_PARSE_NODE(NAME) &NAME.pn
 
-#ifndef __KERNEL__
+/* Siphash-related code is userspace-only */
+#if !defined(__KERNEL__) && !defined(__bpf__)
 
 extern siphash_key_t __xdp2_hash_key;
 
@@ -499,6 +511,6 @@ void xdp2_hash_secret_init(siphash_key_t *init_key);
 /* Function to print the raw bytesused in a hash */
 void xdp2_print_hash_input(const void *start, size_t len);
 
-#endif /* __KERNEL__ */
+#endif /* !__KERNEL__ && !__bpf__ - siphash code */
 
 #endif /* __XDP2_PARSER_H__ */

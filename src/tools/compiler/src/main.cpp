@@ -62,6 +62,7 @@
 #include "xdp2gen/program-options/compiler_options.h"
 #include "xdp2gen/program-options/log_handler.h"
 #include "xdp2gen/llvm/patterns.h"
+#include "xdp2gen/clang-tool-config.h"
 #include <xdp2/parser_types.h> //somehow we can make this path better
 
 // Clang
@@ -195,17 +196,6 @@ clang::tooling::ClangTool create_clang_tool(
                                             llvm::Expected<clang::tooling::CommonOptionsParser> &OptionsParser,
                                             std::optional<std::string> resource_path)
 {
-    std::string version = XDP2_STRINGIFY(XDP2_CLANG_VERSION);
-    version = version.substr(0, version.find("git"));
-
-    // NOTE: This is hardcoded debug output showing a typical system path.
-    // It does NOT represent the actual resource directory being used.
-    // The actual resource directory is set via -resource-dir flag below.
-    plog::log(std::cout)
-        << "/usr/lib/clang/" << version << "/include" << std::endl;
-    if (getenv("XDP2_C_INCLUDE_PATH"))
-        setenv("C_INCLUDE_PATH", getenv("XDP2_C_INCLUDE_PATH"), 1);
-
     plog::log(std::cout) << "OptionsParser->getSourcePathList()" << std::endl;
     for (auto &&item : OptionsParser->getSourcePathList())
         plog::log(std::cout) << std::string(item) << "\n";
@@ -217,31 +207,28 @@ clang::tooling::ClangTool create_clang_tool(
         plog::log(std::cout) << std::string(item) << "\n";
     plog::log(std::cout) << std::endl;
 
+    // Load unified configuration from environment and compile-time macros
+    auto config = xdp2gen::clang_tool_config::from_environment();
+
+    // Override resource_dir if explicitly provided as argument
+    if (resource_path) {
+        config.resource_dir = *resource_path;
+    }
+
+    // Legacy: set C_INCLUDE_PATH environment variable
+    if (config.clang_include_path) {
+        setenv("C_INCLUDE_PATH", config.clang_include_path->c_str(), 1);
+    }
+
+    // Create and configure the ClangTool
     clang::tooling::ClangTool Tool(
         OptionsParser->getCompilations(), OptionsParser->getSourcePathList(),
         std::make_shared<clang::PCHContainerOperations>());
-    if (resource_path) {
-      plog::log(std::cout) << "Resource dir : " << *resource_path << std::endl;
-      Tool.appendArgumentsAdjuster(clang::tooling::getInsertArgumentAdjuster(
-         {"-resource-dir", *resource_path},
-         clang::tooling::ArgumentInsertPosition::BEGIN));
-    }
-    // NOTE: We intentionally let clang auto-detect its resource directory.
-    // This works correctly in Nix environments via the clang-wrapper which sets
-    // up the resource-root symlink. If we need to explicitly set it in the future,
-    // we should call `clang -print-resource-dir` at build time and use that value.
-    // Previously, we used XDP2_CLANG_RESOURCE_PATH compiled in at build time,
-    // but this was set incorrectly in flake.nix, causing incomplete type information.
-#ifdef XDP2_CLANG_RESOURCE_PATH
-    else {
-      Tool.appendArgumentsAdjuster(clang::tooling::getInsertArgumentAdjuster(
-         {"-resource-dir", XDP2_STRINGIFY(XDP2_CLANG_RESOURCE_PATH)},
-         clang::tooling::ArgumentInsertPosition::BEGIN));
-    }
-#endif
+
+    xdp2gen::apply_config(Tool, config);
 
     return Tool;
-};
+}
 
 void validate_json_metadata_ents_type(const nlohmann::ordered_json &ents)
 {
@@ -1415,12 +1402,16 @@ int main(int argc, char *argv[])
 
                         std::size_t key_value = out_edge_obj.macro_name_value;
 
-                        if (node.next_proto_data->bit_size <= 8)
-                            ;
-                        else if (node.next_proto_data->bit_size <= 16)
-                            key_value = htons(key_value);
-                        else if (node.next_proto_data->bit_size <= 32)
-                            key_value = htonl(key_value);
+                        // Swap byte order based on next_proto_data field size
+                        // (only if next_proto_data is set)
+                        if (node.next_proto_data) {
+                            if (node.next_proto_data->bit_size <= 8)
+                                ;
+                            else if (node.next_proto_data->bit_size <= 16)
+                                key_value = htons(key_value);
+                            else if (node.next_proto_data->bit_size <= 32)
+                                key_value = htonl(key_value);
+                        }
 
                         // Converts proto node mask to hex string
                         auto to_hex_mask = [&key_value]() -> std::string {
@@ -1629,10 +1620,18 @@ int extract_struct_constants(
                                                     XDP2ToolsCompilerCategory);
 
     if (OptionsParser) {
+        // Use unified configuration - ensures this ClangTool receives
+        // the same -isystem flags as create_clang_tool(), fixing the
+        // proto table extraction issue on Nix.
+        // See: documentation/nix/optimized_parser_extraction_defect.md
+        auto config = xdp2gen::clang_tool_config::from_environment();
+
         clang::tooling::ClangTool Tool(
             OptionsParser->getCompilations(),
             OptionsParser->getSourcePathList(),
             std::make_shared<clang::PCHContainerOperations>());
+
+        xdp2gen::apply_config(Tool, config);
 
         clang::IgnoringDiagConsumer diagConsumer;
         Tool.setDiagnosticConsumer(&diagConsumer);
@@ -1699,8 +1698,8 @@ int extract_struct_constants(
             plog::log(std::cout)
                 << "Vertex descriptor: " << vd << std::endl
                 << "  - Vertex name: " << vertex.name << std::endl
-                << "  - Vertex parser_node: " << vertex.parser_node
-                << std::endl;
+                << "  - Vertex parser_node: " << vertex.parser_node << std::endl
+                << "  - Vertex table: " << vertex.table << std::endl;
 
             // Expr to search for xdp2 parser proto node
             std::string search_expr_proto_node = vertex.parser_node;

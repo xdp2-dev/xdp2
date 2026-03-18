@@ -15,7 +15,10 @@
 #include <clang/Lex/PreprocessorOptions.h>
 #include <clang/Frontend/FrontendActions.h>
 #include <clang/Frontend/CompilerInstance.h>
+
+// XDP2
 #include <xdp2gen/program-options/log_handler.h>
+#include <xdp2gen/assert.h>
 
 struct xdp2_proto_table_extract_data {
     using entries_type = std::vector<std::pair<unsigned int, std::string>>;
@@ -61,17 +64,43 @@ public:
 public:
     virtual bool HandleTopLevelDecl(clang::DeclGroupRef D) override
     {
-        if (D.isSingleDecl()) {
-            auto decl = D.getSingleDecl();
-
+        // [nix-patch] Process ALL declarations in the group, not just single decls.
+        // XDP2_MAKE_PROTO_TABLE creates TWO declarations (__name entries array + name table)
+        // which may be grouped together, causing isSingleDecl() to return false.
+        for (auto *decl : D) {
             if (decl->getKind() == clang::Decl::Var) {
                 auto var_decl = clang::dyn_cast<clang::VarDecl>(decl);
                 auto type = var_decl->getType().getAsString();
 
+                // [nix-debug] Log ALL VarDecls containing "table" in name or type
+                std::string name = var_decl->getNameAsString();
+                if (name.find("table") != std::string::npos ||
+                    type.find("table") != std::string::npos) {
+                    plog::log(std::cout)
+                        << "[proto-tables-all] VarDecl: " << name
+                        << " type=" << type
+                        << " hasInit=" << (var_decl->hasInit() ? "yes" : "no")
+                        << " isDefinition=" << (var_decl->isThisDeclarationADefinition() ==
+                            clang::VarDecl::Definition ? "yes" : "no")
+                        << std::endl;
+                }
+
+                // [nix-patch] Debug: Log all table-type VarDecls to diagnose extraction issues
                 bool is_type_some_table =
                     (type == "const struct xdp2_proto_table" ||
                      type == "const struct xdp2_proto_tlvs_table" ||
                      type == "const struct xdp2_proto_flag_fields_table");
+
+                if (is_type_some_table) {
+                    plog::log(std::cout)
+                        << "[proto-tables] Found table VarDecl: "
+                        << var_decl->getNameAsString()
+                        << " type=" << type
+                        << " hasInit=" << (var_decl->hasInit() ? "yes" : "no")
+                        << " stmtClass=" << (var_decl->hasInit() && var_decl->getInit()
+                            ? var_decl->getInit()->getStmtClassName() : "N/A")
+                        << std::endl;
+                }
 
                 if (is_type_some_table && var_decl->hasInit()) {
                     // Extracts current decl name from proto table structure
@@ -89,11 +118,35 @@ public:
                             clang::dyn_cast<clang::InitListExpr>(
                                 initializer_expr);
 
+                        // [nix-patch] Handle tentative definitions to prevent null pointer crash.
+                        //
+                        // PROBLEM: C tentative definitions like:
+                        //   static const struct xdp2_proto_table ip_table;
+                        // are created by XDP2_DECL_PROTO_TABLE macro before the actual definition.
+                        //
+                        // Different clang versions handle hasInit() differently for these:
+                        //   - Ubuntu clang 18.1.3: hasInit() returns false (skipped entirely)
+                        //   - Nix clang 18.1.8+:   hasInit() returns true with void-type InitListExpr
+                        //
+                        // When getAs<RecordType>() is called on void type, it returns nullptr.
+                        // The original code then calls ->getDecl() on nullptr, causing segfault.
+                        //
+                        // SOLUTION: Check if RecordType is null and skip tentative definitions.
+                        // The actual definition will be processed when encountered later in the AST.
+                        //
+                        // See: documentation/nix/phase6_segfault_defect.md for full investigation.
+                        clang::QualType initType = initializer_list_expr->getType();
+                        auto *recordType = initType->getAs<clang::RecordType>();
+                        if (!recordType) {
+                            // Skip tentative definitions - actual definition processed later
+                            plog::log(std::cout) << "[proto-tables] Skipping tentative definition: "
+                                << table_decl_name << " (InitListExpr type: "
+                                << initType.getAsString() << ")" << std::endl;
+                            continue;
+                        }
+
                         // Extracts current analyzed InitListDecl
-                        clang::RecordDecl *initializer_list_decl =
-                            initializer_list_expr->getType()
-                                ->getAs<clang::RecordType>()
-                                ->getDecl();
+                        clang::RecordDecl *initializer_list_decl = recordType->getDecl();
 
                         // Proto table consumed infos
                         xdp2_proto_table_extract_data table_data;
@@ -206,10 +259,21 @@ public:
                                             ent_value);
 
                                     // Extracts current analyzed InitListDecl
-                                    clang::RecordDecl *ent_decl =
+                                    // Note: getAs<RecordType>() can return nullptr
+                                    // for incomplete types or tentative definitions
+                                    auto *ent_record_type =
                                         ent_value->getType()
-                                            ->getAs<clang::RecordType>()
-                                            ->getDecl();
+                                            ->getAs<clang::RecordType>();
+                                    if (!ent_record_type) {
+                                        plog::log(std::cout)
+                                            << "[proto-tables] Skipping entry "
+                                            << "with null RecordType" << std::endl;
+                                        continue;
+                                    }
+                                    clang::RecordDecl *ent_decl =
+                                        XDP2_REQUIRE_NOT_NULL(
+                                            ent_record_type->getDecl(),
+                                            "entry RecordDecl from RecordType");
 
                                     // Extract current key / proto pair from init expr
                                     std::pair<unsigned int, std::string> entry =

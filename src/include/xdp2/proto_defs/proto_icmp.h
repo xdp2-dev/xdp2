@@ -29,8 +29,53 @@
 
 /* Generic ICMP protocol definitions */
 
+#ifdef __bpf__
+/* BPF: minimal ICMP definitions - avoid linux/icmp.h dependency chain */
+#include <linux/types.h>
+
+struct icmphdr {
+	__u8 type;
+	__u8 code;
+	__sum16 checksum;
+	union {
+		struct {
+			__be16 id;
+			__be16 sequence;
+		} echo;
+		__be32 gateway;
+		struct {
+			__be16 __unused;
+			__be16 mtu;
+		} frag;
+		__u8 reserved[4];
+	} un;
+};
+
+struct icmp6hdr {
+	__u8 icmp6_type;
+	__u8 icmp6_code;
+	__sum16 icmp6_cksum;
+	union {
+		__be32 un_data32[1];
+		__be16 un_data16[2];
+		__u8 un_data8[4];
+	} icmp6_dataun;
+};
+
+/* ICMPv4 types */
+#define ICMP_ECHOREPLY		0
+#define ICMP_ECHO		8
+#define ICMP_TIMESTAMP		13
+#define ICMP_TIMESTAMPREPLY	14
+
+/* ICMPv6 types */
+#define ICMPV6_ECHO_REQUEST	128
+#define ICMPV6_ECHO_REPLY	129
+
+#else
 #include <linux/icmp.h>
 #include <linux/icmpv6.h>
+#endif
 
 #include "xdp2/parser.h"
 

@@ -592,6 +592,7 @@ private:
 		bool is_cur_field_of_interest =
 		    (field_name == "text_name" ||
 		     field_name == "proto_table" ||
+		     field_name == "proto_def" ||
 		     field_name == "wildcard_node" ||
 		     field_name == "tlv_wildcard_node" ||
 		     field_name == "metadata_table" ||

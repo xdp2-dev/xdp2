@@ -1,0 +1,117 @@
+# nix/patches/02-tentative-definition-null-check.patch
+#
+# Purpose: Fix null pointer crash with C tentative definitions AND
+#          add debug output to diagnose proto_table extraction issues.
+#
+# C tentative definitions like "static const struct T name;" (created by
+# XDP2_DECL_PROTO_TABLE macro) behave differently across clang versions:
+#
+#   - Ubuntu clang 18.1.3: hasInit() returns false, these are skipped
+#   - Nix clang 18.1.8+:   hasInit() returns true with void-type InitListExpr
+#
+# When getAs<RecordType>() is called on void type, it returns nullptr.
+# The original code calls ->getDecl() on this nullptr, causing a segfault.
+#
+# This patch:
+#   1. Adds null check to skip tentative definitions gracefully
+#   2. Adds debug output to trace proto_table type matching
+#   3. Fixes graph_consumer.h with same null check pattern
+#
+# See: documentation/nix/phase6_segfault_defect.md
+#
+diff --git a/src/tools/compiler/include/xdp2gen/ast-consumer/graph_consumer.h b/src/tools/compiler/include/xdp2gen/ast-consumer/graph_consumer.h
+index 04ce45c..8356ba8 100644
+--- a/src/tools/compiler/include/xdp2gen/ast-consumer/graph_consumer.h
++++ b/src/tools/compiler/include/xdp2gen/ast-consumer/graph_consumer.h
+@@ -883,11 +883,19 @@ private:
+ 	    const clang::InitListExpr *initializer_list_expr =
+ 		clang::dyn_cast<clang::InitListExpr>(initializer_expr);
+ 
++	    // [nix-patch] Check for AST parse errors (RecoveryExpr/contains-errors).
++	    // When clang can't fully parse an initializer (e.g., due to missing includes),
++	    // the InitListExpr may have void type. getAs<RecordType>() returns nullptr
++	    // for void type, which would crash on ->getDecl().
++	    auto *recordType = initializer_list_expr->getType()->getAs<clang::RecordType>();
++	    if (!recordType) {
++		plog::log(std::cout) << "Skipping node " << name
++		    << " - InitListExpr has non-record type (possible parse error)" << std::endl;
++		return;
++	    }
++
+ 	    // Extracts current analised InitListDecl
+-	    clang::RecordDecl *initializer_list_decl =
+-		initializer_list_expr->getType()
+-		    ->getAs<clang::RecordType>()
+-		    ->getDecl();
++	    clang::RecordDecl *initializer_list_decl = recordType->getDecl();
+ 
+ 	    _handle_init_list_expr_parse_node(
+ 		initializer_list_expr, initializer_list_decl, node, name);
+diff --git a/src/tools/compiler/include/xdp2gen/ast-consumer/proto-tables.h b/src/tools/compiler/include/xdp2gen/ast-consumer/proto-tables.h
+index 6616cf7..3c49140 100644
+--- a/src/tools/compiler/include/xdp2gen/ast-consumer/proto-tables.h
++++ b/src/tools/compiler/include/xdp2gen/ast-consumer/proto-tables.h
+@@ -68,11 +68,23 @@ public:
+                 auto var_decl = clang::dyn_cast<clang::VarDecl>(decl);
+                 auto type = var_decl->getType().getAsString();
+ 
++                // [nix-patch] Debug: Log all table-type VarDecls to diagnose extraction issues
+                 bool is_type_some_table =
+                     (type == "const struct xdp2_proto_table" ||
+                      type == "const struct xdp2_proto_tlvs_table" ||
+                      type == "const struct xdp2_proto_flag_fields_table");
+ 
++                if (is_type_some_table) {
++                    plog::log(std::cout)
++                        << "[proto-tables] Found table VarDecl: "
++                        << var_decl->getNameAsString()
++                        << " type=" << type
++                        << " hasInit=" << (var_decl->hasInit() ? "yes" : "no")
++                        << " stmtClass=" << (var_decl->hasInit() && var_decl->getInit()
++                            ? var_decl->getInit()->getStmtClassName() : "N/A")
++                        << std::endl;
++                }
++
+                 if (is_type_some_table && var_decl->hasInit()) {
+                     // Extracts current decl name from proto table structure
+                     std::string table_decl_name = var_decl->getNameAsString();
+@@ -89,11 +101,35 @@ public:
+                             clang::dyn_cast<clang::InitListExpr>(
+                                 initializer_expr);
+ 
++                        // [nix-patch] Handle tentative definitions to prevent null pointer crash.
++                        //
++                        // PROBLEM: C tentative definitions like:
++                        //   static const struct xdp2_proto_table ip_table;
++                        // are created by XDP2_DECL_PROTO_TABLE macro before the actual definition.
++                        //
++                        // Different clang versions handle hasInit() differently for these:
++                        //   - Ubuntu clang 18.1.3: hasInit() returns false (skipped entirely)
++                        //   - Nix clang 18.1.8+:   hasInit() returns true with void-type InitListExpr
++                        //
++                        // When getAs<RecordType>() is called on void type, it returns nullptr.
++                        // The original code then calls ->getDecl() on nullptr, causing segfault.
++                        //
++                        // SOLUTION: Check if RecordType is null and skip tentative definitions.
++                        // The actual definition will be processed when encountered later in the AST.
++                        //
++                        // See: documentation/nix/phase6_segfault_defect.md for full investigation.
++                        clang::QualType initType = initializer_list_expr->getType();
++                        auto *recordType = initType->getAs<clang::RecordType>();
++                        if (!recordType) {
++                            // Skip tentative definitions - actual definition processed later
++                            plog::log(std::cout) << "[proto-tables] Skipping tentative definition: "
++                                << table_decl_name << " (InitListExpr type: "
++                                << initType.getAsString() << ")" << std::endl;
++                            return true;
++                        }
++
+                         // Extracts current analyzed InitListDecl
+-                        clang::RecordDecl *initializer_list_decl =
+-                            initializer_list_expr->getType()
+-                                ->getAs<clang::RecordType>()
+-                                ->getDecl();
++                        clang::RecordDecl *initializer_list_decl = recordType->getDecl();
+ 
+                         // Proto table consumed infos
+                         xdp2_proto_table_extract_data table_data;

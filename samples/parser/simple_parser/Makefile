@@ -12,7 +12,7 @@ BINDIR= $(XDP2DIR)/bin
 CC= gcc
 CFLAGS= -I$(INCDIR)
 CFLAGS+= -g
-LDFLAGS= -L$(LIBDIR)
+LDFLAGS= -L$(LIBDIR) -Wl,-rpath,$(LIBDIR)
 
 TARGETS= parser_tmpl parser_notmpl
 TMPFILES= parser_notmpl.p.c parser_tmpl.p.c parser_notmpl.p.h parser_tmpl.p.h

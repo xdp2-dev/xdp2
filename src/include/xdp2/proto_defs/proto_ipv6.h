@@ -29,9 +29,7 @@
 
 /* IPv6 protocol definitions */
 
-#ifndef __KERNEL__
-#include <arpa/inet.h>
-#endif
+#include "xdp2/bpf_compat.h"
 
 #include <linux/ipv6.h>
 

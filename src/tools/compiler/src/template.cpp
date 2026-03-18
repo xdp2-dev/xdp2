@@ -1240,6 +1240,7 @@ class Template(TemplateBase):
 const char *template_gen = R"(
 from textwrap import dedent
 from pathlib import Path
+import sys
 
 def generate_parser_function(
     filename: str,
@@ -1249,6 +1250,15 @@ def generate_parser_function(
     metadata_record,
     template_str: str
 ):
+  # Debug: print graph vertex info
+  print(f"[Python template] Graph has {len(graph)} vertices", file=sys.stderr)
+  for name, vertex in graph.items():
+    out_edges = vertex.get('out_edges', [])
+    next_proto_info = vertex.get('next_proto_info', {})
+    print(f"[Python template]   {name}: out_edges={len(out_edges)}, next_proto_info={len(next_proto_info)}", file=sys.stderr)
+    if out_edges:
+      for edge in out_edges:
+        print(f"[Python template]     -> {edge.get('target', 'unknown')} key={edge.get('macro_name', 'N/A')}", file=sys.stderr)
 
   with open(Path(output), 'w') as f:
     template = Template(template_str)

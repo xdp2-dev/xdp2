@@ -13,7 +13,7 @@ TEMPLATES_SRC = $(patsubst %,%.template.c,$(TEMPLATES_LIST))
 	$(QUIET_EMBED)$(CAT) $< >> $@
 	@echo ")\";" >> $@
 
-OBJS := src/main.o src/template.o
+OBJS := src/main.o src/template.o src/clang-tool-config.o
 OBJS += $(patsubst %,$(TEMPLATES_PATH)/%.o,$(TEMPLATES_LIST))
 
 CLANG_INFO ?= -DXDP2_CLANG_VERSION="$(XDP2_CLANG_VERSION)" -DXDP2_CLANG_RESOURCE_PATH="$(XDP2_CLANG_RESOURCE_PATH)"
@@ -26,7 +26,8 @@ CPPFRONT_INCLUDE = -I../../../thirdparty/cppfront/include
 EXTRA_CXXFLAGS += '-g'
 
 CXXFLAGS += -Iinclude -I../../../thirdparty/json/include -I../../include $(LLVM_INCLUDE) -std=c++20 $(CFLAGS_PYTHON)  $(CLANG_INFO) $(EXTRA_CXXFLAGS) -Wno-deprecated-enum-enum-conversion $(CPPFRONT_INCLUDE)
-BOOST_LIBS ?= -lboost_wave -lboost_thread -lboost_filesystem -lboost_system -lboost_program_options
+# Note: boost_system is header-only since Boost 1.69, so we don't link against it
+BOOST_LIBS ?= -lboost_wave -lboost_thread -lboost_filesystem -lboost_program_options
 CLANG_LIBS ?= -lclang -lLLVM -lclang-cpp
 
 

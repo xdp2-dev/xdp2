@@ -27,7 +27,9 @@
 #ifndef __XDP2_BPF_H__
 #define __XDP2_BPF_H__
 
+#ifndef __bpf__
 #include <stdlib.h>
+#endif
 #include <linux/bpf.h>
 
 #include "xdp2/parser.h"

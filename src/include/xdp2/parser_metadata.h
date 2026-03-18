@@ -34,7 +34,8 @@
  * data handling as well as packet hashing.
  */
 
-#ifndef __KERNEL__
+/* String functions for userspace only (BPF uses __builtin_* versions) */
+#if !defined(__KERNEL__) && !defined(__bpf__)
 #include <string.h>
 #endif
 

@@ -29,9 +29,7 @@
 
 /* Generic definitions for IPv6 extension headers */
 
-#ifndef __KERNEL__
-#include <arpa/inet.h>
-#endif
+#include "xdp2/bpf_compat.h"
 
 #include <linux/ipv6.h>
 
