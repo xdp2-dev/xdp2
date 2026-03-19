@@ -195,6 +195,8 @@ static inline size_t parselite_hash_length(
 	case PARSELITE_ATYPE_IPV6:
 		diff -= sizeof(metadata->addrs.v6_addrs);
 		break;
+	default:
+		break;
 	}
 
 	return sizeof(*metadata) - diff;
@@ -247,6 +249,8 @@ static inline __u32 parselite_hash_metadata(
 			SWAP(metadata->port16[0],
 			     metadata->port16[1]);
 		}
+		break;
+	default:
 		break;
 	}
 
