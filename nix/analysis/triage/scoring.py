@@ -44,6 +44,7 @@ STYLE_ONLY_CHECKS = {
     'knownConditionTrueFalse', 'unusedStructMember',
     'variableScope',                    # Moving declarations is style, not bugs
     'bugprone-narrowing-conversions',   # size_t→ssize_t, uint→int: intentional in C networking code
+    'bugprone-signed-char-misuse',      # Sign extension is intentional for error codes
 }
 
 # Prefixes excluded from high-confidence output
