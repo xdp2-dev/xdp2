@@ -137,7 +137,7 @@ static inline bool xdp2_compare_prefix(const void *_f1,
 	int mod = prefix_len % 8;
 	__u8 mask, c1, c2;
 
-	if (memcmp(_f1, _f2, div))
+	if (memcmp(_f1, _f2, div) != 0)
 		return false;
 
 	if (!mod)
