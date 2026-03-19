@@ -8,7 +8,7 @@ TOPTARGETS := all clean install
 
 INCDIR=$(INSTALLDIR)$(HDRDIR)/sunh
 
-TARGETS =
+TARGETS = parser_test.h proto_sunh.h sunh.h
 
 all:
 
