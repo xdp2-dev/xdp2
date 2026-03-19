@@ -38,6 +38,7 @@ EXCLUDED_CHECK_IDS = {
     'subtractPointers',             # container_of style pointer arithmetic
     # Clang-tidy build errors (not real findings)
     'clang-diagnostic-error',
+    'clang-diagnostic-implicit-function-declaration',  # Analysis env include path issue; compiles correctly
     # _FORTIFY_SOURCE warnings (build config, not code bugs)
     '-W#warnings',
     '-Wcpp',

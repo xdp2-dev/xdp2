@@ -63,6 +63,15 @@ never appear in triage output.
   point to "different objects" (member vs. container), but the operation
   is well-defined in practice on all target platforms.
 
+### `clang-diagnostic-implicit-function-declaration`
+- **Tool:** clang-tidy
+- **File:** `src/include/pcap.h:47`
+- **Reason:** The analysis environment's include paths do not fully
+  resolve `pcap.h` dependencies, causing clang to report implicit
+  function declarations. The code compiles correctly with both GCC and
+  Clang when proper include paths are provided. This is an analysis
+  environment limitation, not a code bug.
+
 ## Generated File Patterns (`filters.py`)
 
 ### `*.template.c`
@@ -104,6 +113,34 @@ from the high-confidence list.
 - **Reason:** Suggestions to add `const` to parameters that are not
   modified. Valid style improvement but not a correctness issue, and
   changing function signatures affects the public API.
+
+### `bugprone-signed-char-misuse` → `STYLE_ONLY_CHECKS`
+- **Tool:** clang-tidy
+- **File:** `src/lib/xdp2/parser.c:649`
+- **Reason:** Sign extension from `char` to `int` is intentional in this
+  context — the function returns negative error codes via `char` values,
+  and the sign extension to `int` preserves the error semantics correctly.
+  This is a deliberate pattern, not accidental misuse.
+
+### `clang-analyzer-core.UndefinedBinaryOperatorResult` (false positive)
+- **Tool:** clang-analyzer
+- **File:** `src/include/cli/cli.h:88,107`
+- **Reason:** The analyzer cannot model linker-defined `__start_` and
+  `__stop_` section symbols. These are set by the linker to mark the
+  bounds of custom ELF sections — a standard Linux kernel technique for
+  registering CLI commands. The pointer arithmetic between these symbols
+  is well-defined at link time. Not actionable without teaching the
+  analyzer about linker scripts.
+
+### `alpha.security.ArrayBoundV2` (false positive)
+- **Tool:** clang-analyzer
+- **File:** `src/include/parselite/parser.c:777`
+- **Reason:** The analyzer flags a potential array out-of-bounds access
+  in hash computation, but cannot track the relationship between
+  `parselite_hash_length()` and the metadata struct size. The hash
+  length is correctly bounded by the switch on `addr_type` (see
+  `parselite_hash_length()` in `parselite/parser.h`). The access is
+  always within bounds.
 
 ### Excluded from High-Confidence via `_HIGH_CONF_EXCLUDED_PREFIXES`
 
