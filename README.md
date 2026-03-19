@@ -1,288 +1,202 @@
-<img src="documentation/images/xdp2-big.png" alt="XDP2 big logo"/>
+<img src="documentation/images/xdp2-big.png" alt="XDP2 logo"/>
 
-XDP2 (eXpress DataPath 2)
-=========================
+# XDP2 (eXpress DataPath 2)
 
-**XDP2** is a software programming model, framework, set of libraries, and an
-API used to program the high performance datapath. In networking, XDP2 is
-applied to optimize packet and protocol processing.
+**XDP2** is a programming model, framework, and set of C libraries for
+high-performance datapath programming. It provides an API, an optimizing
+compiler, test suites, and sample programs for packet and protocol processing.
 
-Jump [here](#Building-src) if you'd like to skip to building the code.
+## Table of Contents
 
-Contact information
-===================
+- [Introduction](#introduction)
+- [Quick Start (Ubuntu)](#quick-start-ubuntu)
+- [Quick Start (Nix)](#quick-start-nix)
+- [Project Layout](#project-layout)
+- [Documentation](#documentation)
+- [Nix Build System](#nix-build-system)
+- [Status](#status)
+- [Contact](#contact)
 
-For more information, inquiries, or comments about the XDP2 project please
-send to the XDP2 mailing list xdp2@lists.linux.dev.
+## Introduction
 
-Description
-===========
+XDP2 provides a programmatic way to build high-performance packet parsing and
+processing code. You define a **parse graph** — a directed graph of protocol
+nodes — and XDP2 generates efficient parser code from it. The C libraries
+handle packet traversal, metadata extraction, and flow tracking, while a C++
+optimizing compiler can compile the same parse graph to run as an XDP/eBPF
+program in the kernel or as a userspace application. For example, the
+`flow_tracker_combo` sample uses a single parse graph to extract TCP/UDP flow
+tuples over IPv4 and IPv6, running the same parser both in XDP and as a
+standalone program.
 
-This repository contains the code base for the XDP2 project. The XDP2 code
-is composed of a number of C libraries, include files for the API, scripts,
-test code, and sample code.
+This repository contains the XDP2 code base: C libraries, include files for
+the API, an optimizing compiler (C++ with cppfront), scripts, test code, and
+sample programs.
 
-Relationship to XDP
-===================
+XDP2 is a generalization of [XDP (eXpress Data Path)](https://www.kernel.org/doc/html/latest/networking/af_xdp.html). Where XDP programs the
+low-level datapath from device drivers using eBPF, XDP2 extends the model to
+programmable hardware and software environments like DPDK. XDP2 retains the
+spirit and general feel of XDP, with a more generic API that abstracts
+target-specific details. XDP is a first-class compilation target of XDP2.
 
-XDP2 can be thought of as a generalization of XDP. Where XDP is a facility
-for programming the low level datapath from device drivers, XDP2 extends
-the model to program programmable hardware as well as software environments
-that are not eBPF like DPDK. XDP2 retains the spirit of XDP in an easy-to-use
-programming model, as well as the general look and feel of XDP. The XDP2
-API is a bit more generic than XDP and abstracts out target specific items.
-XDP is a first class target of XDP (see XDP2 samples). Converting an XDP
-program to XDP2 should mostly be a matter of adapting the code to the XDP2
-API and splitting out required XDP code like glue code.
+## Quick Start (Ubuntu)
 
-Directory structure
-===================
+Target: Ubuntu 22.04+ on x86_64. For the full walkthrough with versioned
+packages, debugging, and sample builds, see the
+[Getting Started Guide](documentation/getting-started.md).
 
-The top level directories are:
-
-* **src**: contains source code for libraries, the XDP2 API, and test code
-* **samples**: contains standalone example applications that use the XDP2 API
-* **documentation**: contains documentation for XDP2
-* **platforms**: contains platform definitions. Currently a default platform
-is supported
-* **thirdparty**: contains third party code include pcap library
-* **data**: contains data files including sample pcap files
-
-Source directories
-------------------
-
-The *src* directory contains the in-tree source code for XDP-2.
-The subdirectories of **src** are:
-
-* **lib**: contains the code for the XDP2 libraries. The lib directory has
-subdirectories:
-	* **xdp2**: the main library that implements the XDP2 programming model
-		 and the XDP2 Parser
-	* **siphash**: a port of the siphash functions to userspace
-	* **flowdis**: contains a port of kernel flow dissector to userspace
-	* **parselite**: a simple handwritten parser for evaluation
-	* **cli**: CLI library used to provide an XDP2 CLI
-	* **crc**: CRC function library
-	* **lzf**: LZF compression library
-	* **murmur3hash**: Murmur3 Hash library
-
-* **include**: contains the include files of the XDP2 API. The include
-directory has subdirectories
-	* **xdp2**: General utility functions, header files, and API for the
-	  XDP2 library
-	* **siphash**: Header files for the siphash library
-	* **flowdis**: Header files for the flowdis library
-	* **parselite**: Header files for the parselite library
-	* **cli**: Generic CLI
-	* **crc**: CRC functions
-	* **lzf**: LZF compression
-	* **murmur3hash**: Murmur3 hash
-
-	For **XDP2**, see the include files in the xdp2 include directory as
-	well as the documentation. For the others see the include files in the
-	corresponding directory of the library.
-
-* **test**: contains related tests for XDP2. Subdirectory is:
-	* **pvbuf**: Test of PVbufs
-	* **bitmaps**: Test of bitmaps
-	* **parse_dump**: Parse dump test
-	* **parser**: Parser test
-	* **router**: Super simple router test
-	* **switch**: Test switch statement
-	* **tables**: Test advanced tables
-	* **timer**: Test of timers
-	* **vstructs**: Variable structures test
-	* **accelerator**: Accelerator test
-
-Samples
--------
-
-The *samples* directory contains out-of-tree sample code.
-The subdirectories of **samples** are:
-
-* **parser**: Standalone example programs for the XDP2 parser.
-* **xdp**: Example XDP2 in XDP programs
-
-For more information about the XDP2 code samples see the README files in
-the samples directory
-
-Nix Development Environment (Experimental)
-==========================================
-
-**New in October 2024**: XDP2 now includes an experimental Nix development environment that provides a reproducible, isolated development setup. This eliminates dependency conflicts and ensures consistent builds across all machines.  We would love feedback about the Nix development environment to xdp2@lists.linux.dev.
-
-For detailed instructions, troubleshooting, and technical details, see the [Nix Development Environment Guide](documentation/nix/nix.md).
-
-> **Note**: This is an experimental feature. The traditional build process (described below) remains the primary method for building XDP2.
-
-Building-src
-============
-
-The XDP source is built by doing a make in the top level source directory.
-
-Prerequisites
--------------
-
-To install the basic development prerequisites on Ubuntu 20.10 or up we need to install the following packages:
+**1. Install packages**
 
 ```
-sudo apt-get install -y build-essential gcc-multilib pkg-config bison flex libboost-all-dev libpcap-dev python3-scapy
+sudo apt-get install -y build-essential gcc gcc-multilib pkg-config bison flex \
+    libboost-all-dev libpcap-dev python3-scapy graphviz \
+    libelf-dev libbpf-dev llvm-dev clang libclang-dev clang-tools lld \
+    linux-tools-$(uname -r)
 ```
 
-If you want to generate graph visualizations from the xdp2 compiler you must
-install the graphviz package:
+**2. Clone the repository**
 
 ```
-sudo apt-get install -y graphviz
+git clone https://github.com/xdp2/xdp2.git
+cd xdp2
 ```
 
-If you intend use the optimized compiler or build XDP samples then you must
-install the dependencies to compile and load BPF programs as described below:
+**3. Build the cppfront dependency**
 
 ```
-sudo apt-get install -y libelf-dev clang clang-tools libclang-dev llvm llvm-dev libbpf-dev linux-tools-$(uname -r)
+cd thirdparty/cppfront && make
 ```
 
-Because the linux tools is dependent on the kernel version, you should use the
-**uname -r** command to get the current kernel version as shown above.
-
-For XDP, we recommend a minimum Linux kernel version of 5.8, which is available on Ubuntu 20.10 and up.
-
-Configure
----------
-
-The *configure* script in the source directory is ran to configure the
-build process. The usage is:
+**4. Configure and build**
 
 ```
-$ ./configure --help
-
-$ ./configure --help
-
-Usage: ./configure [--config-defines <defines>] [--ccarch <arch>]
- [--arch <arch>] [--compiler <compiler>]
- [--installdir <dir>] [--build-opt-parser]
- [--pkg-config-path <path>] [--python-ver <version>]
- [--llvm-config <llvm-config>]
+cd ../../src
+./configure.sh
+make && make install
 ```
 
-Parameters:
-
-* **--config-defines <defines>** set compiler defines with format
-  "**-D**\<*name*\>=\<*val*\> ..."
-* **--ccarch <arch>** set cross compiler architecture (cross compilation will
-be supported in the future)
-* **--arch <arch>** set architecture. Currently *x84_64* is supported
-* **--compiler <compiler>** set the compiler. Default is *gcc*, *clang* is
-an alternative
-* **--installdir** install directory
-* **--build-opt-parser** build the optimized parser (see **xdp-compiler**
-below)
-* **--pkg-config-path <path>** set Python package config path
-* **--python-ver <version>** sets the Python version
-* **--llvm-config <llvm-config>** set the LLVM config command. The default
-is */usr/bin/llvm-config*. This is only used if **--build-opt-parser** is set
-
-Examples:
-
-Run configure with no arguments
-```
-
-$ ./configure
-
-Setting default compiler as gcc for native builds
-
-Platform is default
-Architecture is x86_64
-Architecture includes for x86_64 not found, using generic
-Target Architecture is
-COMPILER is gcc
-XDP2_CLANG_VERSION=14.0.0
-XDP2_C_INCLUDE_PATH=/usr/lib/llvm-14/lib/clang/14/include
-XDP2_CLANG_RESOURCE_PATH=/usr/lib/llvm-14/lib/clang/14
-```
-
-Run configure with build optimized parser, an install directory,
-an LLVM config program, and use clang as the compiler:
-```
-./configure --installdir ~/xdp2/install --build-opt-parser --llvm-config /usr/bin/llvm-config-20 --compiler clang
-
-
-Platform is default
-Architecture is x86_64
-Architecture includes for x86_64 not found, using generic
-Target Architecture is
-COMPILER is clang
-^[[OXDP2_CLANG_VERSION=20.1.8
-XDP2_C_INCLUDE_PATH=/usr/lib/llvm-20/lib/clang/20/include
-XDP2_CLANG_RESOURCE_PATH=/usr/lib/llvm-20/lib/clang/20
-```
-
-## Make
-
-Building of the main libraries and code is performed by doing make in the
-**src** directory:
+**5. Run the parser tests**
 
 ```
-make
+cd test/parser && ./run-tests.sh
 ```
 
-The compiled libraries, header files, and binaries may be installed in
-the installation directory specified by *configure**:
-```
-make install
-```
+## Quick Start (Nix)
 
-To get verbose output from make add **V=1** to the command line. Additional
-CFLAGS may be set by using CCOPTS in the command line:
+Requires [Nix with flakes enabled](https://nixos.org/download/).
 
 ```
-$ make CCOPTS=-O3
-
-$ make CCOPTS=-g
+make build       # Build xdp2            (nix build .#xdp2 -o result)
+make test        # Run all x86_64 tests  (nix run .#run-sample-tests)
+make dev         # Enter dev shell       (nix develop)
 ```
 
-Building samples
-================
+For cross-compilation, static analysis, MicroVM testing, and more, see the
+[Nix Development Environment Guide](documentation/nix/nix.md).
 
-Before building samples the main source must be built and installed. Note that
-*samples/xdp* requires that the optimized parser was built. Sample are built
-by:
-```
-make XDP2DIR=<install-dir>
-```
-
-where *\<install-dir\>* is the installation directory for XDP2.
-
-For more information consult the README files in the *samples* directory.
-
-Test
-====
-
-The XDP2 tests are built as part of XDP build. They are installed in
-*\<install-dir\>/bin/test_\** where \* is replaced by the test name. For
-instance:
+## Project Layout
 
 ```
-$ ls ~/xdp2/install/bin
-ls ~/xdp2/install/bin
-parse_dump  test_accel   test_parser  test_router  test_tables  test_vstructs
-pmacro_gen  test_bitmap  test_pvbuf   test_switch  test_timer
+xdp2/
+├── src/                    Source code
+│   ├── include/            API headers (xdp2, cli, parselite, flowdis, ...)
+│   ├── lib/                Libraries (xdp2, cli, parselite, flowdis, crc, ...)
+│   ├── test/               Tests (parser, bitmaps, pvbuf, tables, ...)
+│   ├── tools/              Compiler and utilities
+│   └── templates/          Code generation templates
+├── samples/                Standalone examples
+│   ├── parser/             Parser sample programs
+│   └── xdp/               XDP2-in-XDP programs
+├── documentation/          Project documentation
+│   └── nix/                Nix build system docs
+├── data/                   Data files and sample pcaps
+├── platforms/              Platform definitions
+├── thirdparty/             Third-party dependencies
+│   ├── cppfront/           Cpp2/cppfront compiler (build dependency)
+│   ├── json/               JSON library
+│   └── pcap-src/           Packet capture library
+├── nix/                    Nix package and module definitions
+├── Makefile                Nix build targets (make help)
+└── flake.nix               Nix flake definition
 ```
 
-Most of the tests are documented in the *documentation* directory (under the
-service descriptions)
+## Documentation
 
-# Basic validation testing
+**Getting Started**
+- [Getting Started Guide](documentation/getting-started.md) — full build walkthrough for Ubuntu and Nix
 
-To perform basic validation of the parser do
+**Core Components**
+- [Parser](documentation/parser.md) — XDP2 parser architecture and usage
+- [Parser IR](documentation/parser-ir.md) — parser intermediate representation
+- [Parse Dump](documentation/parse-dump.md) — parse dump utility
+- [Parser Testing](documentation/test-parser.md) — parser test framework
+- [Bitmaps](documentation/bitmap.md) — bitmap data structures
+- [PVbufs](documentation/pvbufs.md) — packet vector buffers
+- [Tables](documentation/tables.md) — advanced table support
 
-**cd src/test/parser**
+**Compiler and Targets**
+- [XDP2 Compiler](documentation/xdp2-compiler.md) — optimizing compiler
+- [XDP Target](documentation/xdp.md) — XDP compilation target
 
-**run-tests.sh**
+**Nix Build System**
+- [Nix Development Environment](documentation/nix/nix.md) — reproducible builds and dev shell
+- [Nix Configure](documentation/nix/nix_configure.md) — Nix-based configure details
+- [Dev Shell Isolation](documentation/nix/nix_dev_shell_isolation.md) — isolation model
+- [Cross-Architecture Test Summary](documentation/nix/test-summary.md) — test results across architectures
 
-The output should show the the parsers being run with no reported diffs or
-other errors.
+**Development**
+- [C++ Style Guide](documentation/cpp-style-guide.md) — coding conventions
 
-For more information on the parser test please see
-[testing](documentation/test-parser.md).
+## Nix Build System
+
+The Nix build system provides reproducible builds, cross-compilation to RISC-V
+and AArch64, integrated static analysis with 8 tools at 3 depth levels, and
+MicroVM-based full-system testing.
+
+| Category | Targets |
+|---|---|
+| **Build** | `make build`, `make build-debug`, `make samples` |
+| **Test** | `make test`, `make test-simple`, `make test-offset`, `make test-ports`, `make test-flow` |
+| **Cross-compile** | `make riscv64`, `make aarch64` |
+| **Cross-test** | `make test-riscv64`, `make test-aarch64` |
+| **Static analysis** | `make analysis-quick`, `make analysis-standard`, `make analysis-deep` |
+| **MicroVM** | `make vm-x86`, `make vm-aarch64`, `make vm-riscv64` |
+| **Packaging** | `make deb` |
+| **Development** | `make dev`, `make check`, `make eval` |
+
+Run `make help` for the complete list of targets.
+
+See the [Nix Development Environment Guide](documentation/nix/nix.md) for full
+details.
+
+## Status
+
+### Parser and sample tests
+
+| Architecture | Method | Result |
+|---|---|---|
+| x86_64 | Native | 38/38 PASS |
+| RISC-V | Cross-compiled, binfmt | 38/38 PASS |
+| AArch64 | Cross-compiled, binfmt | 38/38 PASS |
+
+Note: `xdp_build` tests are skipped due to BPF stack limitations.
+
+### MicroVM full-system testing
+
+| Architecture | Status |
+|---|---|
+| RISC-V | Built (`make vm-riscv64`) |
+| AArch64 | TODO — infrastructure exists, not yet validated |
+| x86_64 | TODO — infrastructure exists, not yet validated |
+
+### Static analysis
+
+8 tools available across 3 depth levels (`quick`, `standard`, `deep`).
+
+See the [Cross-Architecture Test Summary](documentation/nix/test-summary.md)
+for detailed results.
+
+## Contact
+
+For information, inquiries, or feedback about the XDP2 project, email the
+mailing list: **xdp2@lists.linux.dev**
