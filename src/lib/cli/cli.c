@@ -1082,7 +1082,7 @@ static int show_prompt(struct cli_def *cli, int sockfd) {
 
 int cli_loop(struct cli_def *cli, int sockfd) {
   int n, l, oldl = 0, is_telnet_option = 0, skip = 0, esc = 0, cursor = 0;
-  char *cmd = NULL, *oldcmd = 0;
+  char *cmd = NULL, *oldcmd = NULL;
   char *username = NULL, *password = NULL;
 
   cli_build_shortest(cli, cli->commands);
@@ -1120,6 +1120,7 @@ int cli_loop(struct cli_def *cli, int sockfd) {
   if (sockfd >= FD_SETSIZE) {
     fprintf(stderr, "CLI_LOOP() called with sockfd > FD_SETSIZE - aborting\n");
     cli_error(cli, "CLI_LOOP() called with sockfd > FD_SETSIZE - exiting cli_loop\n");
+    free(cmd);
     return CLI_ERROR;
   }
 #endif
