@@ -13,7 +13,9 @@ CFLAGS += -g
 
 all: $(TARGETS)
 
-test_bitmap: bitmap_funcs.h test_bitmap.o
+test_bitmap.o: bitmap_funcs.h
+
+test_bitmap: test_bitmap.o
 	$(QUIET_LINK)$(CC) test_bitmap.o $(LDFLAGS) $(LDLIBS) -o $@
 
 make_bitmap_funcs: make_bitmap_funcs.c
