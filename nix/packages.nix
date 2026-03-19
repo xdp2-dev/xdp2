@@ -85,6 +85,12 @@ in
     pkgs.shellcheck
     llvmPackages.clang-tools  # clang-tidy, clang-format, etc.
 
+    # Static analysis tools
+    pkgs.compiledb        # Compile command capture for static analysis (make dry-run)
+    pkgs.cppcheck         # Static analysis
+    pkgs.flawfinder       # C/C++ security scanner
+    pkgs.clang-analyzer   # Clang static analyzer (scan-build)
+
     # Utilities
     pkgs.jp2a          # ASCII art for logo
     pkgs.glibcLocales  # Locale support
