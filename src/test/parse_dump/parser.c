@@ -1063,9 +1063,11 @@ static int handler_ipv6_srv6_segment(const void *hdr, size_t hdr_len,
 	const struct in6_addr *addr = hdr;
 	char sbuf[INET6_ADDRSTRLEN];
 
-	inet_ntop(AF_INET6, addr, sbuf, sizeof(sbuf));
-	XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t\t%u: %s\n",
-			     ctrl->key.counters[2]++, sbuf);
+	if (verbose >= 5) {
+		inet_ntop(AF_INET6, addr, sbuf, sizeof(sbuf));
+		XDP2_PTH_LOC_PRINTFC(ctrl, "\t\t\t%u: %s\n",
+				     ctrl->key.counters[2]++, sbuf);
+	}
 
 	return 0;
 }
