@@ -90,7 +90,7 @@ static inline const char *xdp2_get_text_code(int code)
 		if (xdp2_text_codes[i].code == code)
 			return xdp2_text_codes[i].text;
 
-	snprintf(buff, sizeof(buff), "XDP2 Unknown code: %u", code);
+	snprintf(buff, sizeof(buff), "XDP2 Unknown code: %d", code);
 
 	return buff;
 }
