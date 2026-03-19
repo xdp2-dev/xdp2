@@ -8,7 +8,7 @@ TOPTARGETS := all clean install
 
 INCDIR=$(INSTALLDIR)$(HDRDIR)/superp
 
-TARGETS =
+TARGETS = parser_test.h proto_superp.h superp.h
 
 all:
 
