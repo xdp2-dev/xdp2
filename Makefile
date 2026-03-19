@@ -26,6 +26,7 @@
 .PHONY: aarch64 aarch64-debug aarch64-samples aarch64-tests test-aarch64 test-aarch64-vm
 .PHONY: vm-x86 vm-aarch64 vm-riscv64 vm-test-all
 .PHONY: deb deb-x86
+.PHONY: analysis analysis-quick analysis-standard analysis-deep
 .PHONY: dev shell check eval
 
 # Default target
@@ -74,6 +75,12 @@ help:
 	@echo "  make vm-aarch64     Build AArch64 MicroVM -> result-vm-aarch64/"
 	@echo "  make vm-riscv64     Build RISC-V MicroVM -> result-vm-riscv64/"
 	@echo "  make vm-test-all    Run full VM lifecycle tests (all architectures)"
+	@echo ""
+	@echo "=== Static Analysis ==="
+	@echo "  make analysis       Run quick static analysis (alias for analysis-quick)"
+	@echo "  make analysis-quick Run clang-tidy + cppcheck"
+	@echo "  make analysis-standard  Run + flawfinder, clang-analyzer, gcc-warnings"
+	@echo "  make analysis-deep  Run all 8 tools including gcc-analyzer, semgrep, sanitizers"
 	@echo ""
 	@echo "=== Packaging ==="
 	@echo "  make deb            Build Debian package -> result-deb/"
@@ -281,6 +288,33 @@ deb:
 deb-x86: deb
 
 # =============================================================================
+# Static Analysis
+# =============================================================================
+
+# Quick analysis: clang-tidy + cppcheck
+analysis: analysis-quick
+
+analysis-quick:
+	@echo "Running quick static analysis (clang-tidy + cppcheck)..."
+	nix build .#analysis-quick -o result-analysis-quick
+	@echo ""
+	@cat result-analysis-quick/summary.txt
+
+# Standard analysis: + flawfinder, clang-analyzer, gcc-warnings
+analysis-standard:
+	@echo "Running standard static analysis..."
+	nix build .#analysis-standard -o result-analysis-standard
+	@echo ""
+	@cat result-analysis-standard/summary.txt
+
+# Deep analysis: all 8 tools
+analysis-deep:
+	@echo "Running deep static analysis (all tools)..."
+	nix build .#analysis-deep -o result-analysis-deep
+	@echo ""
+	@cat result-analysis-deep/summary.txt
+
+# =============================================================================
 # Development
 # =============================================================================
 
@@ -313,6 +347,10 @@ eval:
 	nix eval .#xdp2-debug-aarch64 --apply 'x: x.name' 2>/dev/null && echo "  xdp2-debug-aarch64: OK" || echo "  xdp2-debug-aarch64: FAIL"
 	nix eval .#prebuilt-samples-aarch64 --apply 'x: x.name' 2>/dev/null && echo "  prebuilt-samples-aarch64: OK" || echo "  prebuilt-samples-aarch64: FAIL"
 	nix eval .#aarch64-tests.all --apply 'x: x.name' 2>/dev/null && echo "  aarch64-tests.all: OK" || echo "  aarch64-tests.all: FAIL"
+	@echo "Analysis:"
+	nix eval .#analysis-quick --apply 'x: x.name' 2>/dev/null && echo "  analysis-quick: OK" || echo "  analysis-quick: FAIL"
+	nix eval .#analysis-standard --apply 'x: x.name' 2>/dev/null && echo "  analysis-standard: OK" || echo "  analysis-standard: FAIL"
+	nix eval .#analysis-deep --apply 'x: x.name' 2>/dev/null && echo "  analysis-deep: OK" || echo "  analysis-deep: FAIL"
 	@echo ""
 	@echo "All evaluations completed."
 

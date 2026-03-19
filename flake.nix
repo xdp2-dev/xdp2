@@ -112,6 +112,15 @@
         };
 
         # =====================================================================
+        # Static Analysis Infrastructure
+        # Ported from reference implementation, adapted for C/Make build system
+        # =====================================================================
+        analysis = import ./nix/analysis {
+          inherit pkgs lib llvmConfig packagesModule;
+          src = ./.;
+        };
+
+        # =====================================================================
         # Phase 1: Packaging (x86_64 .deb only)
         # See: documentation/nix/microvm-implementation-phase1.md
         # =====================================================================
@@ -171,6 +180,24 @@
           # Run all sample tests in one go
           # Usage: nix run .#run-sample-tests
           inherit run-sample-tests;
+
+          # ===================================================================
+          # Static Analysis
+          # Usage: nix build .#analysis-quick
+          #        nix build .#analysis-standard
+          #        nix build .#analysis-deep
+          # ===================================================================
+          analysis-quick = analysis.quick;
+          analysis-standard = analysis.standard;
+          analysis-deep = analysis.deep;
+          analysis-clang-tidy = analysis.clang-tidy;
+          analysis-cppcheck = analysis.cppcheck;
+          analysis-flawfinder = analysis.flawfinder;
+          analysis-clang-analyzer = analysis.clang-analyzer;
+          analysis-gcc-warnings = analysis.gcc-warnings;
+          analysis-gcc-analyzer = analysis.gcc-analyzer;
+          analysis-semgrep = analysis.semgrep;
+          analysis-sanitizers = analysis.sanitizers;
 
           # ===================================================================
           # Phase 1: Packaging outputs (x86_64 .deb only)
