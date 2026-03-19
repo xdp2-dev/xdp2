@@ -1455,7 +1455,6 @@ int cli_loop(struct cli_def *cli, int sockfd) {
         struct cli_comphelp comphelp = {0};
 
         if (cli->state == STATE_LOGIN || cli->state == STATE_PASSWORD || cli->state == STATE_ENABLE_PASSWORD) continue;
-        if (cursor != l) continue;
 
         cli_get_completions(cli, cmd, c, &comphelp);
         if (comphelp.num_entries == 0) {
@@ -1554,7 +1553,6 @@ int cli_loop(struct cli_def *cli, int sockfd) {
         int show_cr = 1;
 
         if (cli->state == STATE_LOGIN || cli->state == STATE_PASSWORD || cli->state == STATE_ENABLE_PASSWORD) continue;
-        if (cursor != l) continue;
 
         cli_get_completions(cli, cmd, c, &comphelp);
         if (comphelp.num_entries == 0) {
