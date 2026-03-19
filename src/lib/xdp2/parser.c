@@ -481,7 +481,7 @@ int __xdp2_parse(const struct xdp2_parser *parser, void *hdr,
 		ssize_t hlen = proto_def->min_len;
 
 		if (flags & XDP2_F_DEBUG)
-			printf("XDP2 parsing %s, remaining length %lu\n",
+			printf("XDP2 parsing %s, remaining length %zu\n",
 			       proto_def->name, len);
 
 		ctrl->var.last_node = parse_node;
@@ -936,7 +936,7 @@ void xdp2_print_hash_input(const void *start, size_t len)
 	const __u8 *data = start;
 	int i;
 
-	printf("Hash input (size %lu): ", len);
+	printf("Hash input (size %zu): ", len);
 	for (i = 0; i < len; i++)
 		printf("%02x ", data[i]);
 	printf("\n");
