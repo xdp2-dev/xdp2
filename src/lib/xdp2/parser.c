@@ -900,11 +900,15 @@ bool xdp2_parse_validate_fast(const struct xdp2_parser *parser)
 		return false;
 
 	if (parser->config.okay_node || parser->config.fail_node ||
-	    parser->config.atencap_node)
+	    parser->config.atencap_node) {
+		free(fast_nodes);
 		return false;
+	}
 
-	if (parser->config.num_counters || parser->config.num_keys)
+	if (parser->config.num_counters || parser->config.num_keys) {
+		free(fast_nodes);
 		return false;
+	}
 
 	ret = validate_parse_fast_node(fast_nodes, parser->root_node);
 
