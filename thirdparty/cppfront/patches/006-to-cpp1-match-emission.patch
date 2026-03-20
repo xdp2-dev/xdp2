@@ -1,0 +1,126 @@
+--- a/source/to_cpp1.h	2026-03-20 10:43:14.649048772 -0700
++++ b/source/to_cpp1.h	2026-03-20 10:05:14.514547380 -0700
+@@ -13,6 +13,7 @@
+ #ifndef CPP2_TO_CPP1_H
+ #define CPP2_TO_CPP1_H
+ 
++#include "match.h"
+ #include "sema.h"
+ #include <filesystem>
+ 
+@@ -2400,7 +2401,9 @@
+     auto check_return_expression_lifetime(expression_node const& n)
+         -> bool
+     {
+-        assert(!current_functions.empty());
++        if (current_functions.empty()) {
++            return true;    // inside a match expression, skip lifetime checks
++        }
+         auto is_forward_return =
+             !function_returns.empty()
+             && (
+@@ -2474,8 +2477,8 @@
+     auto emit(return_statement_node const& n)
+         -> void
+     {   STACKINSTR
+-        assert (!current_functions.empty());
+-        if (current_functions.back().func->has_postconditions()) {
++        assert (!current_functions.empty() || !current_matches.empty());
++        if (!current_functions.empty() && current_functions.back().func->has_postconditions()) {
+             printer.print_cpp2( "cpp2_finally_presuccess.run(); ", n.position() );
+         }
+ 
+@@ -2520,8 +2523,11 @@
+             }
+ 
+             if (
+-                function_returns.empty()
+-                || function_returns.back().param_list != &single_anon
++                current_matches.empty()
++                && (
++                    function_returns.empty()
++                    || function_returns.back().param_list != &single_anon
++                    )
+                 )
+             {
+                 errors.emplace_back(
+@@ -2545,7 +2551,7 @@
+ 
+         //  Return without expression, could be assignment operator
+         //
+-        else if (generating_assignment_from == current_functions.back().decl)
++        else if (!current_functions.empty() && generating_assignment_from == current_functions.back().decl)
+         {
+             printer.print_cpp2("*this", n.position());
+         }
+@@ -4318,6 +4324,50 @@
+         return {};
+     }
+ 
++    std::vector<match_statement_node const*> current_matches;
++    //-----------------------------------------------------------------------
++    //
++    auto emit(match_statement_node const& n)
++        -> void
++    {
++        current_matches.push_back(&n);
++        auto fn = finally([&] { current_matches.pop_back(); });
++        if (!sema.check(n)) {
++            return;
++        }
++
++        auto mg = match_generator{errors, &n};
++        auto print_f = std::bind(
++            &positional_printer::print_cpp2,
++            &printer,
++            std::placeholders::_1,
++            n.position(),
++            false,
++            false
++        );
++        auto emit_f1 = std::bind(
++            static_cast<
++                void (cppfront::*)(logical_or_expression_node const&)
++            >(&cppfront::emit),
++            this,
++            std::placeholders::_1
++        );
++        auto emit_f2 = std::bind(
++            static_cast<
++                void (cppfront::*)(
++                    compound_statement_node const&,
++                    function_prolog const&,
++                    std::vector<std::string> const&
++                )
++            >(&cppfront::emit),
++            this,
++            std::placeholders::_1,
++            function_prolog{},
++            std::vector<std::string>{}
++        );
++        mg.generate2(print_f, emit_f1, emit_f2, current_functions.empty());
++    }
++
+     //-----------------------------------------------------------------------
+     //
+     auto emit(
+@@ -4389,6 +4439,7 @@
+         try_emit<statement_node::contract   >(n.statement);
+         try_emit<statement_node::inspect    >(n.statement, false);
+         try_emit<statement_node::jump       >(n.statement);
++        try_emit<statement_node::match      >(n.statement);
+ 
+         printer.preempt_position_pop();
+ 
+@@ -6966,6 +7017,11 @@
+                     && printer.get_phase() == printer.phase2_func_defs
+                     )
+                 ||
++                (
++                    n.parent_is_object()
++                    && printer.get_phase() == printer.phase2_func_defs
++                    )
++                ||
+                 (
+                     n.is_inside_global_unnamed_function()
+                     && printer.get_phase() == printer.phase1_type_defs_func_decls

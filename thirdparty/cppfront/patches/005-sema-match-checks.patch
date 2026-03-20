@@ -1,0 +1,40 @@
+--- /tmp/cppfront-v0.8.1/source/sema.h	2026-03-19 11:17:14.429594711 -0700
++++ source/sema.h	2026-03-19 20:07:18.677069290 -0700
+@@ -1594,6 +1594,7 @@
+             n.is_object()
+             && n.initializer
+             && !n.initializer->is_expression()
++            && !n.initializer->is_match()
+             )
+         {
+             handle_error(
+@@ -2113,6 +2114,13 @@
+         return true;
+     }
+ 
++    auto check(match_statement_node const& n)
++        -> bool
++    {
++        /// TODO: dummy. Make the correct semantics checks
++        return true;
++    }
++
+ 
+     //-----------------------------------------------------------------------
+     //  Visitor functions
+@@ -2855,6 +2863,15 @@
+         uses_at_postfix_expression.pop_back();
+     }
+ 
++    auto start(match_statement_node const& n, int) -> void {
++        /// TODO: analyse repeated node and arrow attributes
++        /// and other semantics errors
++    }
++
++    auto end(match_statement_node const&n, int) -> void {
++        /// TODO: same
++    }
++
+     auto start(auto const&, int) -> void
+     {
+         //  Ignore other node types

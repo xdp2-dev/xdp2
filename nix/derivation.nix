@@ -122,9 +122,6 @@ pkgs.stdenv.mkDerivation rec {
     substituteInPlace thirdparty/cppfront/Makefile \
       --replace-fail 'include ../../src/config.mk' '# config.mk not needed for standalone build'
 
-    # Add functional header to cppfront (required for newer GCC)
-    sed -i '1i#include <functional>\n#include <unordered_map>\n' thirdparty/cppfront/include/cpp2util.h
-
     # Patch configure.sh to use CC_GCC from environment (for cross-compilation)
     # The original script sets CC_GCC="gcc" unconditionally, but we need it to
     # respect our host-gcc wrapper which includes the correct include paths

@@ -8,10 +8,12 @@
 
 #include "cpp2util.h"
 
+#line 1 "include/xdp2gen/llvm/patterns.h2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
+#line 1 "include/xdp2gen/llvm/patterns.h2"
 // SPDX-License-Identifier: BSD-2-Clause-FreeBSD
 /*
  * Copyright (c) 2024 SiXDP2 Inc.
@@ -427,6 +429,7 @@ extern match_type metadata_pattern_value_transfer_lhs_load_gep_rhs_arg;
 
 //=== Cpp2 function definitions =================================================
 
+#line 1 "include/xdp2gen/llvm/patterns.h2"
 
 #line 55 "include/xdp2gen/llvm/patterns.h2"
 match_type tlv_pattern_load_gep {[](auto const &g) -> std::vector<std::vector<std::tuple<size_t, std::any>>> requires cpp2::Graph<decltype(g)> {using graph_type = std::remove_cvref_t<decltype(g)>;using graph_attrs = decltype(get_attrs(g, 0));using graph_adj_list = decltype(get_adj_list(g, 0));using graph_attrs_pred = std::function<bool(graph_attrs const&)>;auto match = [](graph_attrs_pred const& pred, auto&& attrs){ return pred(attrs); };using graph_attrs_action = std::function<std::any(const graph_attrs&, const graph_attrs&, const graph_attrs&, const graph_attrs&, const graph_attrs&)>;auto pat = cpp2::fixed_size_pattern_graph<graph_type, 5>{};auto pattern_edges_map = std::map<std::tuple<size_t, size_t>, std::tuple<std::optional<size_t>, std::optional<long>>>{};auto pattern_nodes_action_map = std::unordered_map<size_t, graph_attrs_action>{}; pat.add_attrs(0, [] (graph_attrs const &return_)
@@ -436,17 +439,17 @@ match_type tlv_pattern_load_gep {[](auto const &g) -> std::vector<std::vector<st
         return ::llvm::isa<::llvm::ReturnInst>(return_); 
     });pat.add_edge(0, 1);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &return_, const graph_attrs &zext, const graph_attrs &load, const graph_attrs &get_element_ptr, const graph_attrs &argument) -> std::any{
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
         auto load_size {xdp2gen::llvm::get_integer_size(load)}; 
 
         return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
-            CPP2_UFCS_0_NONLOCAL(getSExtValue, offset) << 3, load_size, size_t(1ul << load_size) - 1, 0
+            CPP2_UFCS_NONLOCAL(getSExtValue)(offset) << 3, load_size, size_t(1ul << load_size) - 1, 0
         ); 
     }}});pat.add_attrs(1, [] (graph_attrs const &zext)
     {
@@ -461,7 +464,7 @@ match_type tlv_pattern_load_gep {[](auto const &g) -> std::vector<std::vector<st
     });pat.add_edge(3, 4);pat.add_attrs(4, [] (graph_attrs const &argument)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 0; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 0; 
     });pattern_edges_map.insert({{0, 1}, {1, std::nullopt}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{2, 3}, {1, 0}});pattern_edges_map.insert({{3, 4}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 100 "include/xdp2gen/llvm/patterns.h2"
@@ -483,7 +486,7 @@ match_type tlv_pattern_load {[](auto const &g) -> std::vector<std::vector<std::t
     });pat.add_edge(2, 3);pat.add_attrs(3, [] (graph_attrs const &argument)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 0; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 0; 
     });pattern_edges_map.insert({{0, 1}, {1, std::nullopt}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{2, 3}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 128 "include/xdp2gen/llvm/patterns.h2"
@@ -494,7 +497,7 @@ match_type tlv_pattern_const {[](auto const &g) -> std::vector<std::vector<std::
         return ::llvm::isa<::llvm::ReturnInst>(return_); 
     });pat.add_edge(0, 1);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &return_, const graph_attrs &constant) -> std::any{
         auto v {::llvm::dyn_cast<::llvm::Constant>(constant)}; 
-        auto const_val {CPP2_UFCS_0(getSExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(v))))}; 
+        auto const_val {CPP2_UFCS(getSExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(v))))}; 
 
         return xdp2gen::llvm::constant_value(
             const_val, 
@@ -513,17 +516,17 @@ match_type proto_next_pattern_load_gep {[](auto const &g) -> std::vector<std::ve
         return ::llvm::isa<::llvm::ReturnInst>(return_); 
     });pat.add_edge(0, 1);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &return_, const graph_attrs &zext, const graph_attrs &load, const graph_attrs &get_element_ptr, const graph_attrs &argument) -> std::any{
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
         auto load_size {xdp2gen::llvm::get_integer_size(load)}; 
 
         return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
-            CPP2_UFCS_0_NONLOCAL(getSExtValue, offset) << 3, load_size, size_t(1ul << load_size) - 1, 0, 0
+            CPP2_UFCS_NONLOCAL(getSExtValue)(offset) << 3, load_size, size_t(1ul << load_size) - 1, 0, 0
         ); 
     }}});pat.add_attrs(1, [] (graph_attrs const &zext)
     {
@@ -537,7 +540,7 @@ match_type proto_next_pattern_load_gep {[](auto const &g) -> std::vector<std::ve
     });pat.add_edge(3, 4);pat.add_attrs(4, [] (graph_attrs const &argument)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 0; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 0; 
     });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{2, 3}, {1, 0}});pattern_edges_map.insert({{3, 4}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 206 "include/xdp2gen/llvm/patterns.h2"
@@ -553,12 +556,12 @@ match_type proto_next_pattern_shift_load {[](auto const &g) -> std::vector<std::
         auto rhs_const {::llvm::dyn_cast<::llvm::Constant>(shift_rhs)}; 
         auto sign {1}; 
         auto bo {::llvm::dyn_cast<::llvm::BinaryOperator>(shift)}; 
-        if (CPP2_UFCS_0_NONLOCAL(getOpcode, (*cpp2::assert_not_null(bo))) == ::llvm::Instruction::Shl) {
+        if (CPP2_UFCS_NONLOCAL(getOpcode)((*cpp2::impl::assert_not_null(bo))) == ::llvm::Instruction::Shl) {
             sign = -1;
         }
-        int64_t shift_right {CPP2_UFCS_0(getSExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(rhs_const)))) * sign}; 
+        int64_t shift_right {CPP2_UFCS(getSExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(rhs_const)))) * sign}; 
 
-        if (cpp2::cmp_less(shift_right,0)) {
+        if (cpp2::impl::cmp_less(shift_right,0)) {
             return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
                 0, bit_size, bit_mask, 1ul << (-shift_right)
             ); 
@@ -576,7 +579,7 @@ match_type proto_next_pattern_shift_load {[](auto const &g) -> std::vector<std::
         if (!(bo)) {
             return false; 
         }
-        auto opcode {CPP2_UFCS_0(getOpcode, (*cpp2::assert_not_null(bo)))}; 
+        auto opcode {CPP2_UFCS(getOpcode)((*cpp2::impl::assert_not_null(bo)))}; 
         return opcode == ::llvm::Instruction::Shl 
             || opcode == ::llvm::Instruction::LShr; 
     });pat.add_edge(2, 3);pat.add_edge(2, 5);pat.add_attrs(3, [] (graph_attrs const &load)
@@ -587,7 +590,7 @@ match_type proto_next_pattern_shift_load {[](auto const &g) -> std::vector<std::
     });pat.add_edge(3, 4);pat.add_attrs(4, [] (graph_attrs const &argument)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 0; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 0; 
     });pat.add_attrs(5, [] (graph_attrs const &shift_rhs){return ::llvm::isa<::llvm::Constant>(shift_rhs); });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{2, 3}, {1, 0}});pattern_edges_map.insert({{2, 5}, {1, 1}});pattern_edges_map.insert({{3, 4}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4]), get_attrs(g, mat[5])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 263 "include/xdp2gen/llvm/patterns.h2"
@@ -612,18 +615,18 @@ match_type proto_next_pattern_cond_mask_load {[](auto const &g) -> std::vector<s
 
         auto rhs_const {::llvm::dyn_cast<::llvm::Constant>(binop_and_rhs)}; 
         auto rhs_const_size {xdp2gen::llvm::get_integer_size(rhs_const)}; 
-        auto apint {CPP2_UFCS_0(getSExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(rhs_const))))}; 
+        auto apint {CPP2_UFCS(getSExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(rhs_const))))}; 
         int64_t value_bit_size_mask {(1l << rhs_const_size) - 1}; 
         auto mask_value {apint & value_bit_size_mask}; 
         auto corrected_mask {size_t(mask_value)}; 
 
         auto arr {std::bit_cast<std::array<std::byte,sizeof(corrected_mask)>>(corrected_mask)}; 
-        std::reverse(CPP2_UFCS_0_NONLOCAL(begin, arr), CPP2_UFCS_0_NONLOCAL(end, arr));
+        std::reverse(CPP2_UFCS_NONLOCAL(begin)(arr), CPP2_UFCS_NONLOCAL(end)(arr));
         corrected_mask = std::bit_cast<decltype(corrected_mask)>(arr);
 
         corrected_mask = 
             corrected_mask >> 
-                (((sizeof(corrected_mask) << 3) / rhs_const_size) - 1) * 
+                (((sizeof(corrected_mask) << 3) / CPP2_ASSERT_NOT_ZERO(CPP2_TYPEOF((sizeof(corrected_mask) << 3)),rhs_const_size)) - 1) * 
                     rhs_const_size;
 
         return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
@@ -636,31 +639,31 @@ match_type proto_next_pattern_cond_mask_load {[](auto const &g) -> std::vector<s
         xdp2gen::llvm::condition cond {}; 
 
         auto icmp_inst {::llvm::dyn_cast<::llvm::ICmpInst>(icmp)}; 
-        cond.comparison_op = CPP2_UFCS_0_NONLOCAL(getPredicate, (*cpp2::assert_not_null(icmp_inst)));
+        cond.comparison_op = CPP2_UFCS_NONLOCAL(getPredicate)((*cpp2::impl::assert_not_null(icmp_inst)));
 
         auto rhs_const {::llvm::dyn_cast<::llvm::Constant>(select_rhs)}; 
-        auto const_value {CPP2_UFCS_0(getSExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(rhs_const))))}; 
+        auto const_value {CPP2_UFCS(getSExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(rhs_const))))}; 
         auto const_bit_size {xdp2gen::llvm::get_integer_size(rhs_const)}; 
         cond.default_fail = xdp2gen::llvm::constant_value(const_value, const_bit_size);
 
         rhs_const = ::llvm::dyn_cast<::llvm::Constant>(icmp_rhs);
-        const_value = CPP2_UFCS_0_NONLOCAL(getSExtValue, CPP2_UFCS_0_NONLOCAL(getUniqueInteger, (*cpp2::assert_not_null(rhs_const))));
+        const_value = CPP2_UFCS_NONLOCAL(getSExtValue)(CPP2_UFCS_NONLOCAL(getUniqueInteger)((*cpp2::impl::assert_not_null(rhs_const))));
         const_bit_size = xdp2gen::llvm::get_integer_size(rhs_const);
         cond.rhs = xdp2gen::llvm::constant_value(const_value, const_bit_size);
 
         auto load_size {xdp2gen::llvm::get_integer_size(load)}; 
         rhs_const = ::llvm::dyn_cast<::llvm::Constant>(binop_and_rhs);
         auto rhs_const_size {xdp2gen::llvm::get_integer_size(rhs_const)}; 
-        auto apint {CPP2_UFCS_0(getSExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(rhs_const))))}; 
+        auto apint {CPP2_UFCS(getSExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(rhs_const))))}; 
         int64_t value_bit_size_mask {(1l << rhs_const_size) - 1}; 
         auto mask_value {apint & value_bit_size_mask}; 
         auto corrected_mask {size_t(mask_value)}; 
         auto arr {std::bit_cast<std::array<std::byte,sizeof(corrected_mask)>>(corrected_mask)}; 
-        std::reverse(CPP2_UFCS_0_NONLOCAL(begin, arr), CPP2_UFCS_0_NONLOCAL(end, arr));
+        std::reverse(CPP2_UFCS_NONLOCAL(begin)(arr), CPP2_UFCS_NONLOCAL(end)(arr));
         corrected_mask = std::bit_cast<decltype(corrected_mask)>(arr);
         corrected_mask = 
             corrected_mask >> 
-                (((sizeof(corrected_mask) << 3) / rhs_const_size) - 1) * 
+                (((sizeof(corrected_mask) << 3) / CPP2_ASSERT_NOT_ZERO(CPP2_TYPEOF((sizeof(corrected_mask) << 3)),rhs_const_size)) - 1) * 
                     rhs_const_size;
         cond.lhs = xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
             0, load_size, corrected_mask, 0, 0
@@ -677,7 +680,7 @@ match_type proto_next_pattern_cond_mask_load {[](auto const &g) -> std::vector<s
 #line 373 "include/xdp2gen/llvm/patterns.h2"
     {
         auto bo {::llvm::dyn_cast<::llvm::BinaryOperator>(binop_and)}; 
-        return bo && CPP2_UFCS_0_NONLOCAL(getOpcode, (*cpp2::assert_not_null(bo))) == ::llvm::Instruction::And; 
+        return bo && CPP2_UFCS_NONLOCAL(getOpcode)((*cpp2::impl::assert_not_null(bo))) == ::llvm::Instruction::And; 
     });pat.add_edge(3, 4);pat.add_edge(3, 9);pat.add_attrs(4, [] (graph_attrs const &load)
 
 #line 380 "include/xdp2gen/llvm/patterns.h2"
@@ -686,7 +689,7 @@ match_type proto_next_pattern_cond_mask_load {[](auto const &g) -> std::vector<s
     });pat.add_edge(4, 5);pat.add_attrs(5, [] (graph_attrs const &argument)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 0; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 0; 
     });pat.add_attrs(6, [] (graph_attrs const &select_lhs){return ::llvm::isa<::llvm::Constant>(select_lhs); });pat.add_attrs(7, [] (graph_attrs const &select_rhs){return ::llvm::isa<::llvm::Constant>(select_rhs); });pat.add_attrs(8, [] (graph_attrs const &icmp_rhs){return ::llvm::isa<::llvm::Constant>(icmp_rhs); });pat.add_attrs(9, [] (graph_attrs const &binop_and_rhs){return ::llvm::isa<::llvm::Constant>(binop_and_rhs); });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{1, 6}, {1, 1}});pattern_edges_map.insert({{1, 7}, {1, 2}});pattern_edges_map.insert({{2, 3}, {1, 0}});pattern_edges_map.insert({{2, 8}, {1, 1}});pattern_edges_map.insert({{3, 4}, {1, 0}});pattern_edges_map.insert({{3, 9}, {1, 1}});pattern_edges_map.insert({{4, 5}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4]), get_attrs(g, mat[5]), get_attrs(g, mat[6]), get_attrs(g, mat[7]), get_attrs(g, mat[8]), get_attrs(g, mat[9])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 401 "include/xdp2gen/llvm/patterns.h2"
@@ -698,20 +701,20 @@ match_type proto_next_pattern_mask_shift_load {[](auto const &g) -> std::vector<
     });pat.add_edge(0, 1);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &return_, const graph_attrs &zext, const graph_attrs &binop_and, const graph_attrs &shift, const graph_attrs &load, const graph_attrs &argument, const graph_attrs &binop_and_rhs, const graph_attrs &shift_rhs) -> std::any{
         auto rhs_const {::llvm::dyn_cast<::llvm::Constant>(binop_and_rhs)}; 
         size_t bit_size {xdp2gen::llvm::get_integer_size(rhs_const)}; 
-        int64_t apint {CPP2_UFCS_0(getSExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(rhs_const))))}; 
+        int64_t apint {CPP2_UFCS(getSExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(rhs_const))))}; 
         int64_t value_bit_size_mask {(1ll << bit_size) - 1}; 
         int64_t mask_value {apint & value_bit_size_mask}; 
 
         rhs_const = ::llvm::dyn_cast<::llvm::Constant>(shift_rhs);
         auto sign {1}; 
         auto bo {::llvm::dyn_cast<::llvm::BinaryOperator>(shift)}; 
-        if (CPP2_UFCS_0_NONLOCAL(getOpcode, (*cpp2::assert_not_null(bo))) == ::llvm::Instruction::Shl) {
+        if (CPP2_UFCS_NONLOCAL(getOpcode)((*cpp2::impl::assert_not_null(bo))) == ::llvm::Instruction::Shl) {
             sign = -1;
         }
-        int64_t shift_right {CPP2_UFCS_0(getSExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(rhs_const)))) * sign}; 
+        int64_t shift_right {CPP2_UFCS(getSExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(rhs_const)))) * sign}; 
 
         size_t bit_mask {0}; 
-        if (cpp2::cmp_less(shift_right,0)) {
+        if (cpp2::impl::cmp_less(shift_right,0)) {
             bit_mask = mask_value >> (-shift_right);
         }else {
             bit_mask = mask_value << shift_right;
@@ -719,12 +722,12 @@ match_type proto_next_pattern_mask_shift_load {[](auto const &g) -> std::vector<
 
         auto corrected_mask {bit_mask}; 
         auto size_bytes {bit_size >> 3}; 
-        if (cpp2::cmp_greater(size_bytes,1ul)) {
+        if (cpp2::impl::cmp_greater(size_bytes,1ul)) {
             auto arr {std::bit_cast<std::array<std::byte,sizeof(corrected_mask)>>(corrected_mask)}; 
-            std::reverse(CPP2_UFCS_0_NONLOCAL(begin, arr), CPP2_UFCS_0_NONLOCAL(begin, arr) + size_bytes);
+            std::reverse(CPP2_UFCS_NONLOCAL(begin)(arr), CPP2_UFCS_NONLOCAL(begin)(arr) + size_bytes);
             corrected_mask = std::bit_cast<decltype(corrected_mask)>(arr);
         }
-        if (cpp2::cmp_less(shift_right,0)) {
+        if (cpp2::impl::cmp_less(shift_right,0)) {
             return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
                 0, bit_size, corrected_mask, 1ul << (-shift_right)
             ); 
@@ -739,7 +742,7 @@ match_type proto_next_pattern_mask_shift_load {[](auto const &g) -> std::vector<
     });pat.add_edge(1, 2);pat.add_attrs(2, [] (graph_attrs const &binop_and)
     {
         auto bo {::llvm::dyn_cast<::llvm::BinaryOperator>(binop_and)}; 
-        return bo && CPP2_UFCS_0_NONLOCAL(getOpcode, (*cpp2::assert_not_null(bo))) == ::llvm::Instruction::And; 
+        return bo && CPP2_UFCS_NONLOCAL(getOpcode)((*cpp2::impl::assert_not_null(bo))) == ::llvm::Instruction::And; 
     });pat.add_edge(2, 3);pat.add_edge(2, 6);pat.add_attrs(3, [] (graph_attrs const &shift)
 
 #line 457 "include/xdp2gen/llvm/patterns.h2"
@@ -748,7 +751,7 @@ match_type proto_next_pattern_mask_shift_load {[](auto const &g) -> std::vector<
         if (!(bo)) {
             return false; 
         }
-        auto opcode {CPP2_UFCS_0(getOpcode, (*cpp2::assert_not_null(bo)))}; 
+        auto opcode {CPP2_UFCS(getOpcode)((*cpp2::impl::assert_not_null(bo)))}; 
         return opcode == ::llvm::Instruction::Shl 
             || opcode == ::llvm::Instruction::LShr; 
     });pat.add_edge(3, 4);pat.add_edge(3, 7);pat.add_attrs(4, [] (graph_attrs const &load)
@@ -759,7 +762,7 @@ match_type proto_next_pattern_mask_shift_load {[](auto const &g) -> std::vector<
     });pat.add_edge(4, 5);pat.add_attrs(5, [] (graph_attrs const &argument)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 0; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 0; 
     });pat.add_attrs(6, [] (graph_attrs const &binop_and_rhs){return ::llvm::isa<::llvm::Constant>(binop_and_rhs); });pat.add_attrs(7, [] (graph_attrs const &shift_rhs){return ::llvm::isa<::llvm::Constant>(shift_rhs); });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{2, 3}, {1, 0}});pattern_edges_map.insert({{2, 6}, {1, 1}});pattern_edges_map.insert({{3, 4}, {1, 0}});pattern_edges_map.insert({{3, 7}, {1, 1}});pattern_edges_map.insert({{4, 5}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4]), get_attrs(g, mat[5]), get_attrs(g, mat[6]), get_attrs(g, mat[7])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 491 "include/xdp2gen/llvm/patterns.h2"
@@ -770,30 +773,30 @@ match_type proto_next_pattern_mask_shift_gep {[](auto const &g) -> std::vector<s
         return ::llvm::isa<::llvm::ReturnInst>(return_); 
     });pat.add_edge(0, 1);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &return_, const graph_attrs &zext, const graph_attrs &binop_and, const graph_attrs &shift, const graph_attrs &load, const graph_attrs &get_element_ptr, const graph_attrs &argument, const graph_attrs &binop_and_rhs, const graph_attrs &shift_rhs) -> std::any{
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto bit_offset {size_t(CPP2_UFCS_0(getSExtValue, offset) << 3)}; 
+        auto bit_offset {size_t(CPP2_UFCS(getSExtValue)(offset) << 3)}; 
 
         auto rhs_const {::llvm::dyn_cast<::llvm::Constant>(binop_and_rhs)}; 
         size_t bit_size {xdp2gen::llvm::get_integer_size(rhs_const)}; 
-        int64_t apint {CPP2_UFCS_0(getSExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(rhs_const))))}; 
+        int64_t apint {CPP2_UFCS(getSExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(rhs_const))))}; 
         int64_t value_bit_size_mask {(1ll << bit_size) - 1}; 
         int64_t mask_value {apint & value_bit_size_mask}; 
 
         rhs_const = ::llvm::dyn_cast<::llvm::Constant>(shift_rhs);
         auto sign {1}; 
         auto bo {::llvm::dyn_cast<::llvm::BinaryOperator>(shift)}; 
-        if (CPP2_UFCS_0_NONLOCAL(getOpcode, (*cpp2::assert_not_null(bo))) == ::llvm::Instruction::Shl) {
+        if (CPP2_UFCS_NONLOCAL(getOpcode)((*cpp2::impl::assert_not_null(bo))) == ::llvm::Instruction::Shl) {
             sign = -1;
         }
-        int64_t shift_right {CPP2_UFCS_0(getSExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(rhs_const)))) * sign}; 
+        int64_t shift_right {CPP2_UFCS(getSExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(rhs_const)))) * sign}; 
 
         size_t bit_mask {0}; 
-        if (cpp2::cmp_less(shift_right,0)) {
+        if (cpp2::impl::cmp_less(shift_right,0)) {
             bit_mask = mask_value >> (-shift_right);
         }else {
             bit_mask = mask_value << shift_right;
@@ -801,12 +804,12 @@ match_type proto_next_pattern_mask_shift_gep {[](auto const &g) -> std::vector<s
 
         auto corrected_mask {bit_mask}; 
         auto size_bytes {bit_size >> 3}; 
-        if (cpp2::cmp_greater(size_bytes,1ul)) {
+        if (cpp2::impl::cmp_greater(size_bytes,1ul)) {
             auto arr {std::bit_cast<std::array<std::byte,sizeof(corrected_mask)>>(corrected_mask)}; 
-            std::reverse(CPP2_UFCS_0_NONLOCAL(begin, arr), CPP2_UFCS_0_NONLOCAL(begin, arr) + size_bytes);
+            std::reverse(CPP2_UFCS_NONLOCAL(begin)(arr), CPP2_UFCS_NONLOCAL(begin)(arr) + size_bytes);
             corrected_mask = std::bit_cast<decltype(corrected_mask)>(arr);
         }
-        if (cpp2::cmp_less(shift_right,0)) {
+        if (cpp2::impl::cmp_less(shift_right,0)) {
             return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
                 bit_offset, bit_size, corrected_mask, 1ul << (-shift_right)
             ); 
@@ -821,7 +824,7 @@ match_type proto_next_pattern_mask_shift_gep {[](auto const &g) -> std::vector<s
     });pat.add_edge(1, 2);pat.add_attrs(2, [] (graph_attrs const &binop_and)
     {
         auto bo {::llvm::dyn_cast<::llvm::BinaryOperator>(binop_and)}; 
-        return bo && CPP2_UFCS_0_NONLOCAL(getOpcode, (*cpp2::assert_not_null(bo))) == ::llvm::Instruction::And; 
+        return bo && CPP2_UFCS_NONLOCAL(getOpcode)((*cpp2::impl::assert_not_null(bo))) == ::llvm::Instruction::And; 
     });pat.add_edge(2, 3);pat.add_edge(2, 7);pat.add_attrs(3, [] (graph_attrs const &shift)
 
 #line 556 "include/xdp2gen/llvm/patterns.h2"
@@ -830,7 +833,7 @@ match_type proto_next_pattern_mask_shift_gep {[](auto const &g) -> std::vector<s
         if (!(bo)) {
             return false; 
         }
-        auto opcode {CPP2_UFCS_0(getOpcode, (*cpp2::assert_not_null(bo)))}; 
+        auto opcode {CPP2_UFCS(getOpcode)((*cpp2::impl::assert_not_null(bo)))}; 
         return opcode == ::llvm::Instruction::Shl 
             || opcode == ::llvm::Instruction::LShr; 
     });pat.add_edge(3, 4);pat.add_edge(3, 8);pat.add_attrs(4, [] (graph_attrs const &load)
@@ -844,7 +847,7 @@ match_type proto_next_pattern_mask_shift_gep {[](auto const &g) -> std::vector<s
     });pat.add_edge(5, 6);pat.add_attrs(6, [] (graph_attrs const &argument)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 0; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 0; 
     });pat.add_attrs(7, [] (graph_attrs const &binop_and_rhs){return ::llvm::isa<::llvm::Constant>(binop_and_rhs); });pat.add_attrs(8, [] (graph_attrs const &shift_rhs){return ::llvm::isa<::llvm::Constant>(shift_rhs); });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{2, 3}, {1, 0}});pattern_edges_map.insert({{2, 7}, {1, 1}});pattern_edges_map.insert({{3, 4}, {1, 0}});pattern_edges_map.insert({{3, 8}, {1, 1}});pattern_edges_map.insert({{4, 5}, {1, 0}});pattern_edges_map.insert({{5, 6}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4]), get_attrs(g, mat[5]), get_attrs(g, mat[6]), get_attrs(g, mat[7]), get_attrs(g, mat[8])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 589 "include/xdp2gen/llvm/patterns.h2"
@@ -869,7 +872,7 @@ match_type proto_next_pattern_load {[](auto const &g) -> std::vector<std::vector
     });pat.add_edge(2, 3);pat.add_attrs(3, [] (graph_attrs const &argument)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 0; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 0; 
     });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{2, 3}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 639 "include/xdp2gen/llvm/patterns.h2"
@@ -880,59 +883,59 @@ match_type proto_next_pattern_branch_mask_load_gep {[](auto const &g) -> std::ve
         return ::llvm::isa<::llvm::ReturnInst>(return_); 
     });pat.add_edge(0, 1);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &return_, const graph_attrs &phi, const graph_attrs &branch1, const graph_attrs &zext, const graph_attrs &load1, const graph_attrs &get_element_ptr1, const graph_attrs &argument, const graph_attrs &branch2, const graph_attrs &icmp, const graph_attrs &binop_and, const graph_attrs &load2, const graph_attrs &get_element_ptr2, const graph_attrs &icmp_rhs, const graph_attrs &binop_and_rhs, const graph_attrs &phi_constant) -> std::any{
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr1)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
         auto load_size {xdp2gen::llvm::get_integer_size(load1)}; 
 
         return xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
-            CPP2_UFCS_0_NONLOCAL(getSExtValue, offset) << 3, load_size, size_t(1ul << load_size) - 1, 0, 0
+            CPP2_UFCS_NONLOCAL(getSExtValue)(offset) << 3, load_size, size_t(1ul << load_size) - 1, 0, 0
         ); 
     }}});pat.add_attrs(1, [] (graph_attrs const &phi)
     {
         auto pn {::llvm::dyn_cast<::llvm::PHINode>(phi)}; 
-        return pn && CPP2_UFCS_0_NONLOCAL(getNumOperands, (*cpp2::assert_not_null(pn))) == 2; 
+        return pn && CPP2_UFCS_NONLOCAL(getNumOperands)((*cpp2::impl::assert_not_null(pn))) == 2; 
     });pat.add_edge(1, 2);pat.add_edge(1, 3);pat.add_edge(1, 7);pat.add_edge(1, 14);pattern_nodes_action_map.insert({1, graph_attrs_action{[] (const graph_attrs &return_, const graph_attrs &phi, const graph_attrs &branch1, const graph_attrs &zext, const graph_attrs &load1, const graph_attrs &get_element_ptr1, const graph_attrs &argument, const graph_attrs &branch2, const graph_attrs &icmp, const graph_attrs &binop_and, const graph_attrs &load2, const graph_attrs &get_element_ptr2, const graph_attrs &icmp_rhs, const graph_attrs &binop_and_rhs, const graph_attrs &phi_constant) -> std::any{
         xdp2gen::llvm::condition cond {}; 
 
         auto icmp_inst {::llvm::dyn_cast<::llvm::ICmpInst>(icmp)}; 
-        cond.comparison_op = CPP2_UFCS_0_NONLOCAL(getPredicate, (*cpp2::assert_not_null(icmp_inst)));
+        cond.comparison_op = CPP2_UFCS_NONLOCAL(getPredicate)((*cpp2::impl::assert_not_null(icmp_inst)));
 
         auto rhs_const {::llvm::dyn_cast<::llvm::Constant>(phi_constant)}; 
-        auto const_value {CPP2_UFCS_0(getSExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(rhs_const))))}; 
+        auto const_value {CPP2_UFCS(getSExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(rhs_const))))}; 
         auto const_bit_size {xdp2gen::llvm::get_integer_size(rhs_const)}; 
         cond.default_fail = xdp2gen::llvm::constant_value(const_value, const_bit_size);
 
         rhs_const = ::llvm::dyn_cast<::llvm::Constant>(icmp_rhs);
-        const_value = CPP2_UFCS_0_NONLOCAL(getSExtValue, CPP2_UFCS_0_NONLOCAL(getUniqueInteger, (*cpp2::assert_not_null(rhs_const))));
+        const_value = CPP2_UFCS_NONLOCAL(getSExtValue)(CPP2_UFCS_NONLOCAL(getUniqueInteger)((*cpp2::impl::assert_not_null(rhs_const))));
         const_bit_size = xdp2gen::llvm::get_integer_size(rhs_const);
         cond.rhs = xdp2gen::llvm::constant_value(const_value, const_bit_size);
 
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr2)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto bit_offset {CPP2_UFCS_0(getSExtValue, offset) << 3}; 
+        auto bit_offset {CPP2_UFCS(getSExtValue)(offset) << 3}; 
         auto load_size {xdp2gen::llvm::get_integer_size(load2)}; 
         rhs_const = ::llvm::dyn_cast<::llvm::Constant>(binop_and_rhs);
         auto rhs_const_size {xdp2gen::llvm::get_integer_size(rhs_const)}; 
-        auto apint {CPP2_UFCS_0(getSExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(rhs_const))))}; 
+        auto apint {CPP2_UFCS(getSExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(rhs_const))))}; 
         int64_t value_bit_size_mask {(1l << rhs_const_size) - 1}; 
         auto mask_value {apint & value_bit_size_mask}; 
         auto corrected_mask {size_t(mask_value)}; 
         auto arr {std::bit_cast<std::array<std::byte,sizeof(corrected_mask)>>(corrected_mask)}; 
-        std::reverse(CPP2_UFCS_0_NONLOCAL(begin, arr), CPP2_UFCS_0_NONLOCAL(end, arr));
+        std::reverse(CPP2_UFCS_NONLOCAL(begin)(arr), CPP2_UFCS_NONLOCAL(end)(arr));
         corrected_mask = std::bit_cast<decltype(corrected_mask)>(arr);
         corrected_mask = 
             corrected_mask >> 
-                (((sizeof(corrected_mask) << 3) / rhs_const_size) - 1) * 
+                (((sizeof(corrected_mask) << 3) / CPP2_ASSERT_NOT_ZERO(CPP2_TYPEOF((sizeof(corrected_mask) << 3)),rhs_const_size)) - 1) * 
                     rhs_const_size;
         cond.lhs = xdp2gen::llvm::packet_buffer_offset_masked_multiplied(
             bit_offset, load_size, corrected_mask, 0, 0
@@ -942,7 +945,7 @@ match_type proto_next_pattern_branch_mask_load_gep {[](auto const &g) -> std::ve
     }}});pat.add_attrs(2, [] (graph_attrs const &branch1)
     {
         auto b {::llvm::dyn_cast<::llvm::BranchInst>(branch1)}; 
-        return b && CPP2_UFCS_0_NONLOCAL(isUnconditional, (*cpp2::assert_not_null(b))); 
+        return b && CPP2_UFCS_NONLOCAL(isUnconditional)((*cpp2::impl::assert_not_null(b))); 
     });pat.add_attrs(3, [] (graph_attrs const &zext)
     {
         return ::llvm::isa<::llvm::ZExtInst>(zext); 
@@ -955,12 +958,12 @@ match_type proto_next_pattern_branch_mask_load_gep {[](auto const &g) -> std::ve
     });pat.add_edge(5, 6);pat.add_attrs(6, [] (graph_attrs const &argument)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 0; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 0; 
     });pat.add_attrs(7, [] (graph_attrs const &branch2)
 
     {
         auto b {::llvm::dyn_cast<::llvm::BranchInst>(branch2)}; 
-        return b && CPP2_UFCS_0_NONLOCAL(isConditional, (*cpp2::assert_not_null(b))); 
+        return b && CPP2_UFCS_NONLOCAL(isConditional)((*cpp2::impl::assert_not_null(b))); 
     });pat.add_edge(7, 8);pat.add_attrs(8, [] (graph_attrs const &icmp)
     {
         return ::llvm::isa<::llvm::ICmpInst>(icmp); 
@@ -969,7 +972,7 @@ match_type proto_next_pattern_branch_mask_load_gep {[](auto const &g) -> std::ve
 #line 741 "include/xdp2gen/llvm/patterns.h2"
     {
         auto bo {::llvm::dyn_cast<::llvm::BinaryOperator>(binop_and)}; 
-        return bo && CPP2_UFCS_0_NONLOCAL(getOpcode, (*cpp2::assert_not_null(bo))) == ::llvm::Instruction::And; 
+        return bo && CPP2_UFCS_NONLOCAL(getOpcode)((*cpp2::impl::assert_not_null(bo))) == ::llvm::Instruction::And; 
     });pat.add_edge(9, 10);pat.add_edge(9, 13);pat.add_attrs(10, [] (graph_attrs const &load2)
 
 #line 748 "include/xdp2gen/llvm/patterns.h2"
@@ -991,26 +994,26 @@ match_type metadata_pattern_transfer_lhs_load_gep_rhs_gep {[](auto const &g) -> 
         return ::llvm::isa<::llvm::StoreInst>(store); 
     });pat.add_edge(0, 1);pat.add_edge(0, 4);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &store, const graph_attrs &load, const graph_attrs &get_element_ptr1, const graph_attrs &argument1, const graph_attrs &get_element_ptr2, const graph_attrs &argument2) -> std::any{
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr1)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto src_bit_offset {size_t(CPP2_UFCS_0(getSExtValue, offset) << 3)}; 
+        auto src_bit_offset {size_t(CPP2_UFCS(getSExtValue)(offset) << 3)}; 
 
         gep = ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr2);
         offset = ::llvm::APInt(64, 0, false);
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto dst_bit_offset {size_t(CPP2_UFCS_0(getSExtValue, offset) << 3)}; 
+        auto dst_bit_offset {size_t(CPP2_UFCS(getSExtValue)(offset) << 3)}; 
 
         size_t bit_size {xdp2gen::llvm::get_integer_size(load)}; 
 
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        auto is_frame {CPP2_UFCS_0(getArgNo, (*cpp2::assert_not_null(arg))) == 4}; 
+        auto is_frame {CPP2_UFCS(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4}; 
 
         return xdp2gen::llvm::metadata_transfer(
             src_bit_offset, dst_bit_offset, bit_size, is_frame, 
@@ -1025,14 +1028,14 @@ match_type metadata_pattern_transfer_lhs_load_gep_rhs_gep {[](auto const &g) -> 
     });pat.add_edge(2, 3);pat.add_attrs(3, [] (graph_attrs const &argument1)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument1)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 0; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 0; 
     });pat.add_attrs(4, [] (graph_attrs const &get_element_ptr2)
     {
         return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr2); 
     });pat.add_edge(4, 5);pat.add_attrs(5, [] (graph_attrs const &argument2)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        return arg && (CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 3 || CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 4); 
+        return arg && (CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 3 || CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4); 
     });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{0, 4}, {1, 1}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{2, 3}, {1, 0}});pattern_edges_map.insert({{4, 5}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4]), get_attrs(g, mat[5])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 840 "include/xdp2gen/llvm/patterns.h2"
@@ -1043,18 +1046,18 @@ match_type metadata_pattern_transfer_lhs_load_rhs_gep {[](auto const &g) -> std:
         return ::llvm::isa<::llvm::StoreInst>(store); 
     });pat.add_edge(0, 1);pat.add_edge(0, 3);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &store, const graph_attrs &load, const graph_attrs &argument1, const graph_attrs &get_element_ptr, const graph_attrs &argument2) -> std::any{
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto dst_bit_offset {size_t(CPP2_UFCS_0(getSExtValue, offset) << 3)}; 
+        auto dst_bit_offset {size_t(CPP2_UFCS(getSExtValue)(offset) << 3)}; 
 
         size_t bit_size {xdp2gen::llvm::get_integer_size(load)}; 
 
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        auto is_frame {CPP2_UFCS_0(getArgNo, (*cpp2::assert_not_null(arg))) == 4}; 
+        auto is_frame {CPP2_UFCS(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4}; 
 
         return xdp2gen::llvm::metadata_transfer(
             0, dst_bit_offset, bit_size, is_frame, 
@@ -1066,14 +1069,14 @@ match_type metadata_pattern_transfer_lhs_load_rhs_gep {[](auto const &g) -> std:
     });pat.add_edge(1, 2);pat.add_attrs(2, [] (graph_attrs const &argument1)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument1)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 0; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 0; 
     });pat.add_attrs(3, [] (graph_attrs const &get_element_ptr)
     {
         return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr); 
     });pat.add_edge(3, 4);pat.add_attrs(4, [] (graph_attrs const &argument2)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        return arg && (CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 3 || CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 4); 
+        return arg && (CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 3 || CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4); 
     });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{0, 3}, {1, 1}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{3, 4}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 893 "include/xdp2gen/llvm/patterns.h2"
@@ -1084,26 +1087,26 @@ match_type metadata_pattern_transfer_lhs_bswap_load_gep_rhs_gep {[](auto const &
         return ::llvm::isa<::llvm::StoreInst>(store); 
     });pat.add_edge(0, 1);pat.add_edge(0, 5);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &store, const graph_attrs &call, const graph_attrs &load, const graph_attrs &get_element_ptr1, const graph_attrs &argument1, const graph_attrs &get_element_ptr2, const graph_attrs &argument2) -> std::any{
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr1)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto src_bit_offset {size_t(CPP2_UFCS_0(getSExtValue, offset) << 3)}; 
+        auto src_bit_offset {size_t(CPP2_UFCS(getSExtValue)(offset) << 3)}; 
 
         gep = ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr2);
         offset = ::llvm::APInt(64, 0, false);
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto dst_bit_offset {size_t(CPP2_UFCS_0(getSExtValue, offset) << 3)}; 
+        auto dst_bit_offset {size_t(CPP2_UFCS(getSExtValue)(offset) << 3)}; 
 
         size_t bit_size {xdp2gen::llvm::get_integer_size(load)}; 
 
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        auto is_frame {CPP2_UFCS_0(getArgNo, (*cpp2::assert_not_null(arg))) == 4}; 
+        auto is_frame {CPP2_UFCS(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4}; 
 
         return xdp2gen::llvm::metadata_transfer(
             src_bit_offset, dst_bit_offset, bit_size, is_frame, 
@@ -1113,7 +1116,7 @@ match_type metadata_pattern_transfer_lhs_bswap_load_gep_rhs_gep {[](auto const &
     {
         auto c {::llvm::dyn_cast<::llvm::CallInst>(call)}; 
         return c 
-            && CPP2_UFCS_NONLOCAL(starts_with, CPP2_UFCS_0_NONLOCAL(getName, (*cpp2::assert_not_null(CPP2_UFCS_0_NONLOCAL(getCalledFunction, (*cpp2::assert_not_null(c)))))), "llvm.bswap"); 
+            && CPP2_UFCS_NONLOCAL(starts_with)(CPP2_UFCS_NONLOCAL(getName)((*cpp2::impl::assert_not_null(CPP2_UFCS_NONLOCAL(getCalledFunction)((*cpp2::impl::assert_not_null(c)))))), "llvm.bswap"); 
     });pat.add_edge(1, 2);pat.add_attrs(2, [] (graph_attrs const &load)
     {
         return ::llvm::isa<::llvm::LoadInst>(load); 
@@ -1123,14 +1126,14 @@ match_type metadata_pattern_transfer_lhs_bswap_load_gep_rhs_gep {[](auto const &
     });pat.add_edge(3, 4);pat.add_attrs(4, [] (graph_attrs const &argument1)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument1)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 0; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 0; 
     });pat.add_attrs(5, [] (graph_attrs const &get_element_ptr2)
     {
         return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr2); 
     });pat.add_edge(5, 6);pat.add_attrs(6, [] (graph_attrs const &argument2)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        return arg && (CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 3 || CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 4); 
+        return arg && (CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 3 || CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4); 
     });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{0, 5}, {1, 1}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{2, 3}, {1, 0}});pattern_edges_map.insert({{3, 4}, {1, 0}});pattern_edges_map.insert({{5, 6}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4]), get_attrs(g, mat[5]), get_attrs(g, mat[6])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 961 "include/xdp2gen/llvm/patterns.h2"
@@ -1141,18 +1144,18 @@ match_type metadata_pattern_transfer_lhs_bsawp_load_rhs_gep {[](auto const &g) -
         return ::llvm::isa<::llvm::StoreInst>(store); 
     });pat.add_edge(0, 1);pat.add_edge(0, 4);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &store, const graph_attrs &call, const graph_attrs &load, const graph_attrs &argument1, const graph_attrs &get_element_ptr, const graph_attrs &argument2) -> std::any{
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto dst_bit_offset {size_t(CPP2_UFCS_0(getSExtValue, offset) << 3)}; 
+        auto dst_bit_offset {size_t(CPP2_UFCS(getSExtValue)(offset) << 3)}; 
 
         size_t bit_size {xdp2gen::llvm::get_integer_size(load)}; 
 
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        auto is_frame {CPP2_UFCS_0(getArgNo, (*cpp2::assert_not_null(arg))) == 4}; 
+        auto is_frame {CPP2_UFCS(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4}; 
 
         return xdp2gen::llvm::metadata_transfer(
             0, dst_bit_offset, bit_size, is_frame, 
@@ -1162,21 +1165,21 @@ match_type metadata_pattern_transfer_lhs_bsawp_load_rhs_gep {[](auto const &g) -
     {
         auto c {::llvm::dyn_cast<::llvm::CallInst>(call)}; 
         return c 
-            && CPP2_UFCS_NONLOCAL(starts_with, CPP2_UFCS_0_NONLOCAL(getName, (*cpp2::assert_not_null(CPP2_UFCS_0_NONLOCAL(getCalledFunction, (*cpp2::assert_not_null(c)))))), "llvm.bswap"); 
+            && CPP2_UFCS_NONLOCAL(starts_with)(CPP2_UFCS_NONLOCAL(getName)((*cpp2::impl::assert_not_null(CPP2_UFCS_NONLOCAL(getCalledFunction)((*cpp2::impl::assert_not_null(c)))))), "llvm.bswap"); 
     });pat.add_edge(1, 2);pat.add_attrs(2, [] (graph_attrs const &load)
     {
         return ::llvm::isa<::llvm::LoadInst>(load); 
     });pat.add_edge(2, 3);pat.add_attrs(3, [] (graph_attrs const &argument1)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument1)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 0; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 0; 
     });pat.add_attrs(4, [] (graph_attrs const &get_element_ptr)
     {
         return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr); 
     });pat.add_edge(4, 5);pat.add_attrs(5, [] (graph_attrs const &argument2)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        return arg && (CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 3 || CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 4); 
+        return arg && (CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 3 || CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4); 
     });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{0, 4}, {1, 1}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{2, 3}, {1, 0}});pattern_edges_map.insert({{4, 5}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4]), get_attrs(g, mat[5])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 1020 "include/xdp2gen/llvm/patterns.h2"
@@ -1187,18 +1190,18 @@ match_type metadata_pattern_transfer_lhs_bsawp_load_gep_rhs_arg {[](auto const &
         return ::llvm::isa<::llvm::StoreInst>(store); 
     });pat.add_edge(0, 1);pat.add_edge(0, 5);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &store, const graph_attrs &call, const graph_attrs &load, const graph_attrs &get_element_ptr, const graph_attrs &argument1, const graph_attrs &argument2) -> std::any{
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto src_bit_offset {size_t(CPP2_UFCS_0(getSExtValue, offset) << 3)}; 
+        auto src_bit_offset {size_t(CPP2_UFCS(getSExtValue)(offset) << 3)}; 
 
         size_t bit_size {xdp2gen::llvm::get_integer_size(load)}; 
 
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        auto is_frame {CPP2_UFCS_0(getArgNo, (*cpp2::assert_not_null(arg))) == 4}; 
+        auto is_frame {CPP2_UFCS(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4}; 
 
         return xdp2gen::llvm::metadata_transfer(
             src_bit_offset, 0, bit_size, is_frame, 
@@ -1208,7 +1211,7 @@ match_type metadata_pattern_transfer_lhs_bsawp_load_gep_rhs_arg {[](auto const &
     {
         auto c {::llvm::dyn_cast<::llvm::CallInst>(call)}; 
         return c 
-            && CPP2_UFCS_NONLOCAL(starts_with, CPP2_UFCS_0_NONLOCAL(getName, (*cpp2::assert_not_null(CPP2_UFCS_0_NONLOCAL(getCalledFunction, (*cpp2::assert_not_null(c)))))), "llvm.bswap"); 
+            && CPP2_UFCS_NONLOCAL(starts_with)(CPP2_UFCS_NONLOCAL(getName)((*cpp2::impl::assert_not_null(CPP2_UFCS_NONLOCAL(getCalledFunction)((*cpp2::impl::assert_not_null(c)))))), "llvm.bswap"); 
     });pat.add_edge(1, 2);pat.add_attrs(2, [] (graph_attrs const &load)
     {
         return ::llvm::isa<::llvm::LoadInst>(load); 
@@ -1218,11 +1221,11 @@ match_type metadata_pattern_transfer_lhs_bsawp_load_gep_rhs_arg {[](auto const &
     });pat.add_edge(3, 4);pat.add_attrs(4, [] (graph_attrs const &argument1)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument1)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 0; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 0; 
     });pat.add_attrs(5, [] (graph_attrs const &argument2)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        return arg && (CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 3 || CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 4); 
+        return arg && (CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 3 || CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4); 
     });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{0, 5}, {1, 1}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{2, 3}, {1, 0}});pattern_edges_map.insert({{3, 4}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4]), get_attrs(g, mat[5])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 1078 "include/xdp2gen/llvm/patterns.h2"
@@ -1235,7 +1238,7 @@ match_type metadata_pattern_transfer_lhs_bswap_load_rhs_arg {[](auto const &g) -
         size_t bit_size {xdp2gen::llvm::get_integer_size(load)}; 
 
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        auto is_frame {CPP2_UFCS_0(getArgNo, (*cpp2::assert_not_null(arg))) == 4}; 
+        auto is_frame {CPP2_UFCS(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4}; 
 
         return xdp2gen::llvm::metadata_transfer(
             0, 0, bit_size, is_frame, 
@@ -1245,18 +1248,18 @@ match_type metadata_pattern_transfer_lhs_bswap_load_rhs_arg {[](auto const &g) -
     {
         auto c {::llvm::dyn_cast<::llvm::CallInst>(call)}; 
         return c 
-            && CPP2_UFCS_NONLOCAL(starts_with, CPP2_UFCS_0_NONLOCAL(getName, (*cpp2::assert_not_null(CPP2_UFCS_0_NONLOCAL(getCalledFunction, (*cpp2::assert_not_null(c)))))), "llvm.bswap"); 
+            && CPP2_UFCS_NONLOCAL(starts_with)(CPP2_UFCS_NONLOCAL(getName)((*cpp2::impl::assert_not_null(CPP2_UFCS_NONLOCAL(getCalledFunction)((*cpp2::impl::assert_not_null(c)))))), "llvm.bswap"); 
     });pat.add_edge(1, 2);pat.add_attrs(2, [] (graph_attrs const &load)
     {
         return ::llvm::isa<::llvm::LoadInst>(load); 
     });pat.add_edge(2, 3);pat.add_attrs(3, [] (graph_attrs const &argument1)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument1)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 0; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 0; 
     });pat.add_attrs(4, [] (graph_attrs const &argument2)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        return arg && (CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 3 || CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 4); 
+        return arg && (CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 3 || CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4); 
     });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{0, 4}, {1, 1}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{2, 3}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 1124 "include/xdp2gen/llvm/patterns.h2"
@@ -1266,30 +1269,30 @@ match_type metadata_pattern_transfer_memcpy_lhs_gep_rhs_gep {[](auto const &g) -
     {
         auto c {::llvm::dyn_cast<::llvm::CallInst>(call)}; 
         return c 
-            && CPP2_UFCS_NONLOCAL(starts_with, CPP2_UFCS_0_NONLOCAL(getName, (*cpp2::assert_not_null(CPP2_UFCS_0_NONLOCAL(getCalledFunction, (*cpp2::assert_not_null(c)))))), "llvm.memcpy"); 
+            && CPP2_UFCS_NONLOCAL(starts_with)(CPP2_UFCS_NONLOCAL(getName)((*cpp2::impl::assert_not_null(CPP2_UFCS_NONLOCAL(getCalledFunction)((*cpp2::impl::assert_not_null(c)))))), "llvm.memcpy"); 
     });pat.add_edge(0, 1);pat.add_edge(0, 3);pat.add_edge(0, 5);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &call, const graph_attrs &get_element_ptr1, const graph_attrs &argument1, const graph_attrs &get_element_ptr2, const graph_attrs &argument2, const graph_attrs &memcpy_size) -> std::any{
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr2)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto src_bit_offset {size_t(CPP2_UFCS_0(getSExtValue, offset) << 3)}; 
+        auto src_bit_offset {size_t(CPP2_UFCS(getSExtValue)(offset) << 3)}; 
 
         gep = ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr1);
         offset = ::llvm::APInt(64, 0, false);
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto dst_bit_offset {size_t(CPP2_UFCS_0(getSExtValue, offset) << 3)}; 
+        auto dst_bit_offset {size_t(CPP2_UFCS(getSExtValue)(offset) << 3)}; 
 
         auto arg2_const {::llvm::dyn_cast<::llvm::Constant>(memcpy_size)}; 
-        auto bit_size {CPP2_UFCS_0(getZExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(arg2_const)))) << 3}; 
+        auto bit_size {CPP2_UFCS(getZExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(arg2_const)))) << 3}; 
 
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument1)}; 
-        auto is_frame {CPP2_UFCS_0(getArgNo, (*cpp2::assert_not_null(arg))) == 4}; 
+        auto is_frame {CPP2_UFCS(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4}; 
 
         return xdp2gen::llvm::metadata_transfer(
             src_bit_offset, dst_bit_offset, bit_size, is_frame, 
@@ -1301,14 +1304,14 @@ match_type metadata_pattern_transfer_memcpy_lhs_gep_rhs_gep {[](auto const &g) -
     });pat.add_edge(1, 2);pat.add_attrs(2, [] (graph_attrs const &argument1)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument1)}; 
-        return arg && (CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 3 || CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 4); 
+        return arg && (CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 3 || CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4); 
     });pat.add_attrs(3, [] (graph_attrs const &get_element_ptr2)
     {
         return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr2); 
     });pat.add_edge(3, 4);pat.add_attrs(4, [] (graph_attrs const &argument2)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 0; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 0; 
     });pat.add_attrs(5, [] (graph_attrs const &memcpy_size)
     {
         return ::llvm::isa<::llvm::Constant>(memcpy_size); 
@@ -1322,20 +1325,20 @@ match_type metadata_pattern_const {[](auto const &g) -> std::vector<std::vector<
         return ::llvm::isa<::llvm::StoreInst>(store); 
     });pat.add_edge(0, 1);pat.add_edge(0, 2);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &store, const graph_attrs &constant, const graph_attrs &get_element_ptr, const graph_attrs &argument) -> std::any{
         auto const_store {::llvm::dyn_cast<::llvm::Constant>(constant)}; 
-        auto const_value {CPP2_UFCS_0(getZExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(const_store))))}; 
+        auto const_value {CPP2_UFCS(getZExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(const_store))))}; 
         auto const_size {xdp2gen::llvm::get_integer_size(const_store)}; 
 
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto bit_offset {CPP2_UFCS_0(getSExtValue, offset) << 3}; 
+        auto bit_offset {CPP2_UFCS(getSExtValue)(offset) << 3}; 
 
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument)}; 
-        auto is_frame {CPP2_UFCS_0(getArgNo, (*cpp2::assert_not_null(arg))) == 4}; 
+        auto is_frame {CPP2_UFCS(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4}; 
 
         return xdp2gen::llvm::metadata_write_constant(
             const_value, const_size, bit_offset, is_frame, std::nullopt, std::nullopt, std::nullopt
@@ -1349,7 +1352,7 @@ match_type metadata_pattern_const {[](auto const &g) -> std::vector<std::vector<
     });pat.add_edge(2, 3);pat.add_attrs(3, [] (graph_attrs const &argument)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument)}; 
-        return arg && (CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 3 || CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 4); 
+        return arg && (CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 3 || CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4); 
     });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{0, 2}, {1, 1}});pattern_edges_map.insert({{2, 3}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 1242 "include/xdp2gen/llvm/patterns.h2"
@@ -1360,24 +1363,24 @@ match_type metadata_pattern_hdr_off {[](auto const &g) -> std::vector<std::vecto
         return ::llvm::isa<::llvm::StoreInst>(store); 
     });pat.add_edge(0, 1);pat.add_edge(0, 3);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &store, const graph_attrs &trunc, const graph_attrs &argument1, const graph_attrs &get_element_ptr, const graph_attrs &argument2) -> std::any{
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto bit_offset {CPP2_UFCS_0(getSExtValue, offset) << 3}; 
+        auto bit_offset {CPP2_UFCS(getSExtValue)(offset) << 3}; 
 
-        auto src_ty {CPP2_UFCS_0(getSourceElementType, (*cpp2::assert_not_null(gep)))}; 
-        auto ops {::llvm::SmallVector<::llvm::Value*>(CPP2_UFCS_0(idx_begin, (*cpp2::assert_not_null(gep))), CPP2_UFCS_0(idx_end, (*cpp2::assert_not_null(gep))))}; 
+        auto src_ty {CPP2_UFCS(getSourceElementType)((*cpp2::impl::assert_not_null(gep)))}; 
+        auto ops {::llvm::SmallVector<::llvm::Value*>(CPP2_UFCS(idx_begin)((*cpp2::impl::assert_not_null(gep))), CPP2_UFCS(idx_end)((*cpp2::impl::assert_not_null(gep))))}; 
         auto ty {::llvm::GetElementPtrInst::getIndexedType(src_ty, ops)}; 
-        auto dl {CPP2_UFCS_0(getDataLayout, (*cpp2::assert_not_null(mod)))}; 
-        auto bit_size {CPP2_UFCS(getTypeAllocSizeInBits, dl, ty)}; 
+        auto dl {CPP2_UFCS(getDataLayout)((*cpp2::impl::assert_not_null(mod)))}; 
+        auto bit_size {CPP2_UFCS(getTypeAllocSizeInBits)(dl, ty)}; 
 
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
 
         return xdp2gen::llvm::metadata_write_header_offset(
-            bit_offset, bit_size, 0, CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 4, std::nullopt
+            bit_offset, bit_size, 0, CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4, std::nullopt
         ); 
     }}});pat.add_attrs(1, [] (graph_attrs const &trunc)
     {
@@ -1385,14 +1388,14 @@ match_type metadata_pattern_hdr_off {[](auto const &g) -> std::vector<std::vecto
     });pat.add_edge(1, 2);pat.add_attrs(2, [] (graph_attrs const &argument1)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument1)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 2; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 2; 
     });pat.add_attrs(3, [] (graph_attrs const &get_element_ptr)
     {
         return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr); 
     });pat.add_edge(3, 4);pat.add_attrs(4, [] (graph_attrs const &argument2)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        return arg && (CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 3 || CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 4); 
+        return arg && (CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 3 || CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4); 
     });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{0, 3}, {1, 1}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{3, 4}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 1298 "include/xdp2gen/llvm/patterns.h2"
@@ -1403,24 +1406,24 @@ match_type metadata_pattern_hdr_len {[](auto const &g) -> std::vector<std::vecto
         return ::llvm::isa<::llvm::StoreInst>(store); 
     });pat.add_edge(0, 1);pat.add_edge(0, 3);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &store, const graph_attrs &trunc, const graph_attrs &argument1, const graph_attrs &get_element_ptr, const graph_attrs &argument2) -> std::any{
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto bit_offset {CPP2_UFCS_0(getSExtValue, offset) << 3}; 
+        auto bit_offset {CPP2_UFCS(getSExtValue)(offset) << 3}; 
 
-        auto src_ty {CPP2_UFCS_0(getSourceElementType, (*cpp2::assert_not_null(gep)))}; 
-        auto ops {::llvm::SmallVector<::llvm::Value*>(CPP2_UFCS_0(idx_begin, (*cpp2::assert_not_null(gep))), CPP2_UFCS_0(idx_end, (*cpp2::assert_not_null(gep))))}; 
+        auto src_ty {CPP2_UFCS(getSourceElementType)((*cpp2::impl::assert_not_null(gep)))}; 
+        auto ops {::llvm::SmallVector<::llvm::Value*>(CPP2_UFCS(idx_begin)((*cpp2::impl::assert_not_null(gep))), CPP2_UFCS(idx_end)((*cpp2::impl::assert_not_null(gep))))}; 
         auto ty {::llvm::GetElementPtrInst::getIndexedType(src_ty, ops)}; 
-        auto dl {CPP2_UFCS_0(getDataLayout, (*cpp2::assert_not_null(mod)))}; 
-        auto bit_size {CPP2_UFCS(getTypeAllocSizeInBits, dl, ty)}; 
+        auto dl {CPP2_UFCS(getDataLayout)((*cpp2::impl::assert_not_null(mod)))}; 
+        auto bit_size {CPP2_UFCS(getTypeAllocSizeInBits)(dl, ty)}; 
 
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
 
         return xdp2gen::llvm::metadata_write_header_length(
-            bit_offset, bit_size, 0, CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 4, std::nullopt
+            bit_offset, bit_size, 0, CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4, std::nullopt
         ); 
     }}});pat.add_attrs(1, [] (graph_attrs const &trunc)
     {
@@ -1428,14 +1431,14 @@ match_type metadata_pattern_hdr_len {[](auto const &g) -> std::vector<std::vecto
     });pat.add_edge(1, 2);pat.add_attrs(2, [] (graph_attrs const &argument1)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument1)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 1; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 1; 
     });pat.add_attrs(3, [] (graph_attrs const &get_element_ptr)
     {
         return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr); 
     });pat.add_edge(3, 4);pat.add_attrs(4, [] (graph_attrs const &argument2)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        return arg && (CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 3 || CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 4); 
+        return arg && (CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 3 || CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4); 
     });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{0, 3}, {1, 1}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{3, 4}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 1352 "include/xdp2gen/llvm/patterns.h2"
@@ -1446,30 +1449,30 @@ match_type metadata_pattern_value_transfer_lhs_load_gep_rhs_gep {[](auto const &
         return ::llvm::isa<::llvm::StoreInst>(store); 
     });pat.add_edge(0, 1);pat.add_edge(0, 5);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &store, const graph_attrs &load, const graph_attrs &get_element_ptr1, const graph_attrs &argument1, const graph_attrs &constant, const graph_attrs &get_element_ptr2, const graph_attrs &argument2) -> std::any{
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr1)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto src_bit_offset {size_t(CPP2_UFCS_0(getSExtValue, offset) << 3)}; 
+        auto src_bit_offset {size_t(CPP2_UFCS(getSExtValue)(offset) << 3)}; 
 
-        auto src_ty {CPP2_UFCS_0(getSourceElementType, (*cpp2::assert_not_null(gep)))}; 
-        auto ops {::llvm::SmallVector<::llvm::Value*>(CPP2_UFCS_0(idx_begin, (*cpp2::assert_not_null(gep))), CPP2_UFCS_0(idx_end, (*cpp2::assert_not_null(gep))))}; 
+        auto src_ty {CPP2_UFCS(getSourceElementType)((*cpp2::impl::assert_not_null(gep)))}; 
+        auto ops {::llvm::SmallVector<::llvm::Value*>(CPP2_UFCS(idx_begin)((*cpp2::impl::assert_not_null(gep))), CPP2_UFCS(idx_end)((*cpp2::impl::assert_not_null(gep))))}; 
         auto ty {::llvm::GetElementPtrInst::getIndexedType(src_ty, ops)}; 
-        auto dl {CPP2_UFCS_0(getDataLayout, (*cpp2::assert_not_null(mod)))}; 
-        size_t bit_size {CPP2_UFCS(getTypeAllocSizeInBits, dl, ty)}; 
+        auto dl {CPP2_UFCS(getDataLayout)((*cpp2::impl::assert_not_null(mod)))}; 
+        size_t bit_size {CPP2_UFCS(getTypeAllocSizeInBits)(dl, ty)}; 
 
         gep = ::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr2);
         offset = ::llvm::APInt(64, 0, false);
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto dst_bit_offset {size_t(CPP2_UFCS_0(getSExtValue, offset) << 3)}; 
+        auto dst_bit_offset {size_t(CPP2_UFCS(getSExtValue)(offset) << 3)}; 
 
         auto c {::llvm::dyn_cast<::llvm::Constant>(constant)}; 
-        auto val {CPP2_UFCS_0(getSExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(c))))}; 
+        auto val {CPP2_UFCS(getSExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(c))))}; 
         std::string type {""}; 
         if (val == 5) {
             type = "num_nodes";
@@ -1492,14 +1495,14 @@ match_type metadata_pattern_value_transfer_lhs_load_gep_rhs_gep {[](auto const &
     });pat.add_edge(2, 3);pat.add_edge(2, 4);pat.add_attrs(3, [] (graph_attrs const &argument1)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument1)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 5; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 5; 
     });pat.add_attrs(4, [] (graph_attrs const &constant)
     {
         auto c {::llvm::dyn_cast<::llvm::Constant>(constant)}; 
         if (!(c)) {
             return false; 
         }
-        auto val {CPP2_UFCS_0(getSExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(c))))}; 
+        auto val {CPP2_UFCS(getSExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(c))))}; 
 
         return val == 0 || val == 5 || val == 6; 
     });pat.add_attrs(5, [] (graph_attrs const &get_element_ptr2)
@@ -1508,7 +1511,7 @@ match_type metadata_pattern_value_transfer_lhs_load_gep_rhs_gep {[](auto const &
     });pat.add_edge(5, 6);pat.add_attrs(6, [] (graph_attrs const &argument2)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        return arg && (CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 3 || CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 4); 
+        return arg && (CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 3 || CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4); 
     });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{0, 5}, {1, 1}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{2, 3}, {1, 0}});pattern_edges_map.insert({{2, 4}, {1, 2}});pattern_edges_map.insert({{5, 6}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4]), get_attrs(g, mat[5]), get_attrs(g, mat[6])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 1434 "include/xdp2gen/llvm/patterns.h2"
@@ -1519,13 +1522,13 @@ match_type metadata_pattern_value_transfer_ret_code {[](auto const &g) -> std::v
         return ::llvm::isa<::llvm::StoreInst>(store); 
     });pat.add_edge(0, 1);pat.add_edge(0, 3);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &store, const graph_attrs &load, const graph_attrs &argument1, const graph_attrs &get_element_ptr, const graph_attrs &argument2) -> std::any{
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto dst_bit_offset {size_t(CPP2_UFCS_0(getSExtValue, offset) << 3)}; 
+        auto dst_bit_offset {size_t(CPP2_UFCS(getSExtValue)(offset) << 3)}; 
 
         size_t bit_size {xdp2gen::llvm::get_integer_size(load)}; 
 
@@ -1539,14 +1542,14 @@ match_type metadata_pattern_value_transfer_ret_code {[](auto const &g) -> std::v
     });pat.add_edge(1, 2);pat.add_attrs(2, [] (graph_attrs const &argument1)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument1)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 5; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 5; 
     });pat.add_attrs(3, [] (graph_attrs const &get_element_ptr)
     {
         return ::llvm::isa<::llvm::GetElementPtrInst>(get_element_ptr); 
     });pat.add_edge(3, 4);pat.add_attrs(4, [] (graph_attrs const &argument2)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        return arg && (CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 3 || CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 4); 
+        return arg && (CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 3 || CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4); 
     });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{0, 3}, {1, 1}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{3, 4}, {1, 0}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 
 #line 1479 "include/xdp2gen/llvm/patterns.h2"
@@ -1557,22 +1560,22 @@ match_type metadata_pattern_value_transfer_lhs_load_gep_rhs_arg {[](auto const &
         return ::llvm::isa<::llvm::StoreInst>(store); 
     });pat.add_edge(0, 1);pat.add_edge(0, 5);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &store, const graph_attrs &load, const graph_attrs &get_element_ptr, const graph_attrs &argument1, const graph_attrs &constant, const graph_attrs &argument2) -> std::any{
         auto gep {::llvm::dyn_cast<::llvm::GetElementPtrInst>(get_element_ptr)}; 
-        auto mod {CPP2_UFCS_0(getModule, (*cpp2::assert_not_null(gep)))}; 
+        auto mod {CPP2_UFCS(getModule)((*cpp2::impl::assert_not_null(gep)))}; 
         auto offset {::llvm::APInt(64, 0, false)}; 
-        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset, (*cpp2::assert_not_null(gep)), CPP2_UFCS_0_NONLOCAL(getDataLayout, (*cpp2::assert_not_null(mod))), offset))) {
+        if (!(CPP2_UFCS_NONLOCAL(accumulateConstantOffset)((*cpp2::impl::assert_not_null(gep)), CPP2_UFCS_NONLOCAL(getDataLayout)((*cpp2::impl::assert_not_null(mod))), offset))) {
             std::cerr << "Could not get constant offset";
             return std::any(); 
         }
-        auto src_bit_offset {size_t(CPP2_UFCS_0(getSExtValue, offset) << 3)}; 
+        auto src_bit_offset {size_t(CPP2_UFCS(getSExtValue)(offset) << 3)}; 
 
-        auto src_ty {CPP2_UFCS_0(getSourceElementType, (*cpp2::assert_not_null(gep)))}; 
-        auto ops {::llvm::SmallVector<::llvm::Value*>(CPP2_UFCS_0(idx_begin, (*cpp2::assert_not_null(gep))), CPP2_UFCS_0(idx_end, (*cpp2::assert_not_null(gep))))}; 
+        auto src_ty {CPP2_UFCS(getSourceElementType)((*cpp2::impl::assert_not_null(gep)))}; 
+        auto ops {::llvm::SmallVector<::llvm::Value*>(CPP2_UFCS(idx_begin)((*cpp2::impl::assert_not_null(gep))), CPP2_UFCS(idx_end)((*cpp2::impl::assert_not_null(gep))))}; 
         auto ty {::llvm::GetElementPtrInst::getIndexedType(src_ty, ops)}; 
-        auto dl {CPP2_UFCS_0(getDataLayout, (*cpp2::assert_not_null(mod)))}; 
-        auto bit_size {CPP2_UFCS(getTypeAllocSizeInBits, dl, ty)}; 
+        auto dl {CPP2_UFCS(getDataLayout)((*cpp2::impl::assert_not_null(mod)))}; 
+        auto bit_size {CPP2_UFCS(getTypeAllocSizeInBits)(dl, ty)}; 
 
         auto c {::llvm::dyn_cast<::llvm::Constant>(constant)}; 
-        auto val {CPP2_UFCS_0(getSExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(c))))}; 
+        auto val {CPP2_UFCS(getSExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(c))))}; 
         std::string type {""}; 
         if (val == 5) {
             type = "num_nodes";
@@ -1595,20 +1598,20 @@ match_type metadata_pattern_value_transfer_lhs_load_gep_rhs_arg {[](auto const &
     });pat.add_edge(2, 3);pat.add_edge(2, 4);pat.add_attrs(3, [] (graph_attrs const &argument1)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument1)}; 
-        return arg && CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 5; 
+        return arg && CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 5; 
     });pat.add_attrs(4, [] (graph_attrs const &constant)
     {
         auto c {::llvm::dyn_cast<::llvm::Constant>(constant)}; 
         if (!(c)) {
             return false; 
         }
-        auto val {CPP2_UFCS_0(getSExtValue, CPP2_UFCS_0(getUniqueInteger, (*cpp2::assert_not_null(c))))}; 
+        auto val {CPP2_UFCS(getSExtValue)(CPP2_UFCS(getUniqueInteger)((*cpp2::impl::assert_not_null(c))))}; 
 
         return val == 0 || val == 5 || val == 6; 
     });pat.add_attrs(5, [] (graph_attrs const &argument2)
     {
         auto arg {::llvm::dyn_cast<::llvm::Argument>(argument2)}; 
-        return arg && (CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 3 || CPP2_UFCS_0_NONLOCAL(getArgNo, (*cpp2::assert_not_null(arg))) == 4); 
+        return arg && (CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 3 || CPP2_UFCS_NONLOCAL(getArgNo)((*cpp2::impl::assert_not_null(arg))) == 4); 
     });pattern_edges_map.insert({{0, 1}, {1, 0}});pattern_edges_map.insert({{0, 5}, {1, 1}});pattern_edges_map.insert({{1, 2}, {1, 0}});pattern_edges_map.insert({{2, 3}, {1, 0}});pattern_edges_map.insert({{2, 4}, {1, 2}});auto matcher = cpp2::vf2::vf2_matcher{g, pat, match};auto matches = matcher.match();auto filter_indexes = [&] (std::vector<size_t> const& mat) {    auto filter_edges = [](auto const &p) {        auto const [attr, index] = p.second;        return index && attr && *attr == 1;    };    for (auto const [edge, edge_attrs] :        std::views::filter(pattern_edges_map, filter_edges)) {        auto const [u, v] = edge;        auto const succ_u = get_adj_list(g, mat[u]);        auto index = *std::get<1>(edge_attrs);        if (index < 0) {            index += std::ssize(succ_u);        }        if (index < 0 || index >= std::ssize(succ_u)) {            return false;        }        auto const it = std::ranges::find(succ_u, mat[v]);        if (it != succ_u.end()) {            if (std::distance(succ_u.begin(), it) != index) {                return false;            }        }    }    return true;};auto S = std::vector<std::vector<std::tuple<size_t, std::any>>>{};for (auto const &mat : matches) {    if (!filter_indexes(mat)) {        continue;    }    size_t i = 0;    auto S_row = std::vector<std::tuple<size_t, std::any>>{};    for (const auto j : mat) {        if (            const auto it = pattern_nodes_action_map.find(i);            it != pattern_nodes_action_map.end()        ) {            S_row.emplace_back(j, it->second(get_attrs(g, mat[0]), get_attrs(g, mat[1]), get_attrs(g, mat[2]), get_attrs(g, mat[3]), get_attrs(g, mat[4]), get_attrs(g, mat[5])            ));        } else {            S_row.emplace_back(j, std::any{});        }        ++i;    }    S.push_back(std::move(S_row));}return S;}}; 
 #endif
         // elements from struct xdp2_ctrl_data

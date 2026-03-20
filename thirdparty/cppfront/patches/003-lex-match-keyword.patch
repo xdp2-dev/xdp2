@@ -1,0 +1,28 @@
+--- /tmp/cppfront-v0.8.1/source/lex.h	2026-03-19 11:17:14.428992827 -0700
++++ source/lex.h	2026-03-19 19:40:10.708057841 -0700
+@@ -405,10 +405,15 @@
+     ++pos;
+     auto current_start = pos;   // the current offset before which the string has been added to ret
+ 
+-    auto parts = string_parts{std::string(text.substr(0, current_start)), // begin sequence ", U", u8" depends on the string type
++    auto begin_seq = std::string(text.substr(0, current_start));
++    auto parts = string_parts{begin_seq, // begin sequence ", U", u8" depends on the string type
+                               "\"", // end sequence
+                               string_parts::on_both_ends}; // add opening and closing sequence to generated string
+ 
++    if (begin_seq == "M") {
++        /// TODO: right here the match object
++    }
++
+     bool escape = false;
+     //  Now we're on the first character of the string itself
+     for (
+@@ -1145,7 +1150,7 @@
+             "goto",
+             "if", "import", "inline", "int", "is",
+             "long",
+-            "module", "mutable",
++            "match", "module", "mutable",
+             "namespace", "noexcept",
+             "operator",
+             "private", "protected", "public",

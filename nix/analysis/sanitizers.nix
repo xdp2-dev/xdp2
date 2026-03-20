@@ -75,8 +75,6 @@ pkgs.stdenv.mkDerivation {
     substituteInPlace thirdparty/cppfront/Makefile \
       --replace-fail 'include ../../src/config.mk' '# config.mk not needed for standalone build'
 
-    sed -i '1i#include <functional>\n#include <unordered_map>\n' thirdparty/cppfront/include/cpp2util.h
-
     substituteInPlace src/configure.sh \
       --replace-fail 'CC_GCC="gcc"' 'CC_GCC="''${CC_GCC:-gcc}"' \
       --replace-fail 'CC_CXX="g++"' 'CC_CXX="''${CC_CXX:-g++}"'

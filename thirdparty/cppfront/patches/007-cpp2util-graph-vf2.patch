@@ -1,0 +1,996 @@
+--- /tmp/cppfront-v0.8.1/include/cpp2util.h	2026-03-19 11:17:14.321594084 -0700
++++ include/cpp2util.h	2026-03-19 20:31:37.871944961 -0700
+@@ -255,6 +255,7 @@
+     #endif
+     #include <algorithm>
+     #include <any>
++    #include <cassert>
+     #include <cerrno>
+     #include <compare>
+     #include <concepts>
+@@ -281,11 +282,13 @@
+     #include <new>
+     #include <random>
+     #include <optional>
++    #include <queue>
+     #if defined(CPP2_USE_SOURCE_LOCATION)
+         #include <source_location>
+     #endif
+     #include <ranges>
+     #include <set>
++    #include <stack>
+     #include <span>
+     #include <sstream>
+     #include <string>
+@@ -296,6 +299,7 @@
+     #ifndef CPP2_NO_RTTI
+         #include <typeinfo>
+     #endif
++    #include <unordered_map>
+     #include <utility>
+     #include <variant>
+     #include <vector>
+@@ -2886,6 +2890,963 @@
+ 
+ using cpp2::cpp2_new;
+ 
++auto operator<=>(const std::any& lhs, const std::any& rhs) {
++    return lhs.type().hash_code() <=> rhs.type().hash_code();
++}
++
++auto operator<=>(
++    const std::tuple<size_t, size_t, std::any> &lhs,
++    const std::tuple<size_t, size_t, std::any> &rhs
++) {
++    auto const [lhs0, lhs1, lhs2] = lhs;
++    auto const [rhs0, rhs1, rhs2] = rhs;
++    auto const cmp = std::make_tuple(lhs0, lhs1) <=> std::make_tuple(rhs0, rhs1);
++    return cmp != std::strong_ordering::equal ?
++        cmp : lhs2 <=> rhs2;
++}
++
++namespace cpp2 {
++
++template <typename G, typename SizeType, size_t Size>
++    requires (
++        std::is_integral_v<SizeType> && std::is_unsigned_v<SizeType>
++    )
++struct fixed_size_pattern_graph_impl {
++    static constexpr SizeType npos = -1;
++    using graph_attrs = decltype(get_attrs(std::declval<G>(), 0UL));
++
++    struct default_pred {
++        bool operator()(graph_attrs const&) const {
++            return true;
++        }
++    };
++    struct node {
++        using attrs_type = std::function<bool(graph_attrs const&)>;
++        using adj_list_type = std::array<SizeType, Size>;
++        using inv_adj_list_type = std::array<SizeType, Size>;
++
++        attrs_type attrs;
++        adj_list_type succ;
++        inv_adj_list_type pred;
++    };
++    std::array<node, Size> nodes;
++
++    fixed_size_pattern_graph_impl()
++    {
++        for (auto &n : nodes) {
++            std::ranges::fill(n.succ, npos);
++            std::ranges::fill(n.pred, npos);
++            n.attrs = default_pred{};
++        }
++    }
++
++    void add_edge(SizeType u, SizeType v) {
++        assert (u < Size && v < Size);
++        {
++            auto it = std::ranges::find(nodes[u].succ, npos);
++            assert (it != nodes[u].succ.end());
++            *it = v;
++        }
++        {
++            auto it = std::ranges::find(nodes[v].pred, npos);
++            assert (it != nodes[v].pred.end());
++            *it = u;
++        }
++    }
++
++    void add_attrs(SizeType u, node::attrs_type const &attrs) {
++        assert (u < Size);
++
++        nodes[u].attrs = attrs;
++    }
++};
++
++template <typename G, size_t Size>
++using small_fixed_size_pattern_graph
++    = fixed_size_pattern_graph_impl<G, unsigned short, Size>;
++
++template <typename G, size_t Size>
++using fixed_size_pattern_graph
++    = fixed_size_pattern_graph_impl<G, unsigned, Size>;
++
++template <typename G, size_t Size>
++using big_fixed_size_pattern_graph
++    = fixed_size_pattern_graph_impl<G, size_t, Size>;
++}
++
++template <typename G, typename SizeType, size_t Size>
++constexpr size_t get_size(
++    cpp2::fixed_size_pattern_graph_impl<G, SizeType, Size> const& g
++) {
++    return Size;
++}
++
++template <typename G, typename SizeType, size_t Size>
++auto get_attrs(
++    cpp2::fixed_size_pattern_graph_impl<G, SizeType, Size> const& g, size_t i
++) {
++    assert (i < get_size(g));
++
++    return g.nodes[i].attrs;
++}
++
++template <typename G, typename SizeType, size_t Size>
++auto get_adj_list(
++    cpp2::fixed_size_pattern_graph_impl<G, SizeType, Size> const& g, size_t i
++) {
++    assert (i < get_size(g));
++
++    auto const it = std::ranges::find(g.nodes[i].succ, g.npos);
++    return std::span{g.nodes[i].succ.begin(), it};
++}
++
++template <typename G, typename SizeType, size_t Size>
++auto get_inv_adj_list(
++    cpp2::fixed_size_pattern_graph_impl<G, SizeType, Size> const& g, size_t i
++) {
++    assert (i < get_size(g));
++
++    auto const it = std::ranges::find(g.nodes[i].pred, g.npos);
++    return std::span{g.nodes[i].pred.begin(), it};
++}
++
++namespace cpp2 {
++struct less {
++    template <typename T>
++    bool operator()(T const& lhs, T const& rhs) const {
++        return (lhs <=> rhs) == std::strong_ordering::less;
++    }
++};
++
++template<typename G>
++concept Graph = requires(G g)
++{
++    { get_size(g) } -> std::convertible_to<size_t>;
++    get_adj_list(g, 0);
++    { *get_adj_list(g, 0).begin() } -> std::convertible_to<size_t>;
++    { *get_adj_list(g, 0).end() } -> std::convertible_to<size_t>;
++    { get_adj_list(g, 0).size() } -> std::convertible_to<size_t>;
++    get_adj_list(g, 0).begin() + 1;
++    get_inv_adj_list(g, 0);
++    { *get_inv_adj_list(g, 0).begin() } -> std::convertible_to<size_t>;
++    { *get_inv_adj_list(g, 0).end() } -> std::convertible_to<size_t>;
++    { get_inv_adj_list(g, 0).size() } -> std::convertible_to<size_t>;
++    get_inv_adj_list(g, 0).begin() + 1;
++    get_attrs(g, 0);
++};
++
++enum class walk_type : std::uint8_t { bfs, dfs };
++template <walk_type wt, Graph G>
++auto search(G const& g, size_t source)
++    -> std::vector<std::optional<size_t>>
++{
++    using v_type = size_t;
++    auto next_nodes = std::conditional_t<
++        wt == walk_type::bfs,
++        std::queue<v_type>,
++        std::conditional_t<
++            wt == walk_type::dfs,
++            std::stack<v_type>,
++            // should fail if wt is something else entirely
++            void
++        >
++    >{};
++    const auto graph_size = size_t{get_size(g)};
++    auto parent = std::vector<std::optional<v_type>>(graph_size);
++    auto visited = std::vector<bool>(graph_size);
++
++    auto push = [&next_nodes](auto &&elem) {
++        next_nodes.push(elem);
++    };
++
++    auto pop = [&next_nodes]() {
++        auto pop = v_type{};
++        if constexpr (wt == walk_type::bfs) {
++            pop = next_nodes.front();
++        } else if constexpr (wt == walk_type::dfs) {
++            pop = next_nodes.top();
++        } else {
++            static_assert (
++                (wt == walk_type::bfs) ||
++                (wt == walk_type::dfs) ||
++                !"It is something else entirely"
++            );
++        }
++        next_nodes.pop();
++
++        return pop;
++    };
++
++    push(source);
++    parent[source] = source;
++    visited[source] = true;
++
++    while (!next_nodes.empty()) {
++        const auto v = pop();
++        // const auto &curr_node = g.get_node(v);
++        const auto &adj_list = get_adj_list(g, v); // std::get<0>(curr_node);
++
++        for (const auto adj : adj_list) {
++            if (!visited[adj]) {
++                parent[adj] = v;
++                visited[adj] = true;
++                push(adj);
++            }
++        }
++    }
++
++    return parent;
++}
++
++template <typename v_type>
++    requires (std::is_integral_v<v_type>)
++auto calc_distance(
++    std::vector<std::optional<v_type>> const& parent
++)
++    -> std::vector<std::optional<size_t>>
++{
++    // using v_type = typename graph<at>::v_type;
++    auto distance = std::vector<std::optional<size_t>>(parent.size());
++
++    for (v_type i = 0; i < parent.size(); ++i) {
++        if (!parent[i]) {
++            continue;
++        } else if (distance[i]) {
++            continue;
++        } else if (i == *parent[i]) {
++            distance[i] = 0;
++            continue;
++        }
++
++        auto i_parent = *parent[i];
++        auto dist = distance[i_parent];
++        auto lineage = std::stack<v_type>{};
++        while (!dist && i_parent != *parent[i_parent]) {
++            lineage.push(i_parent);
++            i_parent = *parent[i_parent];
++            dist = distance[i_parent];
++        }
++        if (i_parent == *parent[i_parent]) {
++            dist = distance[i_parent] = 0;
++        }
++        auto curr_dist = *dist;
++        while (!lineage.empty()) {
++            distance[lineage.top()] = ++curr_dist;
++            lineage.pop();
++        }
++
++        distance[i] = *distance[*parent[i]] + 1;
++    }
++
++    return distance;
++}
++
++template <Graph G>
++auto create_distance_matrix(G const& g)
++    -> std::vector<std::vector<std::optional<size_t>>>
++{
++    using v_type = size_t;
++    const auto graph_size = size_t{get_size(g)};
++
++    auto dist_matrix = std::vector<std::vector<std::optional<size_t>>>{};
++
++    for (v_type i = 0; i < graph_size; ++i) {
++        auto parent = search<walk_type::bfs>(g, i);
++
++        dist_matrix.push_back(calc_distance(parent));
++    }
++
++    return dist_matrix;
++}
++
++template <typename Type, bool ValueIsIndex = false>
++    requires (
++        (!ValueIsIndex && requires (Type t) {
++            { std::hash<Type>{}(t) } -> std::convertible_to<size_t>;
++        })
++        || (ValueIsIndex && std::is_integral_v<Type>)
++    )
++class disjoint_sets {
++    using parent_container_type = std::conditional_t<
++        ValueIsIndex,
++        std::vector<Type>,
++        std::unordered_map<Type, Type>
++    >;
++    using size_container_type = std::conditional_t<
++        ValueIsIndex,
++        std::vector<size_t>,
++        std::unordered_map<Type, size_t>
++    >;
++    using type = Type;
++    parent_container_type parent;
++    size_container_type size;
++    size_t n = 0;
++
++    bool check_integrity_make(type i) {
++        if constexpr (ValueIsIndex) {
++            if constexpr (std::is_signed_v<type>) {
++                if (i < 0) {
++                    // index is negative
++                    throw std::out_of_range("Value should not be negative when ValusIsIndex is set to true");
++                }
++            }
++            if (i >= parent.size()) {
++                // index is greater than max elements
++                throw std::out_of_range("Value should not exceed the max # of elements when ValusIsIndex is set to true");
++            }
++            if (parent[i] != -1) {
++                // already has a parent
++                throw std::logic_error("Cannot make a set of an element that already has a parent");
++            }
++        } else {
++            if (parent.contains(i)) {
++                // already has a parent
++                throw std::logic_error("Cannot make a set of an element that already has a parent");
++            }
++        }
++        return true;
++    }
++
++    bool check_integrity_find(type i) {
++        if constexpr (ValueIsIndex) {
++            if constexpr (std::is_signed_v<type>) {
++                if (i < 0) {
++                    // index is negative
++                    throw std::out_of_range("Value should not be negative when ValusIsIndex is set to true");
++                }
++            }
++            if (i >= parent.size()) {
++                // index is greater than max elements
++                throw std::out_of_range("Value should not exceed the max # of elements when ValusIsIndex is set to true");
++            }
++            if (parent[i] == -1) {
++                throw std::logic_error("The element should already have a parent before invoking 'find_set' function");
++            }
++        } else {
++            if (!parent.contains(i)) {
++                throw std::logic_error("The element should already have a parent before invoking 'find_set' function");
++            }
++        }
++        return true;
++    }
++public:
++
++    disjoint_sets() requires (!ValueIsIndex)
++    { }
++
++    disjoint_sets(size_t max_elems) requires (ValueIsIndex)
++        : parent(max_elems, -1), size(max_elems)
++    { }
++
++    void make_set(type i) {
++        if (check_integrity_make(i)) {
++            parent[i] = i;
++            size[i] = 1;
++            ++n;
++        }
++    }
++
++    type find_set(type i) {
++        if (check_integrity_find(i)) {
++            std::vector<type> path;
++            for (auto par = parent[i]; par != i; par = parent[i]) {
++                path.push_back(i);
++                i = par;
++            }
++            for (auto p : path) {
++                // path compression
++                parent[p] = i;
++            }
++        }
++        return i;
++    }
++
++    void union_set(type i, type j) {
++        i = find_set(i);
++        j = find_set(j);
++
++        if (i != j) {
++            --n;
++            auto &si = size[i];
++            auto &sj = size[j];
++            // union by size
++            if (si < sj) {
++                parent[i] = j;
++                sj += si;
++            } else {
++                parent[j] = i;
++                si += sj;
++            }
++        }
++    }
++
++    size_t count_sets() {
++        return n;
++    }
++};
++
++namespace vf2 {
++
++template <::cpp2::Graph GraphBig, ::cpp2::Graph GraphSmall, typename MatchPred>
++struct vf2_matcher
++{
++    static constexpr size_t npos = -1;
++    static constexpr size_t store_matches = false;
++    struct state {
++        using matcher_type = vf2_matcher<GraphBig, GraphSmall, MatchPred>;
++        // matcher_type* matcher = nullptr;
++        size_t depth = 0;
++        size_t g1_node = npos, g2_node = npos;
++
++        state() { }
++        state(
++            matcher_type* matcher,
++            size_t m = npos,
++            size_t n = npos
++        )
++            : /*matcher{m_ptr},*/ depth{matcher->nset_core1}
++        {
++            if (m == npos || n == npos) {
++                matcher->reset();
++            }
++            if (m != npos && n != npos) {
++                matcher->add_pair(m, n);
++                depth = matcher->nset_core1;
++                g1_node = m;
++                g2_node = n;
++
++                if (matcher->in1[g1_node] == 0) {
++                    matcher->in1[g1_node] = depth;
++                }
++                if (matcher->out1[g1_node] == 0) {
++                    matcher->out1[g1_node] = depth;
++                }
++                if (matcher->in2[g2_node] == 0) {
++                    matcher->in2[g2_node] = depth;
++                }
++                if (matcher->out2[g2_node] == 0) {
++                    matcher->out2[g2_node] = depth;
++                }
++
++                // update for Tin1
++                auto new_nodes = std::set<size_t>{};
++                for (size_t i = 0; i < matcher->core1.size(); ++i) {
++                    auto const n = matcher->core1[i];
++                    if (n != npos) {
++                        auto const &in_nodes = get_inv_adj_list(matcher->g1, i);
++                        for (auto const in : in_nodes) {
++                            // all of the in nodes that are not in the match already
++                            if (matcher->core1[in] == npos) {
++                                new_nodes.insert(in);
++                            }
++                        }
++                    }
++                }
++                for (auto const node : new_nodes) {
++                    if (matcher->in1[node] == 0) {
++                        matcher->in1[node] = depth;
++                    }
++                }
++                // update for T1out
++                new_nodes.clear();
++                for (size_t i = 0; i < matcher->core1.size(); ++i) {
++                    auto const n = matcher->core1[i];
++                    if (n != npos) {
++                        auto const &out_nodes = get_adj_list(matcher->g1, i);
++                        for (auto const out : out_nodes) {
++                            // all of the out nodes that are not in the match already
++                            if (matcher->core1[out] == npos) {
++                                new_nodes.insert(out);
++                            }
++                        }
++                    }
++                }
++                for (auto const node : new_nodes) {
++                    if (matcher->out1[node] == 0) {
++                        matcher->out1[node] = depth;
++                    }
++                }
++                // update for Tin2
++                new_nodes.clear();
++                for (size_t i = 0; i < matcher->core2.size(); ++i) {
++                    auto const n = matcher->core2[i];
++                    if (n != npos) {
++                        auto const &in_nodes = get_inv_adj_list(matcher->g2, i);
++                        for (auto const in : in_nodes) {
++                            // all of the in nodes that are not in the match already
++                            if (matcher->core2[in] == npos) {
++                                new_nodes.insert(in);
++                            }
++                        }
++                    }
++                }
++                for (auto const node : new_nodes) {
++                    if (matcher->in2[node] == 0) {
++                        matcher->in2[node] = depth;
++                    }
++                }
++                // update for T2out
++                new_nodes.clear();
++                for (size_t i = 0; i < matcher->core2.size(); ++i) {
++                    auto const n = matcher->core2[i];
++                    if (n != npos) {
++                        auto const &out_nodes = get_adj_list(matcher->g2, i);
++                        for (auto const out : out_nodes) {
++                            // all of the out nodes that are not in the match already
++                            if (matcher->core2[out] == npos) {
++                                new_nodes.insert(out);
++                            }
++                        }
++                    }
++                }
++                for (auto const node : new_nodes) {
++                    if (matcher->out2[node] == 0) {
++                        matcher->out2[node] = depth;
++                    }
++                }
++            }
++        }
++        state(state const&) = delete;
++        state& operator=(state const&) = delete;
++
++        void restore(matcher_type* matcher) const {
++            if (!matcher) {
++                return;
++            }
++            if (g1_node != npos && g2_node != npos) {
++                matcher->remove_pair(g1_node, g2_node);
++            }
++            for (auto &d : matcher->in1) {
++                if (d == depth) {
++                    /// TODO: should it be npos instead?
++                    d = 0;
++                }
++            }
++            for (auto &d : matcher->out1) {
++                if (d == depth) {
++                    /// TODO: should it be npos instead?
++                    d = 0;
++                }
++            }
++            for (auto &d : matcher->in2) {
++                if (d == depth) {
++                    /// TODO: should it be npos instead?
++                    d = 0;
++                }
++            }
++            for (auto &d : matcher->out2) {
++                if (d == depth) {
++                    /// TODO: should it be npos instead?
++                    d = 0;
++                }
++            }
++        }
++    };
++
++    GraphBig const& g1;
++    GraphSmall const& g2;
++    size_t graph_size = 0, pattern_size = 0;
++    // core1[n] is the index of the pattern node for graph node n,
++    // provided n is in the mapping. Otherwise, it is npos
++    // core2[m] is the index of the graph node for pattern node m
++    // provided m is in the mapping. Otherwise, it is npos
++    std::vector<size_t> core1, core2;
++    size_t nset_core1 = 0;
++    // {in,out}{1,2}[{n,m}] is > 0 if {n,m} is in M{1,2} or in T{in,out}{1,2}
++    // the value is the depth of the SSR tree when the node became part
++    // of the corresponding set
++    std::vector<size_t> in1, out1;
++    std::vector<size_t> in2, out2;
++    // std::vector<size_t> Tout1, Tout2;
++    // std::vector<size_t> Tin1, Tin2;
++
++    std::vector<std::vector<size_t>> M;
++    MatchPred pred;
++
++    // state st;
++    std::set<std::tuple<size_t, size_t>> mat;
++
++    void add_pair(size_t u, size_t v) {
++        assert (u != npos && v != npos);
++        if (core1[u] == npos) {
++            // if it is not already set, increase the set count
++            ++nset_core1;
++        }
++        core1[u] = v;
++        core2[v] = u;
++    }
++
++    void remove_pair(size_t u, size_t v) {
++        assert (u != npos && v != npos);
++        if (core1[u] != npos) {
++            // if it is already set, decrease the set count
++            --nset_core1;
++        }
++        core1[u] = npos;
++        core2[v] = npos;
++    }
++
++    bool feasiblity_syn(size_t u, size_t v) {
++        /// TODO: should we check for self edges?
++
++        std::vector<size_t> pred_u, pred_v;
++        std::ranges::copy(get_inv_adj_list(g1, u), std::back_inserter(pred_u));
++        std::ranges::sort(pred_u);
++        std::ranges::copy(get_inv_adj_list(g2, v), std::back_inserter(pred_v));
++        std::ranges::sort(pred_v);
++        // R_pred
++        {
++            for (auto const pred : pred_u) {
++                if (core1[pred] != npos) {
++                    auto const it = std::ranges::find(pred_v, core1[pred]);
++                    if (it == pred_v.end()) {
++                        return false;
++                    }
++                    /// TODO: should we check for multiple edges?
++                }
++            }
++
++            for (auto const pred : pred_v) {
++                if (core2[pred] != npos) {
++                    auto const it = std::ranges::find(pred_u, core2[pred]);
++                    if (it == pred_u.end()) {
++                        return false;
++                    }
++                    /// TODO: should we check for multiple edges?
++                }
++            }
++        }
++
++        std::vector<size_t> succ_u, succ_v;
++        std::ranges::copy(get_adj_list(g1, u), std::back_inserter(succ_u));
++        std::ranges::sort(succ_u);
++        std::ranges::copy(get_adj_list(g2, v), std::back_inserter(succ_v));
++        std::ranges::sort(succ_v);
++        // R_succ
++        {
++            for (auto const succ : succ_u) {
++                if (core1[succ] != npos) {
++                    auto const it = std::ranges::find(succ_v, core1[succ]);
++                    if (it == succ_v.end()) {
++                        return false;
++                    }
++                    /// TODO: should we check for multiple edges?
++                }
++            }
++
++            for (auto const succ : succ_v) {
++                if (core2[succ] != npos) {
++                    auto const it = std::ranges::find(succ_u, core2[succ]);
++                    if (it == succ_u.end()) {
++                        return false;
++                    }
++                    /// TODO: should we check for multiple edges?
++                }
++            }
++        }
++
++        size_t intersec1 = 0, intersec2 = 0;
++        // R_in
++        {
++            for (auto const pred : pred_u) {
++                if (in1[pred] != 0 && core1[pred] == npos) {
++                    ++intersec1;
++                }
++            }
++            for (auto const pred : pred_v) {
++                if (in2[pred] != 0 && core2[pred] == npos) {
++                    ++intersec2;
++                }
++            }
++            if (intersec1 < intersec2) {
++                return false;
++            }
++            intersec1 = intersec2 = 0;
++            for (auto const succ : succ_u) {
++                if (in1[succ] != 0 && core1[succ] == npos) {
++                    ++intersec1;
++                }
++            }
++            for (auto const succ : succ_v) {
++                if (in2[succ] != 0 && core2[succ] == npos) {
++                    ++intersec2;
++                }
++            }
++            if (intersec1 < intersec2) {
++                return false;
++            }
++        }
++
++        // R_out
++        {
++            intersec1 = intersec2 = 0;
++            for (auto const pred : pred_u) {
++                if (out1[pred] != 0 && core1[pred] == npos) {
++                    ++intersec1;
++                }
++            }
++            for (auto const pred : pred_v) {
++                if (out2[pred] != 0 && core2[pred] == npos) {
++                    ++intersec2;
++                }
++            }
++            if (intersec1 < intersec2) {
++                return false;
++            }
++            intersec1 = intersec2 = 0;
++            for (auto const succ : succ_u) {
++                if (out1[succ] != 0 && core1[succ] == npos) {
++                    ++intersec1;
++                }
++            }
++            for (auto const succ : succ_v) {
++                if (out2[succ] != 0 && core2[succ] == npos) {
++                    ++intersec2;
++                }
++            }
++            if (intersec1 < intersec2) {
++                return false;
++            }
++        }
++
++        // R_new
++        {
++            intersec1 = intersec2 = 0;
++            for (auto const pred : pred_u) {
++                if (in1[pred] == 0 && out1[pred] == 0) {
++                    ++intersec1;
++                }
++            }
++            for (auto const pred : pred_v) {
++                if (in2[pred] == 0 && out2[pred] == 0) {
++                    ++intersec2;
++                }
++            }
++            if (intersec1 < intersec2) {
++                return false;
++            }
++            intersec1 = intersec2 = 0;
++            for (auto const succ : succ_u) {
++                if (in1[succ] == 0 && out1[succ] == 0) {
++                    ++intersec1;
++                }
++            }
++            for (auto const succ : succ_v) {
++                if (in2[succ] == 0 && out2[succ] == 0) {
++                    ++intersec2;
++                }
++            }
++            if (intersec1 < intersec2) {
++                return false;
++            }
++        }
++
++        return true;
++    }
++
++    bool feasibility_sem(size_t u, size_t v) {
++        if constexpr (store_matches) {
++            return mat.contains({u, v});
++        }
++        return pred(get_attrs(g2, v), get_attrs(g1, u));
++    }
++
++    bool feasibility(size_t u, size_t v) {
++        return feasibility_sem(u, v) && feasiblity_syn(u, v);
++    }
++
++    auto candidate_pairs()
++        -> std::vector<std::pair<size_t, size_t>>
++    {
++        auto pairs = std::vector<std::pair<size_t, size_t>>{};
++        std::vector<size_t> Tout1, Tout2;
++        // Tout1.clear();
++        // Tout2.clear();
++        for (size_t i = 0; i < graph_size; ++i) {
++            if (out1[i] != 0 && core1[i] == npos) {
++                Tout1.push_back(i);
++            }
++        }
++        for (size_t i = 0; i < pattern_size; ++i) {
++            if (out2[i] != 0 && core2[i] == npos) {
++                Tout2.push_back(i);
++            }
++        }
++
++        if (!Tout1.empty() && !Tout2.empty()) {
++            auto const node2 = Tout2.front();
++            for (auto const node1 : Tout1) {
++                pairs.emplace_back(node1, node2);
++            }
++        } else {
++            std::vector<size_t> Tin1, Tin2;
++            // Tin1.clear();
++            // Tin2.clear();
++            for (size_t i = 0; i < graph_size; ++i) {
++                if (in1[i] != 0 && core1[i] == npos) {
++                    Tin1.push_back(i);
++                }
++            }
++            for (size_t i = 0; i < pattern_size; ++i) {
++                if (in2[i] != 0 && core2[i] == npos) {
++                    Tin2.push_back(i);
++                }
++            }
++            if (!Tin1.empty() && !Tin2.empty()) {
++                auto const node2 = Tin2.front();
++                for (auto const node1 : Tin1) {
++                    pairs.emplace_back(node1, node2);
++                }
++            } else {
++                auto const it = std::ranges::find(core2, npos);
++                if (it != core2.end()) {
++                    size_t const node2 = std::distance(core2.begin(), it);
++                    for (size_t node1 = 0; node1 < graph_size; ++node1) {
++                        if (core1[node1] == npos) {
++                            pairs.emplace_back(node1, node2);
++                        }
++                    }
++                }
++            }
++        }
++
++        return pairs;
++    }
++
++    void print_vector(std::string const& name, std::vector<size_t> const& vec) {
++        std::cout << name << ": ";
++        for (auto const v : vec) {
++            if (v == npos) {
++                std::cout << "INV";
++            } else {
++                std::cout << v;
++            }
++            std::cout << ", ";
++        }
++        std::cout << std::endl;
++    }
++
++    void run() {
++        // print_vector("core1", core1);
++        // print_vector("core2", core2);
++        // print_vector("in1", in1);
++        // print_vector("in2", in2);
++        // print_vector("out1", out1);
++        // print_vector("out2", out2);
++        if (nset_core1 == pattern_size) {
++            M.push_back(core2);
++        } else {
++            auto const pairs = candidate_pairs();
++            // std::cout << "depth: " << nset_core1 << std::endl;
++            // std::cout << pairs.size() << " pairs" << std::endl;
++            // for (auto const [node1, node2] : pairs) {
++            //     std::cout << "pair: " << node1 << ", " << node2 << std::endl;
++            // }
++            for (auto const [node1, node2] : pairs) {
++                // std::cout << "Testing pair " << node1 << ", " << node2 << std::endl;
++                if (feasibility(node1, node2)) {
++                    // std::cout << "feasible pair: " << node1 << ", " << node2 << std::endl;
++                    auto new_state = state{this, node1, node2};
++                    run();
++                    // std::cout << "Backtracking\n";
++                    new_state.restore(this);
++                }
++            }
++        }
++    }
++
++    void run_iter() {
++        auto depth_stack = std::stack<
++            std::tuple<
++                std::vector<std::pair<size_t, size_t>>,
++                std::vector<std::pair<size_t, size_t>>::iterator,
++                state
++            >
++        >{};
++        auto const pairs = candidate_pairs();
++        auto it = pairs.begin();
++        auto first_state = state{};
++        depth_stack.emplace(std::move(pairs), it, first_state);
++        while (!depth_stack.empty()) {
++            if (nset_core1 == pattern_size) {
++                M.push_back(core2);
++            }
++            auto const [pairs, it, new_state] = depth_stack.top();
++            depth_stack.pop();
++
++            // for (auto it = pairs.begin(); it != pairs.end(); ++it) {
++            //     auto const [u, v] = *it;
++            //     if (feasibility(u, v)) {
++            //         auto new_state = state{this, u, v};
++            //         depth_stack.push({
++            //             pairs, it, state
++            //         });
++            //     }
++            // }
++        }
++    }
++
++    void reset() {
++        // reset everything
++        std::ranges::fill(core1, npos);
++        std::ranges::fill(core2, npos);
++        std::ranges::fill(in1, 0);
++        std::ranges::fill(in2, 0);
++        std::ranges::fill(out1, 0);
++        std::ranges::fill(out2, 0);
++        nset_core1 = 0;
++    }
++
++    std::vector<std::vector<size_t>> const& match() {
++        M.clear();
++        run();
++
++        return M;
++    }
++
++    vf2_matcher(
++        GraphBig const& graph,
++        GraphSmall const& pattern,
++        MatchPred const& pred_
++    )
++        : g1{graph}, g2{pattern},
++        graph_size{get_size(g1)}, pattern_size{get_size(g2)},
++        core1(graph_size, npos), core2(pattern_size, npos),
++        in1(graph_size, 0), out1(graph_size, 0),
++        in2(pattern_size, 0), out2(pattern_size, 0),
++        pred{pred_}/*,
++        st{this}*/
++    {
++        // std::cout << "Constructor called\n";
++        if constexpr (store_matches) {
++            /// TODO: the following could take O(n^2) space, so check that
++            for (size_t i = 0; i < graph_size; ++i) {
++                auto const &g1_attrs = get_attrs(g1, i);
++                for (size_t j = 0; j < pattern_size; ++j) {
++                    auto const &g2_attrs = get_attrs(g2, j);
++                    /// TODO: check the order of the arguments below
++                    if (pred(g2_attrs, g1_attrs)) {
++                        mat.insert({i, j});
++                    }
++                }
++            }
++        }
++    }
++};
++
++}
++
++}
++
++namespace std {
++template <>
++struct hash<std::tuple<size_t, size_t>> {
++    size_t operator()(std::tuple<size_t, size_t> t) const {
++        return std::hash<size_t>{}(std::get<0>(t) ^ std::get<1>(t) << 1);
++    }
++};
++}
++
+ 
+ //  Stabilize line numbers for "compatibility" static assertions
+ //  and UFCS error output to keep regression test outputs cleaner

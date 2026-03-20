@@ -54,8 +54,11 @@ check-cppfront:
 		$(MAKE) -C ../../../thirdparty/cppfront || exit 1; \
 	fi
 
+PATTERNS_LLVM_H = include/xdp2gen/llvm/patterns.h
+PATTERNS_CLANG_AST_H = include/xdp2gen/ast-consumer/patterns.h
+
 gen-patterns-cpp: check-cppfront
-	$(CPPFRONT) $(PATTERNS_LLVM_CPP2) && $(CPPFRONT) $(PATTERNS_CLANG_AST_CPP2)
+	$(CPPFRONT) -output $(PATTERNS_LLVM_H) $(PATTERNS_LLVM_CPP2) && $(CPPFRONT) -output $(PATTERNS_CLANG_AST_H) $(PATTERNS_CLANG_AST_CPP2)
 
 all: $(TARGETS)
 

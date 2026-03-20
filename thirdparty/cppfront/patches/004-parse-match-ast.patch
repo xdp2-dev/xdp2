@@ -1,0 +1,599 @@
+--- /tmp/cppfront-v0.8.1/source/parse.h	2026-03-19 11:17:14.428992827 -0700
++++ source/parse.h	2026-03-19 20:06:39.749925092 -0700
+@@ -1957,6 +1957,267 @@
+ };
+ 
+ 
++struct match_expression_node;
++
++struct match_node_indexing_node
++{
++    source_position open_bracket;
++    source_position close_bracket;
++    token const* index = nullptr;
++
++    match_node_indexing_node(
++        source_position o = {},
++        source_position c = {}
++    )
++        : open_bracket{o}, close_bracket{c}
++    { }
++
++    auto get_index() const
++        -> token const*
++    {
++        assert (index);
++        return index;
++    }
++
++    auto visit(auto&& v, int depth)
++        -> void
++    {
++        v.start(*this, depth);
++
++        v.end(*this, depth);
++    }
++};
++
++struct match_node_node
++{
++    source_position open_paren;
++    source_position close_paren;
++    token const* label = nullptr;
++    // source_position open_brace;
++    // source_position close_brace;
++    std::unique_ptr<logical_or_expression_node> pred = {};
++    std::unique_ptr<compound_statement_node> func = {};
++    std::unique_ptr<match_node_indexing_node> index = {};
++    std::unique_ptr<compound_statement_node> action = {};
++
++    match_node_node(
++        source_position o = {},
++        source_position c = {}
++    )
++        : open_paren{o}, close_paren{c}
++    { }
++
++    auto has_predicate() const
++        -> bool
++    {
++        return static_cast<bool>(pred);
++    }
++
++    auto has_function_declaration() const
++        -> bool
++    {
++        return static_cast<bool>(func);
++    }
++
++    auto get_label() const
++        -> token const*
++    {
++        assert (label);
++        return label;
++    }
++
++    auto visit(auto& v, int depth)
++        -> void
++    {
++        v.start(*this, depth);
++        if (pred) {
++            pred->visit(v, depth + 1);
++        }
++        if (func) {
++            func->visit(v, depth + 1);
++        }
++        if (action) {
++            action->visit(v, depth + 1);
++        }
++        v.end(*this, depth);
++    }
++};
++
++struct match_arrow_node;
++
++struct match_edge_attrs_node
++{
++    match_arrow_node const* parent = nullptr;
++    source_position open_brace;
++    source_position close_brace;
++    token const* lhs_attrs = nullptr;
++
++    match_edge_attrs_node(
++        source_position o = {},
++        source_position c = {}
++    )
++        : open_brace(o), close_brace(c)
++    { }
++
++    auto is_wildcard() const
++        -> bool
++    {
++        return lhs_attrs && lhs_attrs->as_string_view() == "_";
++    }
++
++    auto visit(auto&v, int depth)
++        -> void
++    {
++        v.start(*this, depth);
++
++        v.end(*this, depth);
++    }
++};
++
++struct match_arrow_node
++{
++    // (lhs, rhs) = ("->", null) or ("-", "->") or ("--", null) or ("-", "-")
++    // additional possibilities: ("<-", null) or ("<-", "-")
++    token const* lhs = nullptr;
++    token const* rhs = nullptr;
++    std::unique_ptr<match_edge_attrs_node> attrs = {};
++
++    auto has_attributes() const
++        -> bool
++    {
++        return static_cast<bool>(attrs);
++    }
++
++    enum dir { undirected=0, right, /*left,*/ invalid };
++    auto direction() const
++        -> dir
++    {
++        if (
++            (
++                lhs && lhs->type() == lexeme::MinusMinus
++                && !rhs
++            ) || (
++                lhs && lhs->type() == lexeme::Minus
++                && rhs && rhs->type() == lexeme::Minus
++            )
++        ) {
++            return undirected;
++        } else if (
++            (
++                lhs && lhs->type() == lexeme::Arrow
++                && !rhs
++            ) || (
++                lhs && lhs->type() == lexeme::Minus
++                && rhs && rhs->type() == lexeme::Arrow
++            )
++        ) {
++            return right;
++        }
++        // else
++        return invalid;
++    }
++
++    auto visit(auto& v, int depth)
++        -> void
++    {
++        v.start(*this, depth);
++        if (attrs) {
++            attrs->visit(v, depth + 1);
++        }
++        v.end(*this, depth);
++    }
++};
++
++struct match_compound_expression_node;
++
++struct match_expression_node
++{
++    match_compound_expression_node *const parent = nullptr;
++
++    std::unique_ptr<match_node_node> node = {};
++    std::unique_ptr<match_arrow_node> arrow = {};
++    std::unique_ptr<match_expression_node> match = {};
++
++    // API
++
++    auto is_terminal()
++        -> bool
++    {
++        return node && !arrow && !match;
++    }
++
++    auto next() const
++        -> match_expression_node const*
++    {
++        return match.get();
++    }
++
++    auto visit(auto& v, int depth)
++        -> void
++    {
++        v.start(*this, depth);
++        assert (node);
++        node->visit(v, depth + 1);
++        if (arrow) {
++            arrow->visit(v, depth + 1);
++        }
++        if (match) {
++            match->visit(v, depth + 1);
++        }
++        v.end(*this, depth);
++    }
++};
++
++struct match_compound_expression_node
++{
++    std::vector<std::unique_ptr<match_expression_node>> expressions;
++
++    auto visit(auto& v, int depth)
++        -> void
++    {
++        v.start(*this, depth);
++        for (auto const& x : expressions) {
++            assert (x);
++            x->visit(v, depth + 1);
++        }
++        v.end(*this, depth);
++    }
++};
++
++struct match_statement_node
++{
++    token const* identifier = nullptr;
++    source_position open_brace;
++    source_position close_brace;
++    std::unique_ptr<match_compound_expression_node> match_stmts = {};
++    statement_node* parent_stmt = nullptr;
++
++    match_statement_node(
++        statement_node *sn,
++        source_position o = {},
++        source_position c = {}
++    )
++        : parent_stmt{sn}, open_brace{o}, close_brace{c}
++    { }
++
++    auto position() const
++        -> source_position
++    {
++        assert (identifier);
++        return identifier->position();
++    }
++
++    auto visit(auto &v, int depth)
++        -> void
++    {
++        v.start(*this, depth);
++        assert (match_stmts);
++        match_stmts->visit(v, depth + 1);
++        v.end(*this, depth);
++    }
++};
++
++
+ struct parameter_declaration_node;
+ 
+ struct iteration_statement_node
+@@ -2203,7 +2464,7 @@
+     // type(s) used in a std::unique_ptr as a member
+     ~statement_node();
+ 
+-    enum active : u8 { expression=0, compound, selection, declaration, return_, iteration, using_, contract, inspect, jump };
++    enum active : u8 { expression=0, compound, selection, declaration, return_, iteration, using_, contract, inspect, jump, match };
+     std::variant<
+         std::unique_ptr<expression_statement_node>,
+         std::unique_ptr<compound_statement_node>,
+@@ -2214,7 +2475,8 @@
+         std::unique_ptr<using_statement_node>,
+         std::unique_ptr<contract_node>,
+         std::unique_ptr<inspect_expression_node>,
+-        std::unique_ptr<jump_statement_node>
++        std::unique_ptr<jump_statement_node>,
++        std::unique_ptr<match_statement_node>
+     > statement;
+ 
+     bool emitted = false;               // a note field that's used during lowering to Cpp1
+@@ -2233,6 +2495,7 @@
+     auto is_contract   () const -> bool { return statement.index() == contract;    }
+     auto is_inspect    () const -> bool { return statement.index() == inspect;     }
+     auto is_jump       () const -> bool { return statement.index() == jump;        }
++    auto is_match      () const -> bool { return statement.index() == match;       }
+ 
+     template<typename Node>
+     auto get_if()
+@@ -2541,6 +2804,7 @@
+     try_visit<contract   >(statement, v, depth);
+     try_visit<inspect    >(statement, v, depth);
+     try_visit<jump       >(statement, v, depth);
++    try_visit<match      >(statement, v, depth);
+     v.end(*this, depth);
+ }
+ 
+@@ -7648,6 +7912,280 @@
+         return n;
+     }
+ 
++public:
++    //G match-node:
++    //G     match-node-indexing? '(' identifier ':' logical-or-expression action? ')'
++    //G     match-node-indexing? '(' identifier ':' compound-statement action? ')'
++    //G action:
++    //G     ';' compound-statement
++    auto match_node()
++        -> std::unique_ptr<match_node_node>
++    {
++        auto n = std::make_unique<match_node_node>();
++        if (curr().type() == lexeme::LeftBracket) {
++            if (auto mni = match_node_indexing()) {
++                n->index = std::move(mni);
++            }
++        }
++        if (curr().type() != lexeme::LeftParen) {
++            return {};
++        }
++        n->open_paren = curr().position();
++        next();
++
++        if (curr().type() != lexeme::Identifier) {
++            return {};
++        }
++        n->label = &curr();
++        next();
++
++        if (
++            curr().type() == lexeme::Colon
++            && peek(1)
++            && peek(1)->type() != lexeme::LeftBrace
++        ) {
++            // n->open_brace = curr().position();
++            // auto open_brace = peek(1);
++            next();
++            if (auto loe = logical_or_expression()) {
++                n->pred = std::move(loe);
++                // next();
++            } else {
++                return {};
++            }
++        } else if (
++            curr().type() == lexeme::Colon
++            && peek(1)
++            && peek(1)->type() == lexeme::LeftBrace
++        ) {
++            next();
++            if (auto ce = compound_statement()) {
++                n->func = std::move(ce);
++            } else {
++                error(
++                    "node attribure must be either a predicate expression "
++                    "or a predicate compound statement",
++                    true, {}, true
++                );
++            }
++        }
++
++        if (curr().type() == lexeme::Semicolon) {
++            next();
++            if (auto ce = compound_statement()) {
++                n->action = std::move(ce);
++            } else {
++                error(
++                    "there should be a compund statement after a semicolon inside "
++                    "node definition",
++                    true, {}, true
++                );
++            }
++        }
++        if (curr().type() == lexeme::RightParen) {
++            n->close_paren = curr().position();
++            next();
++        } else {
++            return {};
++        }
++
++        return n;
++    }
++
++    //G match-node-indexing
++    //G'    '[' number-literal ']'
++    auto match_node_indexing()
++        -> std::unique_ptr<match_node_indexing_node>
++    {
++        auto n = std::make_unique<match_node_indexing_node>(curr().position());
++        next();
++        if (
++            curr().type() != lexeme::DecimalLiteral
++            && curr().type() != lexeme::HexadecimalLiteral
++            && curr().type() != lexeme::BinaryLiteral
++            && curr().as_string_view() != "_"
++        ) {
++            error("index attribute must be an integer literal or _", true, {}, true);
++            return {};
++        }
++        n->index = &curr();
++        next();
++        if (curr().type() == lexeme::RightBracket) {
++            n->close_bracket = curr().position();
++            next();
++            return n;
++        }
++        // else
++        return {};
++    }
++
++    //G match-edge-attrs
++    //G     '{' number-literal '}'
++    auto match_edge_attrs()
++        -> std::unique_ptr<match_edge_attrs_node>
++    {
++        auto n = std::make_unique<match_edge_attrs_node>(curr().position());
++        next();
++        if (
++            curr().type() != lexeme::DecimalLiteral
++            && curr().type() != lexeme::HexadecimalLiteral
++            && curr().type() != lexeme::BinaryLiteral
++            && curr().as_string_view() != "_"
++        ) {
++            error("edge attribute must be a literal or '_'", true, {}, true);
++            return {};
++        }
++        n->lhs_attrs = &curr();
++        next();
++        if (curr().type() == lexeme::RightBrace) {
++            n->close_brace = curr().position();
++            next();
++            return n;
++        }
++        /// TODO: complete function
++        return {};
++    }
++
++    //G match-arrow?
++    //G     '->'
++    //G     '--'
++    //G     '-' match-edge-attrs '->'
++    auto match_arrow()
++        -> std::unique_ptr<match_arrow_node>
++    {
++        if (
++            curr().type() != lexeme::Minus
++            && curr().type() != lexeme::MinusMinus
++            && curr().type() != lexeme::Arrow
++        ) {
++            return {};
++        }
++        auto n = std::make_unique<match_arrow_node>();
++        n->lhs = &curr();
++        if (
++            curr().type() == lexeme::MinusMinus
++            || curr().type() == lexeme::Arrow
++        ) {
++            // it is already complete
++            next();
++            return n;
++        }
++        next();
++
++        if (curr().type() != lexeme::LeftBrace) {
++            error("a match edge attribute must be enclosed with { }");
++            return {};
++        }
++        if (auto e = match_edge_attrs()) {
++            n->attrs = std::move(e);
++        }
++        if (
++            curr().type() != lexeme::Arrow
++            && curr().type() != lexeme::Minus
++        ) {
++            return {};
++        }
++        n->rhs = &curr();
++        next();
++        return n;
++    }
++
++    //G match-expression:
++    //G     match-node
++    //G     match-node match-arrow match-expression
++    auto match_expression()
++        -> std::unique_ptr<match_expression_node>
++    {
++        auto v = match_node();
++        if (!v) {
++            return {};
++        }
++        auto n = std::make_unique<match_expression_node>();
++        n->node = std::move(v);
++        auto *curr_n = &n;
++
++        auto a = std::unique_ptr<match_arrow_node>{};
++        while (a = match_arrow()) {
++            (*curr_n)->arrow = std::move(a);
++            if (auto new_n = match_node()) {
++                (*curr_n)->match = std::make_unique<match_expression_node>();
++                (*curr_n)->match->node = std::move(new_n);
++                curr_n = &(*curr_n)->match;
++            } else {
++                error("an arrow must be followed by a node", true, {}, true);
++                return {};
++            }
++        }
++        return n;
++    }
++
++
++    //G match-compound-statement:
++    //G     match-expression;...
++    auto match_compound_expression()
++        -> std::unique_ptr<match_compound_expression_node>
++    {
++        auto n = std::make_unique<match_compound_expression_node>();
++        auto e = std::unique_ptr<match_expression_node>{};
++        while (e = match_expression()) {
++            n->expressions.push_back(std::move(e));
++            if (curr().type() != lexeme::Semicolon) {
++                error("match expressions must end with ';'", true, {}, true);
++                return {};
++            }
++            if (peek(1)) {
++                next();
++            } else {
++                break;
++            }
++        }
++        return n;
++    }
++
++
++    //G match-statement:
++    //G     'match' match-compound-statement
++    auto match_statement(statement_node *my_stmt = nullptr)
++        -> std::unique_ptr<match_statement_node>
++    {
++        if (
++            curr().type() != lexeme::Keyword
++            || curr() != "match"
++        ) {
++            return {};
++        }
++        auto n = std::make_unique<match_statement_node>(my_stmt);
++        n->identifier = &curr();
++        next();
++
++        if (curr().type() != lexeme::LeftBrace) {
++            error("a match body must be enclosed with { }", true, {}, true);
++            return {};
++        }
++        n->open_brace = curr().position();
++        next();
++
++        if (auto c = match_compound_expression()) {
++            n->match_stmts = std::move(c);
++        } else {
++            error("invalid match body", true, {}, true);
++            return {};
++        }
++
++        if (
++            curr().type() != lexeme::RightBrace
++            || !peek(1)
++            || peek(1)->type() != lexeme::Semicolon
++        ) {
++            error("a match body must be enclosed with { } and end with ;", true, {}, true);
++            return {};
++        }
++        n->close_brace = curr().position();
++        next(2);
++
++        return n;
++    }
++private:
+ 
+     //G return-statement:
+     //G     return expression? ';'
+@@ -8184,6 +8722,12 @@
+             return n;
+         }
+ 
++        else if (auto m = match_statement(n.get())) {
++            n->statement = std::move(m);
++            assert (n->is_match());
++            return n;
++        }
++
+         else if (auto s = using_statement()) {
+             n->statement = std::move(s);
+             assert (n->is_using());

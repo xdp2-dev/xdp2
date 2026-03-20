@@ -8,10 +8,12 @@
 
 #include "cpp2util.h"
 
+#line 1 "include/xdp2gen/ast-consumer/patterns.h2"
 
 
 //=== Cpp2 type definitions and function declarations ===========================
 
+#line 1 "include/xdp2gen/ast-consumer/patterns.h2"
 // SPDX-License-Identifier: BSD-2-Clause-FreeBSD
 /*
  * Copyright (c) 2024 SiXDP2 Inc.
@@ -72,7 +74,6 @@ using clang_match_type = std::function<std::vector<std::vector<std::tuple<size_t
 
 #line 59 "include/xdp2gen/ast-consumer/patterns.h2"
 [[nodiscard]] auto get_metadata_record(clang::MemberExpr const* expr) -> std::optional<xdp2gen::ast_consumer::metadata_record>;
-    
 
 #line 137 "include/xdp2gen/ast-consumer/patterns.h2"
 // Assignment patterns
@@ -124,26 +125,27 @@ extern clang_match_type clang_ast_call_pattern2;
 
 //=== Cpp2 function definitions =================================================
 
+#line 1 "include/xdp2gen/ast-consumer/patterns.h2"
 
 #line 59 "include/xdp2gen/ast-consumer/patterns.h2"
 [[nodiscard]] auto get_metadata_record(clang::MemberExpr const* expr) -> std::optional<xdp2gen::ast_consumer::metadata_record>
 
 {
     auto member_expr {expr}; 
-    auto range {CPP2_UFCS_0(children, (*cpp2::assert_not_null(expr)))}; 
+    auto range {CPP2_UFCS(children)((*cpp2::impl::assert_not_null(expr)))}; 
     auto current_field_name {std::string()}; 
     auto name {std::string()}; 
     auto record_name {std::string()}; 
     auto is_array {false}; 
     auto literal_index {-1UL}; 
     while( std::distance(std::begin(range), std::end(range)) == 1 && (
-        clang::dyn_cast<clang::MemberExpr>(*cpp2::assert_not_null(std::begin(range))) != nullptr 
-        || clang::dyn_cast<clang::ArraySubscriptExpr>(*cpp2::assert_not_null(std::begin(range))) != nullptr) ) 
+        clang::dyn_cast<clang::MemberExpr>(*cpp2::impl::assert_not_null(std::begin(range))) != nullptr 
+        || clang::dyn_cast<clang::ArraySubscriptExpr>(*cpp2::impl::assert_not_null(std::begin(range))) != nullptr) ) 
     {
         auto field {clang::dyn_cast<clang::FieldDecl>(
-            CPP2_UFCS_0(getMemberDecl, (*cpp2::assert_not_null(member_expr))))}; 
-        current_field_name = CPP2_UFCS_0(getNameAsString, (*cpp2::assert_not_null(field)));
-        if (!(CPP2_UFCS_0(empty, current_field_name))) {
+            CPP2_UFCS(getMemberDecl)((*cpp2::impl::assert_not_null(member_expr))))}; 
+        current_field_name = CPP2_UFCS(getNameAsString)((*cpp2::impl::assert_not_null(cpp2::move(field))));
+        if (!(CPP2_UFCS(empty)(current_field_name))) {
             auto ss {std::stringstream()}; 
             if ((is_array)) {
                 ss << "[";
@@ -154,52 +156,52 @@ extern clang_match_type clang_ast_call_pattern2;
                 is_array = false;
                 literal_index = -1UL;
             }
-            if (CPP2_UFCS_0(empty, name)) {
-                name = current_field_name + CPP2_UFCS_0(str, ss);
+            if (CPP2_UFCS(empty)(name)) {
+                name = current_field_name + CPP2_UFCS(str)(cpp2::move(ss));
             }else {
-                name = current_field_name + CPP2_UFCS_0(str, ss) + "." + name;
+                name = current_field_name + CPP2_UFCS(str)(cpp2::move(ss)) + "." + name;
             }
         }
         clang::Stmt const* range_begin {expr}; 
         auto ar_expr {clang::dyn_cast<clang::ArraySubscriptExpr>(
-            *cpp2::assert_not_null(std::begin(range)))}; 
+            *cpp2::impl::assert_not_null(std::begin(range)))}; 
         if (ar_expr) {
-            auto ar_range {CPP2_UFCS_0(children, (*cpp2::assert_not_null(CPP2_UFCS_0(getBase, (*cpp2::assert_not_null(ar_expr))))))}; 
-            range_begin = *cpp2::assert_not_null(std::begin(ar_range));
+            auto ar_range {CPP2_UFCS(children)((*cpp2::impl::assert_not_null(CPP2_UFCS(getBase)((*cpp2::impl::assert_not_null(ar_expr))))))}; 
+            range_begin = *cpp2::impl::assert_not_null(std::begin(cpp2::move(ar_range)));
             is_array = true;
-            auto int_lit_expr {clang::dyn_cast<clang::IntegerLiteral>(CPP2_UFCS_0(getIdx, (*cpp2::assert_not_null(ar_expr))))}; 
+            auto int_lit_expr {clang::dyn_cast<clang::IntegerLiteral>(CPP2_UFCS(getIdx)((*cpp2::impl::assert_not_null(cpp2::move(ar_expr)))))}; 
             if (int_lit_expr) {
-                literal_index = CPP2_UFCS_0(getZExtValue, CPP2_UFCS_0(getValue, (*cpp2::assert_not_null(int_lit_expr))));
+                literal_index = CPP2_UFCS(getZExtValue)(CPP2_UFCS(getValue)((*cpp2::impl::assert_not_null(cpp2::move(int_lit_expr)))));
             }
         }else {
-            range_begin = *cpp2::assert_not_null(std::begin(range));
+            range_begin = *cpp2::impl::assert_not_null(std::begin(range));
         }
-        auto child {clang::dyn_cast<clang::MemberExpr>(range_begin)}; 
+        auto child {clang::dyn_cast<clang::MemberExpr>(cpp2::move(range_begin))}; 
 
         if (child != nullptr) {
-            member_expr = child;
-            range = CPP2_UFCS_0(children, (*cpp2::assert_not_null(member_expr)));
+            member_expr = cpp2::move(child);
+            range = CPP2_UFCS(children)((*cpp2::impl::assert_not_null(member_expr)));
         }else {
             std::cerr << "child is null\n";
             std::abort();
         }
     }
     if (std::distance(std::begin(range), std::end(range)) == 0 || 
-        clang::dyn_cast<clang::MemberExpr>(*cpp2::assert_not_null(std::begin(std::move(range)))) == nullptr) 
+        clang::dyn_cast<clang::MemberExpr>(*cpp2::impl::assert_not_null(std::begin(range))) == nullptr) 
     {
         auto field {clang::dyn_cast<clang::FieldDecl>(
-            CPP2_UFCS_0(getMemberDecl, (*cpp2::assert_not_null(member_expr))))}; 
-        current_field_name = CPP2_UFCS_0(getNameAsString, (*cpp2::assert_not_null(field)));
-        if (!(CPP2_UFCS_0(empty, current_field_name))) {
-            if (CPP2_UFCS_0(empty, name)) {
-                name = std::move(current_field_name);
+            CPP2_UFCS(getMemberDecl)((*cpp2::impl::assert_not_null(cpp2::move(member_expr)))))}; 
+        current_field_name = CPP2_UFCS(getNameAsString)((*cpp2::impl::assert_not_null(field)));
+        if (!(CPP2_UFCS(empty)(current_field_name))) {
+            if (CPP2_UFCS(empty)(name)) {
+                name = cpp2::move(current_field_name);
             }else {
-                name = std::move(current_field_name) + "." + name;
+                name = cpp2::move(current_field_name) + "." + name;
             }
         }
-        auto record {CPP2_UFCS_0(getParent, (*cpp2::assert_not_null(field)))}; 
-        record_name = CPP2_UFCS_0(getNameAsString, (*cpp2::assert_not_null(record)));
-        return xdp2gen::ast_consumer::metadata_record(std::move(record), std::move(record_name), std::move(name)); 
+        auto record {CPP2_UFCS(getParent)((*cpp2::impl::assert_not_null(cpp2::move(field))))}; 
+        record_name = CPP2_UFCS(getNameAsString)((*cpp2::impl::assert_not_null(record)));
+        return xdp2gen::ast_consumer::metadata_record(cpp2::move(record), cpp2::move(record_name), cpp2::move(name)); 
     }
     return std::nullopt; 
 }
@@ -215,13 +217,13 @@ clang_match_type clang_ast_assignment_pattern {[](auto const &g) -> std::vector<
         auto stmt {std::get<clang::Stmt const*>(assign)}; 
         auto binop {clang::dyn_cast<clang::BinaryOperator>(stmt)}; 
 
-        return binop && CPP2_UFCS_0_NONLOCAL(isAssignmentOp, (*cpp2::assert_not_null(binop))); 
+        return binop && CPP2_UFCS_NONLOCAL(isAssignmentOp)((*cpp2::impl::assert_not_null(binop))); 
     });pat.add_edge(0, 1);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &assign, const graph_attrs &member) -> std::any{
         auto expr {clang::dyn_cast<clang::MemberExpr>(
             std::get<clang::Stmt const*>(member))}; 
         auto mr {get_metadata_record(expr)}; 
-        if (CPP2_UFCS_0_NONLOCAL(has_value, mr)) {
-            return CPP2_UFCS_0_NONLOCAL(value, mr); 
+        if (CPP2_UFCS_NONLOCAL(has_value)(mr)) {
+            return CPP2_UFCS_NONLOCAL(value)(mr); 
         }
         return std::any(); 
     }}});pat.add_attrs(1, [] (graph_attrs const &member)
@@ -245,13 +247,13 @@ clang_match_type clang_ast_increment_pattern {[](auto const &g) -> std::vector<s
         auto stmt {std::get<clang::Stmt const*>(inc)}; 
         auto unop {clang::dyn_cast<clang::UnaryOperator>(stmt)}; 
 
-        return unop && CPP2_UFCS_0_NONLOCAL(isIncrementOp, (*cpp2::assert_not_null(unop))); 
+        return unop && CPP2_UFCS_NONLOCAL(isIncrementOp)((*cpp2::impl::assert_not_null(unop))); 
     });pat.add_edge(0, 1);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &inc, const graph_attrs &member) -> std::any{
         auto expr {clang::dyn_cast<clang::MemberExpr>(
             std::get<clang::Stmt const*>(member))}; 
         auto mr {get_metadata_record(expr)}; 
-        if (CPP2_UFCS_0_NONLOCAL(has_value, mr)) {
-            return CPP2_UFCS_0_NONLOCAL(value, mr); 
+        if (CPP2_UFCS_NONLOCAL(has_value)(mr)) {
+            return CPP2_UFCS_NONLOCAL(value)(mr); 
         }
         return std::any(); 
     }}});pat.add_attrs(1, [] (graph_attrs const &member)
@@ -276,16 +278,16 @@ clang_match_type clang_ast_call_pattern1 {[](auto const &g) -> std::vector<std::
         auto call_expr {clang::dyn_cast<clang::CallExpr>(stmt)}; 
 
         if (call_expr) {
-            auto func_decl {CPP2_UFCS_0(getDirectCallee, (*cpp2::assert_not_null(call_expr)))}; 
-            return func_decl && CPP2_UFCS_0_NONLOCAL(getName, (*cpp2::assert_not_null(func_decl))) == "memcpy"; 
+            auto func_decl {CPP2_UFCS(getDirectCallee)((*cpp2::impl::assert_not_null(call_expr)))}; 
+            return func_decl && CPP2_UFCS_NONLOCAL(getName)((*cpp2::impl::assert_not_null(func_decl))) == "memcpy"; 
         }
         return false; 
     });pat.add_edge(0, 1);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &call, const graph_attrs &addressof, const graph_attrs &member) -> std::any{
         auto expr {clang::dyn_cast<clang::MemberExpr>(
             std::get<clang::Stmt const*>(member))}; 
         auto mr {get_metadata_record(expr)}; 
-        if (CPP2_UFCS_0_NONLOCAL(has_value, mr)) {
-            return CPP2_UFCS_0_NONLOCAL(value, mr); 
+        if (CPP2_UFCS_NONLOCAL(has_value)(mr)) {
+            return CPP2_UFCS_NONLOCAL(value)(mr); 
         }
         return std::any(); 
     }}});pat.add_attrs(1, [] (graph_attrs const &addressof)
@@ -298,7 +300,7 @@ clang_match_type clang_ast_call_pattern1 {[](auto const &g) -> std::vector<std::
         auto unop {clang::dyn_cast<clang::UnaryOperator>(stmt)}; 
 
         return unop 
-            && CPP2_UFCS_0_NONLOCAL(getOpcode, (*cpp2::assert_not_null(unop))) == clang::UnaryOperator::Opcode::UO_AddrOf; 
+            && CPP2_UFCS_NONLOCAL(getOpcode)((*cpp2::impl::assert_not_null(unop))) == clang::UnaryOperator::Opcode::UO_AddrOf; 
     });pat.add_edge(1, 2);pat.add_attrs(2, [] (graph_attrs const &member)
 
     {
@@ -321,16 +323,16 @@ clang_match_type clang_ast_call_pattern2 {[](auto const &g) -> std::vector<std::
         auto call_expr {clang::dyn_cast<clang::CallExpr>(stmt)}; 
 
         if (call_expr) {
-            auto func_decl {CPP2_UFCS_0(getDirectCallee, (*cpp2::assert_not_null(call_expr)))}; 
-            return func_decl && CPP2_UFCS_0_NONLOCAL(getName, (*cpp2::assert_not_null(func_decl))) == "memcpy"; 
+            auto func_decl {CPP2_UFCS(getDirectCallee)((*cpp2::impl::assert_not_null(call_expr)))}; 
+            return func_decl && CPP2_UFCS_NONLOCAL(getName)((*cpp2::impl::assert_not_null(func_decl))) == "memcpy"; 
         }
         return false; 
     });pat.add_edge(0, 1);pattern_nodes_action_map.insert({0, graph_attrs_action{[] (const graph_attrs &call, const graph_attrs &member) -> std::any{
         auto expr {clang::dyn_cast<clang::MemberExpr>(
             std::get<clang::Stmt const*>(member))}; 
         auto mr {get_metadata_record(expr)}; 
-        if (CPP2_UFCS_0_NONLOCAL(has_value, mr)) {
-            return CPP2_UFCS_0_NONLOCAL(value, mr); 
+        if (CPP2_UFCS_NONLOCAL(has_value)(mr)) {
+            return CPP2_UFCS_NONLOCAL(value)(mr); 
         }
         return std::any(); 
     }}});pat.add_attrs(1, [] (graph_attrs const &member)

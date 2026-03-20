@@ -53,13 +53,6 @@
     # Navigate to cppfront directory
     navigate-to-component "thirdparty/cppfront" || return 1
 
-    # Apply essential header fix for cppfront
-    if [ "$debug_level" -ge 3 ]; then
-      echo "[DEBUG] Applying cppfront header fix"
-      printf "sed -i '1i#include <functional>\\n#include <unordered_map>\\n' include/cpp2util.h\n"
-    fi
-    sed -i '1i#include <functional>\n#include <unordered_map>\n' include/cpp2util.h
-
     # Level 3: Build step details
     if [ "$debug_level" -ge 3 ]; then
       echo "[DEBUG] Building cppfront-compiler with make"

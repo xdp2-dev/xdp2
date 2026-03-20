@@ -1,14 +1,9 @@
 
-//  Copyright (c) Herb Sutter
-//  SPDX-License-Identifier: CC-BY-NC-ND-4.0
-
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
+//  Copyright 2022-2024 Herb Sutter
+//  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//  
+//  Part of the Cppfront Project, under the Apache License v2.0 with LLVM Exceptions.
+//  See https://github.com/hsutter/cppfront/blob/main/LICENSE for license information.
 
 
 //===========================================================================
@@ -20,8 +15,6 @@
 
 #include "common.h"
 #include <fstream>
-#include <ostream>
-#include <iterator>
 #include <cctype>
 
 
@@ -177,7 +170,7 @@ auto starts_with_whitespace_slash_star_and_no_star_slash(std::string const& line
         && line[i + 1] == '*'
         )
     {
-        return line.find("*/", i) == std::string::npos;
+        return line.find("*/", i) == line.npos;
     }
     else {
         return false;
@@ -457,26 +450,36 @@ public:
     }
 
     auto current_depth() const -> int {
-        return std::ssize(open_braces);
+        return unchecked_narrow<int>(std::ssize(open_braces));
     }
 
     //  --- Preprocessor matching functions - #if/#else/#endif
 
     //  Entering an #if
-    auto found_pre_if() -> void {
-        assert(std::ssize(preprocessor) > 0);
+    auto found_pre_if(lineno_t) -> void {
         preprocessor.push_back({});
     }
 
     //  Encountered an #else
-    auto found_pre_else() -> void {
-        assert(std::ssize(preprocessor) > 1);
+    auto found_pre_else(lineno_t lineno) -> void {
+        if (std::ssize(preprocessor) < 2) {
+            errors.emplace_back(
+                lineno,
+                "#else does not match a prior #if"
+            );
+        }
+
         preprocessor.back().found_preprocessor_else();
     }
 
     //  Exiting an #endif
-    auto found_pre_endif() -> void {
-        assert(std::ssize(preprocessor) > 1);
+    auto found_pre_endif(lineno_t lineno) -> void {
+        if (std::ssize(preprocessor) < 2) {
+            errors.emplace_back(
+                lineno,
+                "#endif does not match a prior #if"
+            );
+        }
 
         //  If the #if/#else/#endif introduced the same net number of braces,
         //  then we will have recorded that number too many open braces, and
@@ -496,7 +499,7 @@ public:
 //
 //  line    current line being processed
 //
-enum class preprocessor_conditional {
+enum class preprocessor_conditional : u8 {
     none = 0, pre_if, pre_else, pre_endif
 };
 auto starts_with_preprocessor_if_else_endif(
@@ -578,6 +581,7 @@ auto process_cpp_line(
     struct process_line_ret r { in_comment, true , in_raw_string_literal};
 
     auto prev = ' ';
+    auto prev2 = ' ';
     for (auto i = colno_t{0}; i < ssize(line); ++i)
     {
         //  Local helper functions for readability
@@ -605,11 +609,11 @@ auto process_cpp_line(
         }
         else if (in_raw_string_literal) {
             auto end_pos = line.find(raw_string_closing_seq, i);
-            if (end_pos == std::string::npos) {
+            if (end_pos == line.npos) {
                 return r;
             }
             in_raw_string_literal = false;
-            i = end_pos+raw_string_closing_seq.size()-1;
+            i = unchecked_narrow<int>(end_pos+raw_string_closing_seq.size()-1);
         }
         else {
             r.all_comment_line = false;
@@ -626,8 +630,8 @@ auto process_cpp_line(
                         i+=2;
                         if (i < ssize(line) - 1)
                         {
-                            if (auto paren_pos = line.find("(", i);
-                                paren_pos != std::string::npos
+                            if (auto paren_pos = line.find('(', i);
+                                paren_pos != line.npos
                                 )
                             {
                                 raw_string_closing_seq = ")"+line.substr(i, paren_pos-i)+"\"";
@@ -640,7 +644,7 @@ auto process_cpp_line(
                     //  If this isn't an escaped quote, toggle string literal state
                     if (
                         !in_comment
-                        && prev != '\\'
+                        && (prev != '\\' || prev2 == '\\')
                         && (in_string_literal || prev != '\'')
                         && !in_raw_string_literal
                         )
@@ -683,6 +687,7 @@ auto process_cpp_line(
             }
         }
 
+        prev2 = prev;
         prev = line[i];
     }
 
@@ -714,6 +719,7 @@ auto process_cpp2_line(
     auto found_end = false;
 
     auto prev = ' ';
+    auto prev2 = ' ';
     auto in_string_literal = false;
     auto in_char_literal   = false;
 
@@ -729,16 +735,25 @@ auto process_cpp2_line(
         else if (in_string_literal)
         {
             switch (line[i]) {
-            break;case '"': if (prev != '\\') { in_string_literal = false; }
+            break;case '"': if (prev != '\\' || prev2 == '\\') { in_string_literal = false; }
             break;default: ;
             }
         }
         else if (in_char_literal)
         {
             switch (line[i]) {
-            break;case '\'': if (prev != '\\') { in_char_literal = false; }
+            break;case '\'': if (prev != '\\' || prev2 == '\\') { in_char_literal = false; }
             break;default: ;
             }
+        }
+        else if (
+            auto j = is_encoding_prefix_and(line, i, '\'');
+            j > 1
+            )
+        {
+            in_char_literal = true;
+            i += j-1;
+            prev = line[i-1];
         }
         else
         {
@@ -769,6 +784,7 @@ auto process_cpp2_line(
                                 " after the closing ; or } of a definition, the rest"
                                 " of the line cannot begin a /*...*/ comment")
                         );
+                        return false;
                     }
                 }
 
@@ -776,16 +792,28 @@ auto process_cpp2_line(
                 if (prev == '/') { in_comment = false; return found_end; }
 
             break;case '"':
-                if (prev != '\\') { in_string_literal = true; }
+                if (prev != '\\' || prev2 == '\\') { in_string_literal = true; }
 
             break;case '\'':
-                if (prev != '\\') { in_char_literal = true; }
+                if (prev != '\\' || prev2 == '\\') {
+                    //  Also check that this isn't a digit separator
+                    in_char_literal = !is_hexadecimal_digit(prev);
+                }
 
             break;default: ;
             }
         }
 
+        prev2 = prev;
         prev = line[i];
+    }
+
+    if (in_char_literal) {
+        errors.emplace_back(
+            source_position(lineno, unchecked_narrow<colno_t>(ssize(line))),
+            std::string("line ended before character literal was terminated")
+        );
+        return false;
     }
 
     return found_end;
@@ -808,7 +836,7 @@ class source
     static const int max_line_len = 90'000;
         //  do not reduce this - I encountered an 80,556-char
         //  line in real world code during testing
-    char buf[max_line_len];
+    char buf[max_line_len] {0};
 
 public:
     //-----------------------------------------------------------------------
@@ -821,7 +849,6 @@ public:
     )
         : errors{ errors_ }
         , lines( 1 )        // extra blank to avoid off-by-one everywhere
-        , buf{0}
     {
     }
 
@@ -855,11 +882,17 @@ public:
     )
         -> bool
     {
-        std::ifstream in{ filename };
-        if (!in.is_open()) {
-            return false;
+        //  If filename is stdin, we read from stdin, otherwise we try to read the file
+        //
+        auto is_stdin = filename == "stdin";
+        std::ifstream fss;
+        if (!is_stdin) 
+        {
+            fss.open(filename);
+            if( !fss.is_open()) { return false; }
         }
-
+        std::istream& in = is_stdin ? std::cin : fss;
+    
         auto in_comment            = false;
         auto in_string_literal     = false;
         auto in_raw_string_literal = false;
@@ -875,11 +908,11 @@ public:
             {
                 switch (pre) {
                 break;case preprocessor_conditional::pre_if:
-                    braces.found_pre_if();
+                    braces.found_pre_if( cpp2::unchecked_narrow<lineno_t>(std::ssize(lines)) );
                 break;case preprocessor_conditional::pre_else:
-                    braces.found_pre_else();
+                    braces.found_pre_else( cpp2::unchecked_narrow<lineno_t>(std::ssize(lines)) );
                 break;case preprocessor_conditional::pre_endif:
-                    braces.found_pre_endif();
+                    braces.found_pre_endif( cpp2::unchecked_narrow<lineno_t>(std::ssize(lines)) );
                 break;default:
                     assert(false);
                 }
@@ -943,7 +976,7 @@ public:
                             lines.back().text,
                             in_comment,
                             braces,
-                            std::ssize(lines)-1,
+                            unchecked_narrow<lineno_t>(std::ssize(lines)-1),
                             errors
                         )
                         && in.getline(&buf[0], max_line_len)
@@ -968,7 +1001,7 @@ public:
                             in_raw_string_literal,
                             raw_string_closing_seq,
                             braces,
-                            std::ssize(lines) - 1
+                            unchecked_narrow<lineno_t>(std::ssize(lines)-1)
                         );
                         if (stats.all_comment_line) {
                             lines.back().cat = source_line::category::comment;

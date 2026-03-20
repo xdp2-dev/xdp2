@@ -1,0 +1,19 @@
+--- /tmp/cppfront-v0.8.1/source/common.h	2026-03-19 11:17:14.428992827 -0700
++++ source/common.h	2026-03-19 19:39:52.586991493 -0700
+@@ -386,7 +386,7 @@
+ 
+ 
+ //G encoding-prefix: one of
+-//G     'u8' 'u' 'uR' 'u8R' 'U' 'UR' 'L' 'LR' 'R'
++//G     'u8' 'u' 'uR' 'u8R' 'U' 'UR' 'L' 'LR' 'R' 'M'
+ //G
+ auto is_encoding_prefix_and(std::string_view line, int i, char next) {
+     auto peek1 = peek(line, i, 1);
+@@ -408,6 +408,7 @@
+         else if (peek1 == 'R' && peek2 == next) { return 3; } // LR"
+     }
+     else if (line[i] == 'R' && peek1 == next) { return 2; } // R"
++    else if (line[i] == 'M' && peek1 == next) { return 2; } // M"
+     return 0;
+ }
+ 

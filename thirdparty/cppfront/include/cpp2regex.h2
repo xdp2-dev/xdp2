@@ -1,0 +1,923 @@
+
+//  Copyright 2022-2024 Herb Sutter
+//  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//  
+//  Part of the Cppfront Project, under the Apache License v2.0 with LLVM Exceptions.
+//  See https://github.com/hsutter/cppfront/blob/main/LICENSE for license information.
+
+
+//===========================================================================
+//  Regex support
+//===========================================================================
+
+#ifndef CPP2_CPP2REGEX_H
+#define CPP2_CPP2REGEX_H
+
+
+template<typename matcher, typename Iter>
+using matcher_context_type = typename matcher::template context<Iter>;
+
+cpp2: namespace = {
+
+regex: namespace = {
+
+bstring: <CharT> type == std::basic_string<CharT>;
+bview  : <CharT> type == std::basic_string_view<CharT>;
+
+//-----------------------------------------------------------------------
+//
+//  Helper structures for the expression matching.
+//
+//-----------------------------------------------------------------------
+//
+
+//  Structure for storing group information.
+//
+match_group: @struct<noforward> <Iter> type = 
+{
+    start: Iter = ();
+    end: Iter = ();
+
+    matched: bool = false;
+}
+
+//  Return value for every matcher.
+// 
+match_return: @struct<noforward> <Iter> type = 
+{
+    matched: bool = false;
+    pos: Iter = ();
+}
+
+//  Modifiable state during matching.
+//
+match_context: <CharT, Iter, max_groups: int> type =
+{
+    public  begin : Iter;
+    public  end   : Iter;
+
+    private groups: std::array<match_group<Iter>, max_groups> = ();
+
+    operator=: (out this, begin_: Iter, end_: Iter) = {
+        begin = begin_;
+        end = end_;
+    }
+
+    operator=: (out this, that) = {}
+
+    // String end and start positions
+    //
+    get_string_start: (in this) = begin;
+    get_string_end: (in this) = end;
+
+    //  Getter and setter for groups
+    //
+    get_group: (in this, group) = groups[group];
+
+    get_group_end:    (in this, group) -> int = {
+        if group >= max_groups || !groups[group].matched {
+            return 0;
+        }
+        return cpp2::unchecked_narrow<int>( std::distance(begin, groups[group].end) );
+    }
+    get_group_start:  (in this, group) -> int = {
+        if group >= max_groups || !groups[group].matched {
+            return 0;
+        }
+        return cpp2::unchecked_narrow<int>( std::distance(begin, groups[group].start) );
+    }
+    get_group_string: (in this, group) -> std::string = {
+        if group >= max_groups || !groups[group].matched {
+            return "";
+        }
+        return std::string(groups[group].start, groups[group].end);
+    }
+    
+    set_group_end: (inout this, group, pos) = {
+        groups[group].end = pos;
+        groups[group].matched = true;
+    }
+
+    set_group_invalid: (inout this, group) = {
+        groups[group].matched = false;
+    }
+
+    set_group_start: (inout this, group, pos) = {
+        groups[group].start = pos;
+    }
+
+    size: (in this) = max_groups;
+
+    //  Misc functions
+    //
+    fail: (in this)            = match_return<Iter>(false, end);
+    pass: (in this, cur: Iter) = match_return<Iter>(true, cur);
+
+    reset: (inout this) = {
+        for groups do (inout g) {
+            g.matched = false;
+        }
+    }
+}
+
+//  Wrapper of context for reverse matches. Implements only the minimal interface for matching.
+//
+reverse_match_context: <CharT, Iter, max_groups: int> type =
+{
+    public ReverseIter : type == std::reverse_iterator<Iter>;
+    public forward_context : *match_context<CharT, Iter, max_groups>;
+
+    public  begin : ReverseIter;
+    public  end   : ReverseIter;
+
+    operator=: (out this, forward_context_) = {
+        forward_context = forward_context_;
+        begin = std::make_reverse_iterator(forward_context*.end);
+        end = std::make_reverse_iterator(forward_context*.begin);
+    }
+
+    operator=: (out this, that) = {}
+
+    // String end and start positions
+    //
+    get_string_start: (in this) = end;
+    get_string_end: (in this) = begin;
+
+    //  Getter and setter for groups
+    //
+    set_group_end: (inout this, group, pos) = {
+        forward_context*..set_group_end(group, (pos).base());
+    }
+
+    set_group_invalid: (inout this, group) = {
+        forward_context*..set_group_invalid(group);
+    }
+
+    set_group_start: (inout this, group, pos) = {
+        forward_context*..set_group_start(group, (pos).base());
+    }
+
+    //  Misc functions
+    //
+    fail: (in this)            = match_return<ReverseIter>(false, end);
+    pass: (in this, cur: ReverseIter) = match_return<ReverseIter>(true, cur);
+}
+
+//  Helpers for creating wrappers of the match context.
+//
+make_forward_match_context: <CharT, Iter, max_groups: int> (inout ctx: match_context<CharT, Iter, max_groups>) -> forward _ = {
+    return ctx;
+}
+
+make_forward_match_context: <CharT, Iter, max_groups: int> (inout ctx: reverse_match_context<CharT, Iter, max_groups>) -> forward _ = {
+    return ctx.forward_context*;
+}
+
+make_reverse_match_context: <CharT, Iter, max_groups: int> (inout ctx: match_context<CharT, Iter, max_groups>) -> _ = {
+    return reverse_match_context<CharT, Iter, max_groups>(ctx&);
+}
+
+make_reverse_match_context: <CharT, Iter, max_groups: int> (inout ctx: reverse_match_context<CharT, Iter, max_groups>) -> forward _ = {
+    return ctx;
+}
+
+//  Helpers for creating wrappers of the iterators.
+//
+make_forward_iterator: <Iter> (pos: Iter)                        -> _ = pos;
+make_forward_iterator: <Iter> (pos: std::reverse_iterator<Iter>) -> _  = pos.base();
+make_reverse_iterator: <Iter> (pos: Iter)                        -> _ = std::make_reverse_iterator(pos);
+make_reverse_iterator: <Iter> (pos: std::reverse_iterator<Iter>) -> _ = pos;
+
+
+//  End function that returns a valid match.
+//
+true_end_func: @struct<noforward> type = 
+{
+    operator(): (in this, cur, inout ctx) = ctx..pass(cur);
+}
+
+
+//  Empty group reset function.
+//
+no_reset: @struct<noforward> type = 
+{
+    operator(): (this, inout _:) = {}
+}
+
+
+//  Evaluate func on destruction of the handle.
+on_return: <Func> type = 
+{
+    func: Func;
+
+    operator=: (out this, f: Func) = {
+        func = f;
+    }
+
+    operator=: (move this) = {
+        func();
+    }
+}
+
+
+//  Helper for auto deduction of the Func type.
+make_on_return: <Func> (func: Func) = on_return<Func>(func);
+
+
+//-----------------------------------------------------------------------
+//
+//  Character classes for regular expressions.
+//
+//-----------------------------------------------------------------------
+//
+
+//  Class syntax: <any character> Example: a
+//
+single_class_entry: <CharT, C: CharT> type =
+{
+    includes : (c: CharT) = c == C;
+    to_string: ()         = bstring<CharT>(1, C);
+}
+
+
+//  Class syntax: - Example: a-c
+//
+range_class_entry: <CharT, Start: CharT, End: CharT> type =
+{
+    includes : (c: CharT) = Start <= c <= End;
+    to_string: ()         = "(Start)$-(End)$";
+}
+
+
+//  Helper for combining two character classes
+//
+combined_class_entry: <CharT, List ...> type = 
+{
+    includes : (c: CharT) = (false || ... || List::includes(c));
+    to_string: ()         = (bstring<CharT>() + ... + List::to_string());
+}
+
+
+//  Class syntax: <list of characters>  Example: abcd
+//
+list_class_entry: <CharT, List ... : CharT> type = 
+{
+    includes : (c: CharT) = (false || ... || (List == c));
+    to_string: ()         = (bstring<CharT>() + ... + List);
+}
+
+
+//  Class syntax: [:<class name:]  Example: [:alnum:]
+//
+named_class_entry: <CharT, Name: string_util::fixed_string, Inner> type = 
+{
+    includes : (c: CharT) = Inner::includes(c);
+    to_string: ()         = "[:(Name..data())$:]";
+}
+
+
+negated_class_entry: <CharT, Inner> type = 
+{
+    this    : Inner      = ();
+    includes: (c: CharT) = !Inner::includes(c);
+}
+
+
+//  Short class syntax: \<character>  Example: \w
+//
+shorthand_class_entry: <CharT, Name: string_util::fixed_string, Inner> type = 
+{
+    includes : (c: CharT) = Inner::includes(c);
+    to_string: ()         = Name..str();
+}
+
+
+//  Named basic character classes
+//
+digits_class  : <CharT> type == named_class_entry<CharT, "digits", range_class_entry<CharT, '0', '9'>>;
+lower_class   : <CharT> type == named_class_entry<CharT, "lower",  range_class_entry<CharT, 'a', 'z'>>;
+upper_class   : <CharT> type == named_class_entry<CharT, "upper",  range_class_entry<CharT, 'A', 'Z'>>;
+
+//  Named other classes
+//
+alnum_class     : <CharT> type == named_class_entry<CharT, "alnum",  combined_class_entry<CharT, lower_class<CharT>, upper_class<CharT>, digits_class<CharT>>>;
+alpha_class     : <CharT> type == named_class_entry<CharT, "alpha",  combined_class_entry<CharT, lower_class<CharT>, upper_class<CharT>>>;
+ascii_class     : <CharT> type == named_class_entry<CharT, "ascii",  range_class_entry<CharT, '\x00', '\x7F'>>;
+blank_class     : <CharT> type == named_class_entry<CharT, "blank",  list_class_entry<CharT, ' ', '\t'>>;
+cntrl_class     : <CharT> type == named_class_entry<CharT, "cntrl",  combined_class_entry<CharT, range_class_entry<CharT, '\x00', '\x1F'>, single_class_entry<CharT, '\x7F'>>>;
+graph_class     : <CharT> type == named_class_entry<CharT, "graph",  range_class_entry<CharT, '\x21', '\x7E'>>;
+hor_space_class : <CharT> type == named_class_entry<CharT, "hspace", list_class_entry<CharT, '\t', ' '>>;
+print_class     : <CharT> type == named_class_entry<CharT, "print",  range_class_entry<CharT, '\x20', '\x7E'>>;
+punct_class     : <CharT> type == named_class_entry<CharT, "punct",  list_class_entry<CharT, '[','!','"','#','$','%','&','\'','(',')','*','+',',','-','.','/',':',';','<','=','>','?','@','[','\\',']','^','_','`','{','|','}','~',']'>>;
+space_class     : <CharT> type == named_class_entry<CharT, "space",  list_class_entry<CharT, ' ', '\t', '\r', '\n', '\v', '\f'>>;
+ver_space_class : <CharT> type == named_class_entry<CharT, "vspace", list_class_entry<CharT, '\n', '\v', '\f', '\r'>>;
+word_class      : <CharT> type == named_class_entry<CharT, "word",   combined_class_entry<CharT, alnum_class<CharT>, single_class_entry<CharT, '_'>>>;
+xdigit_class    : <CharT> type == named_class_entry<CharT, "xdigit", combined_class_entry<CharT, range_class_entry<CharT, 'A', 'F'>, range_class_entry<CharT, 'a', 'f'>, digits_class<CharT>>>;
+
+// Shorthand class entries
+//
+short_digits_class     : <CharT> type == shorthand_class_entry<CharT, "\\d", digits_class<CharT>>;
+short_hor_space_class  : <CharT> type == shorthand_class_entry<CharT, "\\h", hor_space_class<CharT>>;
+short_space_class      : <CharT> type == shorthand_class_entry<CharT, "\\s", space_class<CharT>>;
+short_vert_space_class : <CharT> type == shorthand_class_entry<CharT, "\\v", ver_space_class<CharT>>;
+short_word_class       : <CharT> type == shorthand_class_entry<CharT, "\\w", word_class<CharT>>;
+
+short_not_digits_class     : <CharT> type == negated_class_entry<CharT, shorthand_class_entry<CharT, "\\D", digits_class<CharT>>>;
+short_not_hor_space_class  : <CharT> type == negated_class_entry<CharT, shorthand_class_entry<CharT, "\\H", hor_space_class<CharT>>>;
+short_not_space_class      : <CharT> type == negated_class_entry<CharT, shorthand_class_entry<CharT, "\\S", space_class<CharT>>>;
+short_not_vert_space_class : <CharT> type == negated_class_entry<CharT, shorthand_class_entry<CharT, "\\V", ver_space_class<CharT>>>;
+short_not_word_class       : <CharT> type == negated_class_entry<CharT, shorthand_class_entry<CharT, "\\W", word_class<CharT>>>;
+
+
+//  Regex syntax: |  Example: ab|ba
+//
+//  Non greedy implementation. First alternative that matches is chosen.
+//
+alternative_token_matcher: <CharT> type =
+{
+    match: (cur, inout ctx, end_func, tail, functions ...) -> _ = {
+        return match_first(cur, ctx, end_func, tail, functions...);
+    }
+
+    private match_first: <Other ...> (cur, inout ctx, end_func, tail, cur_func, cur_reset, other ...: Other) -> _ =
+    {
+        inner_call := :(tail_cur, inout tail_ctx) -> _ == {
+            return (tail)$(tail_cur, tail_ctx, (end_func)$);
+        };
+        r := cur_func(cur, ctx, inner_call);
+        if r.matched {
+            return r;
+        } else {
+            cur_reset(ctx);
+
+            if constexpr 0 != sizeof...(Other) {
+                return match_first(cur, ctx, end_func, tail, other...);
+            } else {
+                return ctx..fail();
+            }
+        }
+    }
+}
+
+
+//  Regex syntax: .
+//
+any_token_matcher: <CharT, single_line: bool> (inout cur, inout ctx) -> bool =
+{
+    if  cur != ctx.end                      // any char except the end
+        && (single_line || cur* != '\n')    // do not match new lines in multi line mode
+    {
+        cur += 1;
+        return true;
+    }
+    //  Else
+    return false;
+}
+
+//  Regex syntax: (?><matcher>)  Example: a(?>bc|c)c
+//
+atomic_group_matcher: <CharT, Iter> (cur: Iter, inout ctx, inner, end_func, other) -> _ =
+{
+    r := inner(cur, ctx, true_end_func());
+
+    if r.matched {
+        r = other(r.pos, ctx, end_func);
+    }
+
+    return r;
+}
+
+
+// TODO: Check if vectorization works at some point with this implementation.
+// char_token_matcher: <tokens: string_util::fixed_string> (inout cur, inout ctx) -> bool = {
+//     if !(std::distance(cur, ctx.end) < tokens..size()) {
+//         return false;
+//     }
+//     matched : bool = true;
+//     (copy i: int = 0) while i < tokens..size() next i += 1 {
+//         if tokens..data()[i] != cur[i] {
+//             matched = false; // No break for performance optimization. Without break, the loop vectorizes.
+//         }
+//     }
+//     if matched {
+//         cur += tokens..size();
+//     }
+//     return matched;
+// }
+
+// char_token_case_insensitive_matcher: <lower: string_util::fixed_string, upper: string_util::fixed_string> (inout cur, inout ctx) -> bool = {
+//     if !(std::distance(cur, ctx.end) < lower..size()) {
+//         return false;
+//     }
+//     matched : bool = true;
+//     (copy i : int = 0) while i < lower..size() next i += 1 {
+//         if !(lower..data()[i] == cur[i] || upper..data()[i] == cur[i]) {
+//             matched = false; // No break for performance optimization. Without break, the loop vectorizes.
+//         }
+//     }
+//     if matched {
+//         cur += lower..size();
+//     }
+//     return matched;
+// }
+
+
+//  Regex syntax: [<character classes>]  Example: [abcx-y[:digits:]]
+//
+class_token_matcher: <CharT, negate: bool, case_insensitive: bool, List ...> type =
+{
+    match: (inout cur, inout ctx) -> bool =
+    {
+        if constexpr case_insensitive
+        {
+            if  cur != ctx.end
+                && negate != (
+                       match_any<List...>(string_util::safe_tolower(cur*))
+                    || match_any<List...>(string_util::safe_toupper(cur*))
+                    )
+            {
+                cur += 1;
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        else 
+        {
+            if cur != ctx.end && negate != match_any<List...>(cur*) {
+                cur += 1;
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+    }
+
+    private match_any: <First, Other ...> (c: CharT) -> bool =
+    {
+        r: bool = First::includes(c);
+
+        if !r {
+            if constexpr 0 != sizeof...(Other) {
+                r = match_any<Other...>(c);
+            }
+        }
+
+        return r;
+    }
+
+    // TODO: Implement proper to string
+    // to_string: () -> bstring<CharT> = {
+    //     r: bstring<CharT> = "[";
+    //     if negate {
+    //         r += "^";
+    //     }
+    //     r += (bstring<CharT>() + ... + List::to_string());
+    //     r += "]";
+
+    //     return r;
+    // }
+}
+
+
+// Named short classes
+//
+named_class_no_new_line   : <CharT, case_insensitive: bool> type == class_token_matcher<CharT,  true, case_insensitive, single_class_entry<CharT, '\n'>>;
+named_class_digits        : <CharT, case_insensitive: bool> type == class_token_matcher<CharT, false, case_insensitive, digits_class<CharT>>;
+named_class_hor_space     : <CharT, case_insensitive: bool> type == class_token_matcher<CharT, false, case_insensitive, hor_space_class<CharT>>;
+named_class_space         : <CharT, case_insensitive: bool> type == class_token_matcher<CharT, false, case_insensitive, space_class<CharT>>;
+named_class_ver_space     : <CharT, case_insensitive: bool> type == class_token_matcher<CharT, false, case_insensitive, ver_space_class<CharT>>;
+named_class_word          : <CharT, case_insensitive: bool> type == class_token_matcher<CharT, false, case_insensitive, word_class<CharT>>;
+
+named_class_not_digits    : <CharT, case_insensitive: bool> type == class_token_matcher<CharT,  true, case_insensitive, digits_class<CharT>>;
+named_class_not_hor_space : <CharT, case_insensitive: bool> type == class_token_matcher<CharT,  true, case_insensitive, hor_space_class<CharT>>;
+named_class_not_space     : <CharT, case_insensitive: bool> type == class_token_matcher<CharT,  true, case_insensitive, space_class<CharT>>;
+named_class_not_ver_space : <CharT, case_insensitive: bool> type == class_token_matcher<CharT,  true, case_insensitive, ver_space_class<CharT>>;
+named_class_not_word      : <CharT, case_insensitive: bool> type == class_token_matcher<CharT,  true, case_insensitive, word_class<CharT>>;
+
+
+//  Regex syntax: \<number>  Example: \1
+//                \g{name_or_number}
+//                \k{name_or_number}
+//                \k<name_or_number>
+//                \k'name_or_number'
+//
+group_ref_token_matcher: <CharT, group: int, case_insensitive: bool, reverse: bool> (inout cur, inout ctx) -> bool =
+{
+    g := ctx..get_group(group);
+
+    group_pos := g.start;
+    group_end := g.end;
+    group_inc : int = 1;
+    if reverse {
+        group_pos = g.end;
+        group_end = g.start;
+        group_inc = -1;
+    }
+
+    while
+        group_pos != group_end
+        && cur != ctx.end
+    next (group_pos += group_inc, cur++)
+    {
+        if constexpr case_insensitive {
+            if string_util::safe_tolower(group_pos*) != string_util::safe_tolower(cur*) {
+                return false;
+            }
+        }
+        else {
+            if group_pos* != cur* {
+                return false;
+            }
+        }
+    }
+
+    if group_pos == group_end {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+
+//  Regex syntax: $  Example: aa$
+//
+line_end_token_matcher: <CharT, match_new_line: bool, match_new_line_before_end: bool> (cur, inout ctx) -> bool =
+{
+    if cur == ctx.get_string_end() || (match_new_line && cur* == '\n') {
+        return true;
+    }
+    else if match_new_line_before_end && (cur* == '\n' && (cur + 1) == ctx.get_string_end()) { // Special case for new line at end.
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+
+//  Regex syntax: ^  Example: ^aa
+//
+line_start_token_matcher: <CharT, match_new_line: bool> (cur, inout ctx) -> bool =
+{
+    return cur == ctx.get_string_start() || // Start of string
+           (match_new_line && (cur - 1)* == '\n'); // Start of new line
+}
+
+
+//  Regex syntax: (?=) or (?!) or (*pla), etc.  Example: (?=AA)
+//
+//  Parsed in group_token.
+//
+lookahead_token_matcher: <CharT, positive: bool> (cur, inout ctx, func) -> bool =
+{
+    r := func(make_forward_iterator(cur), make_forward_match_context(ctx), true_end_func());
+    if !positive {
+        r.matched = !r.matched;
+    }
+
+    return r.matched;
+}
+
+//  Regex syntax: (?<=) or (?<!) or (*plb), etc.  Example: (?<=AA)
+//
+//  Parsed in group_token.
+//
+lookbehind_token_matcher: <CharT, positive: bool> (cur, inout ctx, func) -> bool =
+{
+    r := func(make_reverse_iterator(cur), make_reverse_match_context(ctx), true_end_func());
+    if !positive {
+        r.matched = !r.matched;
+    }
+
+    return r.matched;
+}
+
+
+// TODO: @enum as template parameter currently not working. See issue https://github.com/hsutter/cppfront/issues/1147
+
+
+//  Options for range matching.
+range_flags: type = {
+    not_greedy: int == 1;  // Try to take as few as possible.
+    greedy:     int == 2;  // Try to take as many as possible.
+    possessive: int == 3;  // Do not give back after a greedy match. No backtracking.
+}
+
+
+//  Regex syntax: <matcher>{min, max}  Example: a{2,4}
+//
+range_token_matcher: <CharT, min_count: int, max_count: int, kind: int> type =
+{
+
+    match: <Iter> (cur: Iter, inout ctx, inner, reset_func, end_func, tail) -> _ =
+    {
+        if range_flags::possessive == kind {
+            return match_possessive(cur, ctx, inner, end_func, tail);
+        }
+        else if range_flags::greedy == kind {
+            return match_greedy(0, cur, ctx.end, ctx, inner, reset_func, end_func, tail);
+        }
+        else { // range_flags::not_greedy == kind
+            return match_not_greedy(cur, ctx, inner, end_func, tail);
+        }
+    }
+
+    private is_below_upper_bound: (count: int) -> bool = {
+        if -1 == max_count { return true; }
+        else { return count < max_count; }
+    }
+
+    private is_below_lower_bound: (count: int) -> bool = {
+        if -1 == min_count { return false; }
+        else { return count < min_count; }
+    }
+
+    private is_in_range: (count: int) -> bool = {
+        if -1 != min_count && count < min_count { return false; }
+        if -1 != max_count && count > max_count { return false; }
+        return true;
+    }
+
+    private match_min_count: <Iter> (cur: Iter, inout ctx, inner, end_func, inout count_r: int) -> _ = 
+    {   // TODO: count_r as out parameter introduces a performance loss.
+        res := ctx..pass(cur);
+        count := 0;
+
+        while is_below_lower_bound(count) && res.matched {
+            res = inner(res.pos, ctx, end_func);
+            if res.matched {
+                count += 1;
+            }
+        }
+
+        count_r = count;
+        return res;
+    }
+
+    private match_greedy: <Iter> (count: int, cur: Iter, last_valid: Iter, inout ctx, inner, reset_func, end_func, other) -> match_return<Iter> = 
+    {
+        inner_call := :(tail_cur, inout tail_ctx) -> _ == {
+            return match_greedy((count + 1)$, tail_cur, (cur)$, tail_ctx, (inner)$, (reset_func)$, (end_func)$, (other)$);
+        };
+        is_m_valid := true;
+        r := ctx..fail();
+        if is_below_upper_bound(count) && (is_below_lower_bound(count) || cur != last_valid) {
+            is_m_valid = false;  // Group ranges in M are invalidated through the call.
+            r = inner(cur, ctx, inner_call);
+        }
+
+        if !r.matched && is_in_range(count) 
+        {
+            //  The recursion did not yield a match try now the tail
+            r = other(cur, ctx, end_func);
+
+            if r.matched && !is_m_valid{
+                //  We have a match rematch M if required
+                reset_func(ctx);
+
+                if count > 0 {
+                    _ = inner(last_valid, ctx, true_end_func());
+                }
+            }
+        }
+
+        return r;
+    }
+
+    private match_possessive: <Iter>(cur: Iter, inout ctx, inner, end_func, other) -> match_return<Iter> = 
+    {
+        count :=0;
+        r := match_min_count(cur, ctx, inner, end_func, count);
+
+        if !r.matched {
+          return r;
+        }
+
+        pos := r.pos;
+        while 
+            r.matched 
+            && is_below_upper_bound(count) 
+        {
+            r = inner(pos, ctx, true_end_func());
+
+            if pos == r.pos {
+                break; // Break infinite loop.
+            }
+            if r.matched {
+                count += 1;
+                pos = r.pos;
+            }
+        }
+
+        return other(pos, ctx, end_func);
+    }
+
+    private match_not_greedy: <Iter> (cur: Iter, inout ctx, inner, end_func, other) -> match_return<Iter> = 
+    {
+        count := 0;
+        start := match_min_count(cur, ctx, inner, end_func, count);
+        if !start.matched {
+          return start;
+        }
+
+        pos := start.pos;
+        while is_below_upper_bound(count) 
+        {
+            o:= other(pos, ctx, end_func);
+            if o.matched {
+                return o;
+            }
+
+            r:= inner(pos, ctx, end_func);
+            if !r.matched {
+                return ctx..fail();
+            }
+            count += 1;
+            pos = r.pos;
+        }
+
+        return other(pos, ctx, end_func); // Upper bound reached.
+    }
+}
+
+
+//  Regex syntax: \b or \B  Example: \bword\b
+//
+//  Matches the start end end of word boundaries.
+//
+word_boundary_token_matcher: <CharT, negate: bool> (inout cur, inout ctx) -> bool = 
+{
+    words : word_class<CharT> = ();
+    is_match := false;
+    if cur == ctx.begin { // Iteration start
+        if cur != ctx.end { // No empty string
+            is_match = words..includes(cur*);
+        }
+    }
+    else if cur == ctx.end { // Iteration end
+        is_match = words..includes((cur - 1)*);
+    }
+    else { // Middle of iteration
+        is_match =
+                (words..includes((cur - 1)*) && !words..includes(cur*))  // End of word: \w\W
+            || (!words..includes((cur - 1)*) && words..includes(cur*)); // Start of word: \W\w
+    }
+    if negate {
+        is_match = !is_match;
+    }
+
+    return is_match;
+}
+
+
+//-----------------------------------------------------------------------
+//
+//  Regular expression implementation.
+//
+//-----------------------------------------------------------------------
+//
+
+//  Regular expression implementation
+regular_expression: <CharT, matcher> type =
+{
+    context: <Iter> type == matcher_context_type<matcher, Iter>;                      // TODO: Remove when nested types are allowed: https://github.com/hsutter/cppfront/issues/727
+
+    search_return: <Iter> type = 
+    {
+        public matched: bool;
+        public ctx:     context<Iter>;
+        public pos:     int;
+
+        operator=:(out this, matched_: bool, ctx_: context<Iter>, pos_: Iter) = {
+            matched = matched_;
+            ctx = ctx_;
+            pos = unchecked_narrow<int>(std::distance(ctx_.begin, pos_));
+        }
+
+        operator=:(out this, begin: Iter, end: Iter) = {
+            matched = false;
+            ctx = (begin, end);
+            pos = 0;
+        }
+
+        group_number: (this)         = ctx..size();
+        group:        (this, g: int) = ctx..get_group_string(g);
+        group_start:  (this, g: int) = ctx..get_group_start(g);
+        group_end:    (this, g: int) = ctx..get_group_end(g);
+
+        group:        (this, g: bstring<CharT>) = group(get_group_id(g));
+        group_start:  (this, g: bstring<CharT>) = group_start(get_group_id(g));
+        group_end:    (this, g: bstring<CharT>) = group_end(get_group_id(g));
+
+        update:       (inout this, r: match_return<Iter>) = {
+            matched = r.matched;
+            pos     = unchecked_narrow<int>(std::distance(ctx.begin, r.pos));
+        }
+
+        private get_group_id: (this, g: bstring<CharT>) -> _ = {
+            group_id := matcher::get_named_group_index(g);
+            if -1 == group_id {
+                // TODO: Throw error.
+            }
+            return group_id;
+        }
+    }
+
+    find_all: (in this, forward func, str: bview<CharT>)                           = find_all(func, str..begin(), str..end());
+    find_all: (in this, forward func, str: bview<CharT>, start: int)               = find_all(func, get_iter(str, start), str..end());
+    find_all: (in this, forward func, str: bview<CharT>, start: int, length : int) = find_all(func, get_iter(str, start), get_iter(str, start + length));
+    find_all: <Iter> (in this, func, start: Iter, end: Iter) =
+    {
+        sr   := search_return<Iter>(start, end);
+        cont := true;
+        cur  := start;
+
+        while cont {
+            r := search_with_context(sr.ctx, cur);
+            cont = r.matched; // First update the continue so that the user can override it.
+
+            if r.matched {
+                sr..update(r);
+                cont = func(sr);
+            }
+
+            if cont {
+                // Prevent infinity loop for zero length match.
+                cont = 0 != sr.ctx..get_group_end(0) - sr.ctx..get_group_start(0);
+            }
+
+            // Check now if to continue, user may override
+            if cont {
+                cur = start + sr.ctx..get_group_end(0);
+                sr.ctx.reset();
+            }
+        }
+    }
+
+    match: (in this, str: bview<CharT>)                = match(str..begin(), str..end());
+    match: (in this, str: bview<CharT>, start)         = match(get_iter(str, start), str..end());
+    match: (in this, str: bview<CharT>, start, length) = match(get_iter(str, start), get_iter(str, start + length));
+    match: <Iter> (in this, start: Iter, end: Iter) -> search_return<Iter> = 
+    {
+        ctx: context<Iter> = (start, end);
+
+        r := matcher::entry(start, ctx);
+        return search_return<Iter>(r.matched && r.pos == end, ctx, r.pos);
+    }
+
+    search: (in this, str: bview<CharT>)                = search(str..begin(), str..end());
+    search: (in this, str: bview<CharT>, start)         = search(get_iter(str, start), str..end());
+    search: (in this, str: bview<CharT>, start, length) = search(get_iter(str, start), get_iter(str, start + length));
+    search: <Iter> (in this, start: Iter, end: Iter) -> search_return<Iter> =
+    {
+        ctx: context<Iter> = (start, end);
+        r := search_with_context(ctx, start);
+        return search_return<Iter>(r.matched, ctx, r.pos);
+    }
+
+    private search_with_context: <Iter> (in this, inout ctx: context<Iter>, start: Iter) -> match_return<Iter> =
+    {
+        r := ctx..fail();
+
+        cur:= start;
+        while true next (cur++) {
+            r = matcher::entry(cur, ctx);
+            if r.matched {
+                break;
+            }
+
+            if cur == ctx.end {
+                break;
+            }
+
+            if matcher::is_start_match() {
+                break; // Always break with \G option.
+            }
+        }
+
+        return r;
+    }
+
+
+
+    to_string: (in this) = matcher::to_string();
+
+    //  Helper functions
+    //
+    private get_iter: (str: bview<CharT>, pos) -> _ = {
+        if pos < str..size() {
+            return str..begin() + pos;
+        }
+        else {
+            return str..end();
+        }
+    }
+}
+
+}
+}
+#endif
